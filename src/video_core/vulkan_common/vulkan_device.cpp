@@ -464,6 +464,16 @@ Device::Device(VkInstance instance_, vk::PhysicalDevice physical_, VkSurfaceKHR 
         driver_id == VK_DRIVER_ID_AMD_PROPRIETARY || driver_id == VK_DRIVER_ID_AMD_OPEN_SOURCE;
     const bool is_amd = is_amd_driver || is_radv;
 
+    // AMD's proprietary Windows driver can crash while compiling some pipelines concurrently.
+#ifdef _WIN32
+    has_broken_parallel_compiling = driver_id == VK_DRIVER_ID_AMD_PROPRIETARY;
+#else
+    has_broken_parallel_compiling = false;
+#endif
+    if (has_broken_parallel_compiling) {
+        LOG_WARNING(Render_Vulkan, "AMD proprietary driver: serializing pipeline compilation");
+    }
+
     const bool is_intel_windows = driver_id == VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS;
     const bool is_intel_anv = driver_id == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA;
 
