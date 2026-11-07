@@ -483,6 +483,10 @@ public:
      */
     void RasterizerMarkRegionCached(Common::ProcessAddress vaddr, u64 size, bool cached);
 
+    /// Traps the next guest CPU read of the cached pages in this range (GPU-written buffer data
+    /// that is not copied back at fences): the read takes the slow path and flushes them.
+    void RasterizerArmReadTraps(Common::ProcessAddress vaddr, u64 size);
+
     /**
      * Marks each page within the specified address range as debug or non-debug.
      * Debug addresses are not accessible from fastmem pointers.

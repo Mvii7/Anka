@@ -236,6 +236,13 @@
 # worse on our machine).
 #EDEN_NX2_DK_DYN_MIN_FPS=40
 
+# --- read traps (core/memory/read_traps.h; ported from the ZendNevs fork) ---
+# On by default with use_reactive_flushing=false (Switch 2 titles, fastmem, not NCE): a buffer
+# page the GPU writes is read-protected until the guest CPU's first read, which flushes it and
+# notes it, so later GPU writes there are copied back at fences. Bananza's trees come from such
+# GPU-written data. With reactive flushing on they do nothing. 0 turns them off.
+#EDEN_NX2_READ_TRAPS=0
+
 # --- reactive flushing (video_core/nx2_reactive_flush.h, common/nx2_reactive.h) ---
 # All off by default. Most matter only with use_reactive_flushing=true in the config;
 # RX_RT_FIT, RX_MASKED_TARGETS, RX_ONE_SUBMIT and RX_COALESCE act without it too. None of

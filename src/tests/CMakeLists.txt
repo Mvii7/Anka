@@ -29,6 +29,7 @@ add_executable(tests
     core/nx2_present_rate.cpp
     core/nx2_vi2_reply.cpp
     core/nx2_vi2_events.cpp
+    core/read_traps.cpp
     video_core/memory_tracker.cpp
     video_core/native_qmd.cpp
     video_core/ampere_returns.cpp

@@ -487,6 +487,18 @@ public:
     /// Returns whether part of it was not noted before.
     bool NoteCpuRead(DAddr addr, size_t size);
 
+    /// Read traps (ZendNevs): with reactive flushing off, GPU writes the CPU has not read yet are
+    /// trapped instead (QueueDownload), and a trapped read flushes them (GetFlushArea in the
+    /// rasterizer). EDEN_NX2_READ_TRAPS=0 turns them off.
+    [[nodiscard]] bool ReadTrapsActive() const {
+        static const bool disabled = [] {
+            const char* value = std::getenv("EDEN_NX2_READ_TRAPS");
+            return value != nullptr && value[0] == '0';
+        }();
+        return !disabled && !Settings::values.use_reactive_flushing.GetValue() &&
+               !AsyncBufferDownloads();
+    }
+
     /// 4 KiB pages in the CPU-read ranges (EDEN_NX2_REACTIVE_STATS; walks them).
     [[nodiscard]] u64 CpuReadPages() const;
 
@@ -911,7 +923,30 @@ private:
         cpu_read_ranges.ForEachInRange(addr, size, [this](DAddr start, DAddr end) {
             uncommitted_gpu_modified_ranges.Add(start, end - start);
         });
+        if (ReadTrapsActive()) {
+            ArmReadTraps(addr, size);
+        }
     }
+
+    /// Traps the guest CPU's next read of these pages (ReadTrapsActive). Its flush notes the
+    /// page as CPU-read, so later GPU writes there are copied back at fences instead.
+    void ArmReadTraps(DAddr device_addr, u64 size) {
+        const DAddr begin = Common::AlignDown(device_addr, Core::DEVICE_PAGESIZE);
+        const DAddr end = Common::AlignUp(device_addr + size, Core::DEVICE_PAGESIZE);
+        u64 armed_bytes = 0;
+        read_trapped_ranges.ForEachInRange(begin, end - begin, [&](DAddr lower, DAddr upper) {
+            armed_bytes += upper - lower;
+        });
+        if (armed_bytes == end - begin) {
+            return;
+        }
+        read_trapped_ranges.Add(begin, end - begin);
+        device_memory.ArmReadTraps(begin, end - begin);
+    }
+
+    /// Pages already handed to ArmReadTraps: each stays trapped until its first read, then is
+    /// in cpu_read_ranges.
+    Common::RangeSet<DAddr> read_trapped_ranges;
 
     // Async Buffers
     Common::OverlapRangeSet<DAddr> async_downloads;
