@@ -44,6 +44,22 @@ struct LoweredProgram {
     explicit operator bool() const { return error.empty(); }
 };
 
+/// BRA's offset field is instruction bits 32-81: the byte offset starts at bit 36, bits 32-35 are
+/// flags. Every BRA of more than a thousand Donkey Kong Bananza shaders has them clear, but a
+/// fragment effect shader's conditional branch (@!P1 BRA after an ISETP, 80 instructions ahead)
+/// has flag value 1, which made its 16-byte alignment check fail and the program rejected (its
+/// draws skipped every time). Flag value 1 is taken as a hint and the branch as a plain one: with
+/// it cleared the program lowers. Other flag values still reject. EDEN_NX2_BRA_FLAG=0 rejects
+/// flagged branches as before.
+inline u64 BranchOffsetField(const Instruction& insn) {
+    static const bool flag_ignored = [] {
+        const char* value = std::getenv("EDEN_NX2_BRA_FLAG");
+        return value == nullptr || value[0] != '0';
+    }();
+    const u64 raw = insn.words[1] | (u64{insn.words[2] & 0x3ffff} << 32);
+    return flag_ignored && (raw & 0xf) == 1 ? raw & ~u64{0xf} : raw;
+}
+
 // Lower only operations whose semantics are representable by the existing
 // Maxwell frontend. These are new instructions, not reinterpretations of the
 // native bytes. Scheduling/control words are added by the environment adapter.
@@ -2454,7 +2470,7 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code) {
             } else if (insn.Bits(87, 4) != 7) {
                 return fail(index, "native extra branch condition");
             }
-            const u64 raw = insn.words[1] | (u64{insn.words[2] & 0x3ffff} << 32);
+            const u64 raw = BranchOffsetField(insn);
             const s64 relative = static_cast<s64>(raw << 14) >> 14;
             const s64 target = s64{index} * 16 + 16 + relative;
             if (target < 0 || target % 16) return fail(index, "native branch destination alignment");

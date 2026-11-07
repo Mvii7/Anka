@@ -132,6 +132,10 @@
 #EDEN_NX2_3D_HISTORY=1
 # HSETP2_REG=0: reject HSETP2's register form as before (default: lowered).
 #EDEN_NX2_HSETP2_REG=0
+# BRA_FLAG=0: reject a native BRA whose offset field has flag value 1 (bits 32-35) as before
+# (default: taken as a plain branch). Bananza's fragment effect shaders have one; rejected, the
+# program's draws are skipped every time.
+#EDEN_NX2_BRA_FLAG=0
 
 # --- draws, buffers and descriptors: shortcuts on by default; =0 as before, and for most of
 #     them =2 keeps them on and logs what they would get wrong ---

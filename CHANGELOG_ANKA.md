@@ -251,7 +251,9 @@ For `use_reactive_flushing=true`; none of these was measured with frame generati
 
 ### Shaders and accuracy
 
-- Ampere: HSETP2 with a register operand is lowered (`HSETP2_REG`); TXD with any channel mask;
+- Ampere: a BRA whose offset field has flag value 1 is lowered as a plain branch (`BRA_FLAG`):
+  Bananza's fragment effect shaders had one, which got the program rejected and its draws
+  skipped; HSETP2 with a register operand is lowered (`HSETP2_REG`); TXD with any channel mask;
   FRND with a constant buffer source (Takoroka); Bananza's shifted QMD layout accepted.
 - HMMA: emulated by default instead of rejecting the program, f32 accumulation rounded every
   eight products, FP16 texture results packed with c0 in the low half (Franseven, picked from
