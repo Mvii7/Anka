@@ -175,6 +175,10 @@
 #EDEN_NX2_RESET_LAST=0
 #EDEN_NX2_RESET_RUNS=0
 #EDEN_NX2_RESET_SORT=0
+# BLIT_NATIVE_TILING=0: the software 2D blit (small mip copies) untiles and tiles in the Tegra X1
+# GOB order, as before (default: the Switch 2 order, from the Orchid fork). The old order wrote
+# small mips as a weave of misplaced 4x4 blocks, which shows as stripes on far, minified terrain.
+#EDEN_NX2_BLIT_NATIVE_TILING=0
 # ASYNC_SKIP=1: skip draws whose pipeline is still compiling (things pop in; off).
 #EDEN_NX2_ASYNC_SKIP=1
 
