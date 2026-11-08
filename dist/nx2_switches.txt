@@ -300,6 +300,9 @@
 #EDEN_NX2_UPSCALE_LEARN=0
 #EDEN_NX2_UPSCALE_HEADER=0
 #EDEN_NX2_UPSCALE_DIAG=1
+# UPSCALE_BINDINGS=1: logs every texture and image the emulated upscaler programs bind ("Upscale
+# bindings"), for DLSS work. Needs the matrix multiply emulated: leave EDEN_NX2_TENSOR unset.
+#EDEN_NX2_UPSCALE_BINDINGS=1
 
 # --- vi2 service experiments (core/hle/service/nx2_gsv.h; all off by default) ---
 # VI2_REPLY_FILE=<file>: vi2 replies from a table, read again at most once a second.

@@ -5,7 +5,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <algorithm>
+#include <array>
 #include <optional>
+#include <unordered_map>
 #include <vector>
 
 #include <boost/container/small_vector.hpp>
@@ -20,6 +22,8 @@
 #include "video_core/renderer_vulkan/vk_pipeline_cache.h"
 #include "video_core/renderer_vulkan/vk_scheduler.h"
 #include "video_core/renderer_vulkan/vk_update_descriptor.h"
+#include "video_core/engines/nx2_upscale_pick.h"
+#include "video_core/memory_manager.h"
 #include "video_core/shader_notify.h"
 #include "video_core/vulkan_common/vulkan_device.h"
 #include "video_core/vulkan_common/vulkan_wrapper.h"
@@ -32,6 +36,65 @@ namespace Vulkan {
 using Shader::ImageBufferDescriptor;
 using Shader::Backend::SPIRV::RESCALING_LAYOUT_WORDS_OFFSET;
 using Tegra::Texture::TexturePair;
+
+namespace {
+
+// EDEN_NX2_UPSCALE_BINDINGS=1: for the first two dispatches of each compute program whose constant
+// bank 0 holds the tensor upscaler's sizes (Nx2UpscalePick::SizesFromBank0), every texture and
+// image the shader reads or writes, with the constant bank word naming it. Needs the matrix
+// multiply emulated (the default, so EDEN_NX2_TENSOR unset): a rejected program has no bindings.
+template <typename Views>
+void LogUpscaleBindings(TextureCache& texture_cache, Tegra::MemoryManager& gpu_memory,
+                        GPUVAddr bank0, u32 block_x, u32 grid_x, u32 grid_y, u64 shader_hash,
+                        const Shader::Info& info, const Views& views) {
+    std::array<u32, 12> words{};
+    gpu_memory.ReadBlockUnsafe(bank0, words.data(), sizeof(words));
+    if (!Tegra::Engines::Nx2UpscalePick::SizesFromBank0(words, block_x, grid_x, grid_y)) {
+        return;
+    }
+    static std::unordered_map<const Shader::Info*, u32> calls;
+    const u32 call = calls[&info]++;
+    if (call >= 2) {
+        return;
+    }
+    LOG_INFO(HW_GPU, "Upscale bindings: program {:#x} dispatch {}: {}x{} -> {}x{}", shader_hash,
+             call, words[6] + 1, words[7] + 1, words[10] + 1, words[11] + 1);
+    std::size_t at{};
+    const auto log_group = [&](const char* kind, const auto& descs) {
+        for (const auto& desc : descs) {
+            for (u32 i = 0; i < desc.count; ++i, ++at) {
+                if (at >= views.size() || !views[at].id) {
+                    continue;
+                }
+                const auto& view = texture_cache.GetImageView(views[at].id);
+                u32 type = 0;
+                if constexpr (requires { desc.type; }) {
+                    type = static_cast<u32>(desc.type);
+                }
+                bool written = false;
+                if constexpr (requires { desc.is_written; }) {
+                    written = desc.is_written;
+                }
+                LOG_INFO(HW_GPU,
+                         "  {} bank {} +{:#x} (+{:#x} per index): {}x{}, pixel format {}, "
+                         "type {}{}",
+                         kind, desc.cbuf_index, desc.cbuf_offset, 1U << desc.size_shift,
+                         view.size.width, view.size.height, static_cast<u32>(view.format),
+                         type, written ? ", written" : "");
+            }
+        }
+    };
+    log_group("texture buffer", info.texture_buffer_descriptors);
+    log_group("image buffer", info.image_buffer_descriptors);
+    log_group("texture", info.texture_descriptors);
+    log_group("image", info.image_descriptors);
+    for (const auto& desc : info.storage_buffers_descriptors) {
+        LOG_INFO(HW_GPU, "  storage buffer bank {} +{:#x}{}", desc.cbuf_index, desc.cbuf_offset,
+                 desc.is_written ? ", written" : "");
+    }
+}
+
+} // Anonymous namespace
 
 ComputePipeline::ComputePipeline(const Device& device_, Scheduler& scheduler, vk::PipelineCache& pipeline_cache_,
                                  DescriptorPool& descriptor_pool,
@@ -228,6 +291,15 @@ bool ComputePipeline::Configure(Tegra::Engines::KeplerCompute& kepler_compute,
         add_image(desc, desc.is_written);
     }
     texture_cache.FillImageViews(std::span(views.data(), views.size()), true);
+
+    static const bool bindings_diag = [] {
+        const char* text = std::getenv("EDEN_NX2_UPSCALE_BINDINGS");
+        return text != nullptr && text[0] != '0';
+    }();
+    if (bindings_diag) [[unlikely]] {
+        LogUpscaleBindings(texture_cache, gpu_memory, cbufs[0].Address(), qmd.block_dim_x,
+                           qmd.grid_dim_x, qmd.grid_dim_y, shader_hash, info, views);
+    }
 
     buffer_cache.UnbindComputeTextureBuffers();
     size_t index{};
