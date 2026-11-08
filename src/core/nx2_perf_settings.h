@@ -229,8 +229,10 @@ struct Var {
 };
 
 /// The per-draw shortcuts this fork keeps on by default; the Safe preset turns them off (=0), as
-/// start-safe.bat does.
-inline constexpr std::array<std::string_view, 61> SafeOff{
+/// start-safe.bat does. Not the ones Bananza needs to draw at all: without EDEN_NX2_HSETP2_REG
+/// and EDEN_NX2_UPSCALE_SCAN / _LEARN / _HEADER its upscaler's compute programs are rejected
+/// and nothing replaces their output, so Safe showed a flat blue screen.
+inline constexpr std::array<std::string_view, 57> SafeOff{
     "EDEN_NX2_LIGHT_DRAW",       "EDEN_NX2_LIGHT_UNIFORM",     "EDEN_NX2_LIGHT_UNIFORM_VALUES",
     "EDEN_NX2_LIGHT_STORAGE",    "EDEN_NX2_UNIFORM_SYNC_SKIP", "EDEN_NX2_STORAGE_KEEP",
     "EDEN_NX2_UBO_REUSE",        "EDEN_NX2_UBO_DIRECT",        "EDEN_NX2_UBO_STAGE",
@@ -249,9 +251,7 @@ inline constexpr std::array<std::string_view, 61> SafeOff{
     "EDEN_NX2_RESET_SORT",       "EDEN_NX2_WRITE_BATCH",       "EDEN_NX2_BATCH_DIRECT",
     "EDEN_NX2_CB_RUNS",          "EDEN_NX2_TICK_SKIP",         "EDEN_NX2_HLE_INDIRECT",
     "EDEN_NX2_INDIRECT_BATCH",   "EDEN_NX2_LAYOUT_MEMO",       "EDEN_NX2_SAME_SKIP",
-    "EDEN_NX2_HSETP2_REG",       "EDEN_NX2_DIRTY_THUNK_SKIP",  "EDEN_NX2_FAST_PRIORITY_SCAN",
-    "EDEN_NX2_PBFLUSH_WINDOW_KIB", "EDEN_NX2_UPSCALE_SCAN",    "EDEN_NX2_UPSCALE_LEARN",
-    "EDEN_NX2_UPSCALE_HEADER",
+    "EDEN_NX2_DIRTY_THUNK_SKIP", "EDEN_NX2_FAST_PRIORITY_SCAN", "EDEN_NX2_PBFLUSH_WINDOW_KIB",
 };
 
 /// The variables a setting or preset can set, besides SafeOff, in the order they are set.
