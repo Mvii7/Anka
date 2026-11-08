@@ -1,5 +1,8 @@
 name: release-binaries
 
+# Every push builds Windows. A push to main also builds Linux and macOS.
+# macOS is experimental: the project's docs call it largely untested, so a macOS failure does not
+# fail the run.
 on:
   workflow_dispatch:
   push:
@@ -12,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  windows:
     name: windows-x86_64 binary
     runs-on: windows-2022
     steps:
@@ -104,3 +107,214 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  linux:
+    name: linux-x86_64 binary
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            autoconf cmake g++ gcc git glslang-tools libglu1-mesa-dev \
+            libpulse-dev libtool libudev-dev libxkbcommon-x11-0 \
+            mesa-common-dev nasm ninja-build qt6-base-private-dev \
+            qt6-charts-dev qt6-tools-dev libavfilter-dev libavcodec-dev \
+            libswscale-dev pkg-config zlib1g-dev libva-dev libvdpau-dev \
+            spirv-tools spirv-headers libusb-1.0-0-dev \
+            libboost-dev libboost-fiber-dev libboost-context-dev \
+            libopus-dev libasound2-dev
+
+      - name: Install Qt on Linux
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          modules: qtcharts
+          cache: true
+
+      - name: Cache CPM downloads
+        uses: actions/cache@v4
+        with:
+          path: .cache/cpm
+          key: cpm-${{ runner.os }}-${{ hashFiles('cpmfile.json', 'CMakeLists.txt', 'src/**/CMakeLists.txt') }}
+          restore-keys: |
+            cpm-${{ runner.os }}-
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Configure Linux
+        shell: bash
+        env:
+          SCCACHE_GHA_ENABLED: 'true'
+        run: >-
+          cmake -S . -B build/release -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_C_COMPILER_LAUNCHER=sccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+          -DBUILD_TESTING=OFF
+          -DYUZU_TESTS=OFF
+          -DYUZU_CMD=ON
+          -DYUZU_ROOM=OFF
+          -DYUZU_ROOM_STANDALONE=OFF
+          -DYUZU_USE_BUNDLED_QT=OFF
+          -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
+          -DYUZU_USE_BUNDLED_SDL3=ON
+          -DVulkanHeaders_FORCE_BUNDLED=ON
+          -DVulkanUtilityLibraries_FORCE_BUNDLED=ON
+          -DENABLE_UPDATE_CHECKER=OFF
+          -DUSE_DISCORD_PRESENCE=OFF
+
+      - name: Build
+        shell: bash
+        env:
+          SCCACHE_GHA_ENABLED: 'true'
+        run: cmake --build build/release --target yuzu yuzu-cmd --parallel
+
+      - name: sccache statistics
+        if: always()
+        shell: bash
+        run: sccache --show-stats || true
+
+      # A self-contained AppImage: linuxdeploy bundles every library the two programs need except
+      # the base system ones (glibc, X11/Wayland client libraries, the GPU driver and Vulkan loader),
+      # and its Qt plugin adds the Qt libraries and platform plugins. Runs on glibc 2.39+ systems.
+      - name: Package Linux AppImage
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x build/release/bin/dozer
+          test -x build/release/bin/dozer-cli
+          # Libraries Qt's xcb platform plugin needs, so linuxdeploy can resolve and bundle them.
+          sudo apt-get install -y --no-install-recommends libxcb-cursor0 libxcb-icccm4 libxcb-image0 \
+            libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
+          tools="$RUNNER_TEMP/linuxdeploy"
+          mkdir -p "$tools"
+          curl -fsSL -o "$tools/linuxdeploy-x86_64.AppImage" \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          curl -fsSL -o "$tools/linuxdeploy-plugin-qt-x86_64.AppImage" \
+            https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x "$tools"/*.AppImage
+          # The desktop entry and icon the AppImage carries, made from the project's own.
+          icon="$RUNNER_TEMP/dozer.png"
+          cp dist/qt_themes/default/icons/256x256/dozer.png "$icon"
+          desktop="$RUNNER_TEMP/dozer.desktop"
+          sed -e 's/^Name=.*/Name=Dozer/' \
+              -e 's/^GenericName=.*/GenericName=Switch 2 Emulator/' \
+              -e 's/^Comment=.*/Comment=Nintendo Switch 2 emulator tuned for Donkey Kong Bananza/' \
+              -e 's/^Icon=.*/Icon=dozer/' \
+              -e 's/^TryExec=.*/TryExec=dozer/' \
+              -e 's/^Exec=.*/Exec=dozer %f/' \
+              -e 's/^StartupWMClass=.*/StartupWMClass=dozer/' \
+              dist/dev.eden_emu.eden.desktop > "$desktop"
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          export QMAKE="$QT_ROOT_DIR/bin/qmake"
+          export LDAI_OUTPUT="dozer-${GITHUB_SHA}-linux-x86_64.AppImage"
+          export OUTPUT="$LDAI_OUTPUT"
+          "$tools/linuxdeploy-x86_64.AppImage" --appdir AppDir \
+            --executable build/release/bin/dozer \
+            --executable build/release/bin/dozer-cli \
+            --desktop-file "$desktop" \
+            --icon-file "$icon" \
+            --plugin qt \
+            --output appimage
+          test -s "$LDAI_OUTPUT"
+          ls -la "$LDAI_OUTPUT"
+
+      - name: Upload Linux binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: dozer-linux-x86_64-${{ github.sha }}
+          path: dozer-${{ github.sha }}-linux-x86_64.AppImage
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  # Experimental. The project's docs call macOS "largely untested", and Dozer has not been run
+  # there: this job only finds out whether it builds. Apple Silicon only (the runner's architecture).
+  macos:
+    name: macos-arm64 binary (experimental)
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-15
+    continue-on-error: true
+    timeout-minutes: 150
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install macOS dependencies
+        shell: bash
+        run: >-
+          brew install autoconf automake boost ffmpeg fmt glslang hidapi libtool libusb lz4 ninja
+          nlohmann-json openssl pkg-config sdl3 speexdsp zlib zstd cmake molten-vk vulkan-loader
+          spirv-tools
+
+      - name: Install Qt on macOS
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          host: mac
+          target: desktop
+          arch: clang_64
+          modules: qtcharts
+          cache: true
+
+      - name: Cache CPM downloads
+        uses: actions/cache@v4
+        with:
+          path: .cache/cpm
+          key: cpm-${{ runner.os }}-${{ hashFiles('cpmfile.json', 'CMakeLists.txt', 'src/**/CMakeLists.txt') }}
+          restore-keys: |
+            cpm-${{ runner.os }}-
+
+      - name: Configure macOS
+        shell: bash
+        run: >-
+          cmake -S . -B build/release -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTING=OFF
+          -DYUZU_TESTS=OFF
+          -DYUZU_CMD=ON
+          -DYUZU_ROOM=OFF
+          -DYUZU_ROOM_STANDALONE=OFF
+          -DYUZU_USE_BUNDLED_QT=OFF
+          -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
+          -DENABLE_UPDATE_CHECKER=OFF
+          -DUSE_DISCORD_PRESENCE=OFF
+
+      - name: Build
+        shell: bash
+        run: cmake --build build/release --target yuzu yuzu-cmd --parallel
+
+      # macdeployqt puts the Qt frameworks inside the app and signs it ad hoc (-codesign=-): an
+      # unsigned arm64 app does not start. It is not notarised, so macOS asks before the first run.
+      - name: Package macOS app
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$(find build/release/bin -maxdepth 1 -name '*.app' | head -n 1)"
+          if [ -z "$app" ]; then
+            echo "no .app bundle in build/release/bin:"
+            ls -la build/release/bin
+            exit 1
+          fi
+          echo "bundle: $app"
+          macdeployqt "$app" -codesign=-
+          ditto -c -k --sequesterRsrc --keepParent "$app" "dozer-${GITHUB_SHA}-macos-arm64.zip"
+          ls -la "dozer-${GITHUB_SHA}-macos-arm64.zip"
+
+      - name: Upload macOS binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: dozer-macos-arm64-${{ github.sha }}
+          path: dozer-${{ github.sha }}-macos-arm64.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
