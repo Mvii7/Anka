@@ -151,6 +151,7 @@ static FileSys::VirtualFile VfsDirectoryCreateFileWrapper(const FileSys::Virtual
 
 #include "core/tools/renderdoc.h"
 
+#include "core/core_timing.h"
 #include "core/perf_stats.h"
 
 #include "core/crypto/key_manager.h"
@@ -189,7 +190,6 @@ static FileSys::VirtualFile VfsDirectoryCreateFileWrapper(const FileSys::Virtual
 
 #ifdef _WIN32
 #include "common/windows/timer_resolution.h"
-#include "core/core_timing.h"
 
 #include <QPlatformSurfaceEvent>
 #include <QSettings>

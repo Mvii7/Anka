@@ -21,6 +21,7 @@ Copyright: 2025 Eden Emulator Project
 License: GPL-3.0-or-later
 
 Files: dist/dozer.ico
+       dist/dozer.icns
        dist/dozer.bmp
        dist/qt_themes/default/icons/256x256/dozer.png
 Copyright: 2026 Dozer contributors

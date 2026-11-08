@@ -1,7 +1,40 @@
 name: release-binaries
 
+# Every push builds Windows. A push to main also builds Linux and macOS, and so does a manual run
+# with "all_platforms" ticked (to try them on another branch before merging).
+# macOS is experimental: the project's docs call it largely untested, so a macOS failure does not
+# fail the run.
+#
+# Releases are made by hand and never by a push: a manual run with "publish_release" ticked skips
+# every build and runs only the publish job, which packages the artifacts of an earlier successful
+# run (build_run_id) into a DRAFT GitHub release. Nothing is public until the draft is published.
 on:
   workflow_dispatch:
+    inputs:
+      all_platforms:
+        description: Also build Linux and macOS (they build automatically only on main)
+        type: boolean
+        default: false
+      publish_release:
+        description: Release instead of build. Skips the builds and drafts a release from build_run_id
+        type: boolean
+        default: false
+      build_run_id:
+        description: Release only. Id of a successful run (the number in its URL) that built all three platforms
+        type: string
+        default: ''
+      version:
+        description: Release only. Version without the v, for example 0.1 (tag v0.1, title Dozer 0.1)
+        type: string
+        default: ''
+      notes:
+        description: Release only. The release message (a draft can be edited on GitHub before publishing)
+        type: string
+        default: ''
+      prerelease:
+        description: Release only. Mark the release as a pre-release
+        type: boolean
+        default: true
   push:
 
 permissions:
@@ -12,7 +45,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  windows:
+    if: ${{ !inputs.publish_release }}
     name: windows-x86_64 binary
     runs-on: windows-2022
     steps:
@@ -95,7 +129,7 @@ jobs:
           windeployqt --release --no-translations build/release/bin/dozer.exe
 
       # The artifact is the bin folder itself: GitHub zips artifacts on download, and uploading a
-      # zip gave a zip inside a zip. The release job zips it once for the release.
+      # zip gave a zip inside a zip. The publish job zips it once for the release.
       - name: Upload Windows binary
         uses: actions/upload-artifact@v4
         with:
@@ -104,3 +138,306 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  linux:
+    name: linux-x86_64 binary
+    if: ${{ (github.ref == 'refs/heads/main' || inputs.all_platforms) && !inputs.publish_release }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            autoconf cmake g++ gcc git glslang-tools libglu1-mesa-dev \
+            libpulse-dev libtool libudev-dev libxkbcommon-x11-0 \
+            mesa-common-dev nasm ninja-build qt6-base-private-dev \
+            qt6-charts-dev qt6-tools-dev libavfilter-dev libavcodec-dev \
+            libswscale-dev pkg-config zlib1g-dev libva-dev libvdpau-dev \
+            spirv-tools spirv-headers libusb-1.0-0-dev \
+            libboost-dev libboost-fiber-dev libboost-context-dev \
+            libopus-dev libasound2-dev
+
+      - name: Install Qt on Linux
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          modules: qtcharts
+          cache: true
+
+      - name: Cache CPM downloads
+        uses: actions/cache@v4
+        with:
+          path: .cache/cpm
+          key: cpm-${{ runner.os }}-${{ hashFiles('cpmfile.json', 'CMakeLists.txt', 'src/**/CMakeLists.txt') }}
+          restore-keys: |
+            cpm-${{ runner.os }}-
+
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Configure Linux
+        shell: bash
+        env:
+          SCCACHE_GHA_ENABLED: 'true'
+        run: >-
+          cmake -S . -B build/release -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_C_COMPILER_LAUNCHER=sccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+          -DBUILD_TESTING=OFF
+          -DYUZU_TESTS=OFF
+          -DYUZU_CMD=ON
+          -DYUZU_ROOM=OFF
+          -DYUZU_ROOM_STANDALONE=OFF
+          -DYUZU_USE_BUNDLED_QT=OFF
+          -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
+          -DYUZU_USE_BUNDLED_SDL3=ON
+          -DVulkanHeaders_FORCE_BUNDLED=ON
+          -DVulkanUtilityLibraries_FORCE_BUNDLED=ON
+          -DENABLE_UPDATE_CHECKER=OFF
+          -DUSE_DISCORD_PRESENCE=OFF
+
+      - name: Build
+        shell: bash
+        env:
+          SCCACHE_GHA_ENABLED: 'true'
+        run: cmake --build build/release --target yuzu yuzu-cmd --parallel -- -k 0
+
+      - name: sccache statistics
+        if: always()
+        shell: bash
+        run: sccache --show-stats || true
+
+      # A self-contained AppImage: linuxdeploy bundles every library the two programs need except
+      # the base system ones (glibc, X11/Wayland client libraries, the GPU driver and Vulkan loader),
+      # and its Qt plugin adds the Qt libraries and platform plugins. Runs on glibc 2.39+ systems.
+      - name: Package Linux AppImage
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x build/release/bin/dozer
+          test -x build/release/bin/dozer-cli
+          # Libraries Qt's xcb platform plugin needs, so linuxdeploy can resolve and bundle them.
+          sudo apt-get install -y --no-install-recommends libxcb-cursor0 libxcb-icccm4 libxcb-image0 \
+            libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1
+          tools="$RUNNER_TEMP/linuxdeploy"
+          mkdir -p "$tools"
+          curl -fsSL -o "$tools/linuxdeploy-x86_64.AppImage" \
+            https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          curl -fsSL -o "$tools/linuxdeploy-plugin-qt-x86_64.AppImage" \
+            https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x "$tools"/*.AppImage
+          # The desktop entry and icon the AppImage carries, made from the project's own.
+          icon="$RUNNER_TEMP/dozer.png"
+          cp dist/qt_themes/default/icons/256x256/dozer.png "$icon"
+          desktop="$RUNNER_TEMP/dozer.desktop"
+          sed -e 's/^Name=.*/Name=Dozer/' \
+              -e 's/^GenericName=.*/GenericName=Switch 2 Emulator/' \
+              -e 's/^Comment=.*/Comment=Nintendo Switch 2 emulator tuned for Donkey Kong Bananza/' \
+              -e 's/^Icon=.*/Icon=dozer/' \
+              -e 's/^TryExec=.*/TryExec=dozer/' \
+              -e 's/^Exec=.*/Exec=dozer %f/' \
+              -e 's/^StartupWMClass=.*/StartupWMClass=dozer/' \
+              dist/dev.eden_emu.eden.desktop > "$desktop"
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          export QMAKE="$QT_ROOT_DIR/bin/qmake"
+          export LDAI_OUTPUT="dozer-${GITHUB_SHA}-linux-x86_64.AppImage"
+          export OUTPUT="$LDAI_OUTPUT"
+          "$tools/linuxdeploy-x86_64.AppImage" --appdir AppDir \
+            --executable build/release/bin/dozer \
+            --executable build/release/bin/dozer-cli \
+            --desktop-file "$desktop" \
+            --icon-file "$icon" \
+            --plugin qt \
+            --output appimage
+          test -s "$LDAI_OUTPUT"
+          ls -la "$LDAI_OUTPUT"
+
+      - name: Upload Linux binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: dozer-linux-x86_64-${{ github.sha }}
+          path: dozer-${{ github.sha }}-linux-x86_64.AppImage
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  # Experimental. The project's docs call macOS "largely untested", and Dozer has not been run
+  # there: this job only finds out whether it builds. Apple Silicon only (the runner's architecture).
+  macos:
+    name: macos-arm64 binary (experimental)
+    if: ${{ (github.ref == 'refs/heads/main' || inputs.all_platforms) && !inputs.publish_release }}
+    runs-on: macos-15
+    continue-on-error: true
+    timeout-minutes: 150
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install macOS dependencies
+        shell: bash
+        run: >-
+          brew install autoconf automake boost ffmpeg fmt glslang hidapi libtool libusb lz4 ninja
+          nlohmann-json openssl pkg-config sdl3 speexdsp zlib zstd cmake molten-vk vulkan-loader
+          spirv-tools
+
+      - name: Install Qt on macOS
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          host: mac
+          target: desktop
+          arch: clang_64
+          modules: qtcharts
+          cache: true
+
+      - name: Cache CPM downloads
+        uses: actions/cache@v4
+        with:
+          path: .cache/cpm
+          key: cpm-${{ runner.os }}-${{ hashFiles('cpmfile.json', 'CMakeLists.txt', 'src/**/CMakeLists.txt') }}
+          restore-keys: |
+            cpm-${{ runner.os }}-
+
+      - name: Configure macOS
+        shell: bash
+        run: >-
+          cmake -S . -B build/release -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTING=OFF
+          -DYUZU_TESTS=OFF
+          -DYUZU_CMD=ON
+          -DYUZU_ROOM=OFF
+          -DYUZU_ROOM_STANDALONE=OFF
+          -DYUZU_USE_BUNDLED_QT=OFF
+          -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
+          -DVulkanHeaders_FORCE_BUNDLED=ON
+          -DVulkanUtilityLibraries_FORCE_BUNDLED=ON
+          -DENABLE_UPDATE_CHECKER=OFF
+          -DUSE_DISCORD_PRESENCE=OFF
+
+      - name: Build
+        shell: bash
+        run: cmake --build build/release --target yuzu yuzu-cmd --parallel -- -k 0
+
+      # macdeployqt puts the Qt frameworks inside the app and signs it ad hoc (-codesign=-): an
+      # unsigned arm64 app does not start. It is not notarised, so macOS asks before the first run.
+      - name: Package macOS app
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$(find build/release/bin -maxdepth 1 -name '*.app' | head -n 1)"
+          if [ -z "$app" ]; then
+            echo "no .app bundle in build/release/bin:"
+            ls -la build/release/bin
+            exit 1
+          fi
+          echo "bundle: $app"
+          macdeployqt "$app" -codesign=-
+          ditto -c -k --sequesterRsrc --keepParent "$app" "dozer-${GITHUB_SHA}-macos-arm64.zip"
+          ls -la "dozer-${GITHUB_SHA}-macos-arm64.zip"
+
+      - name: Upload macOS binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: dozer-macos-arm64-${{ github.sha }}
+          path: dozer-${{ github.sha }}-macos-arm64.zip
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  # Disabled unless a manual run ticks "publish_release": the builds above are then skipped and this
+  # is the only job. It downloads the artifacts of an earlier run instead of building again, and
+  # creates a DRAFT release (the tag is made when the draft is published).
+  publish:
+    name: draft GitHub release
+    if: ${{ inputs.publish_release }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ inputs.version }}
+      BUILD_RUN_ID: ${{ inputs.build_run_id }}
+      NOTES: ${{ inputs.notes }}
+      PRERELEASE: ${{ inputs.prerelease }}
+    steps:
+      - name: Check the inputs and the build run
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9][0-9A-Za-z._-]*$ ]] || { echo "version must look like 0.1"; exit 1; }
+          [[ "$BUILD_RUN_ID" =~ ^[0-9]+$ ]] || { echo "build_run_id must be a run number from a URL"; exit 1; }
+          if gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "release v$VERSION already exists"; exit 1
+          fi
+          gh run view "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --json status,conclusion,headSha,headBranch,workflowName > run.json
+          cat run.json
+          [ "$(jq -r .workflowName run.json)" = "release-binaries" ] || { echo "not a release-binaries run"; exit 1; }
+          [ "$(jq -r .status run.json)" = "completed" ] || { echo "that run has not finished"; exit 1; }
+          [ "$(jq -r .conclusion run.json)" = "success" ] || { echo "that run did not succeed"; exit 1; }
+          echo "SHA=$(jq -r .headSha run.json)" >> "$GITHUB_ENV"
+
+      # The checkout is at the commit the artifacts were built from, so the launchers, readme and
+      # licenses in the zip are the ones of that build.
+      - name: Check out the built commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - name: Download the build artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" --dir dl
+          find dl -maxdepth 2 | sort
+          ls -d dl/dozer-windows-x86_64-* dl/dozer-linux-x86_64-* >/dev/null
+
+      - name: Package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir release
+          win="Dozer-$VERSION-windows-x86_64"
+          mkdir "$win"
+          cp -r dl/dozer-windows-x86_64-*/. "$win/"
+          cp dist/dozer/*.bat dist/dozer/dozer-config.ps1 "$win/"
+          cp -r dist/dozer/Games "$win/Games"
+          cp README_DOZER.md LICENSE.txt "$win/"
+          cp -r LICENSES "$win/LICENSES"
+          mkdir "$win/user"
+          test -f "$win/dozer.exe" && test -f "$win/dozer-cli.exe"
+          zip -qr "release/$win.zip" "$win"
+          cp dl/dozer-linux-x86_64-*/*.AppImage "release/Dozer-$VERSION-linux-x86_64.AppImage"
+          chmod +x "release/Dozer-$VERSION-linux-x86_64.AppImage"
+          if ls dl/dozer-macos-arm64-*/*.zip >/dev/null 2>&1; then
+            cp dl/dozer-macos-arm64-*/*.zip "release/Dozer-$VERSION-macos-arm64-experimental.zip"
+          else
+            echo "no macOS artifact in that run: releasing without it"
+          fi
+          (cd release && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+
+      - name: Create the draft release
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            if [ -n "$NOTES" ]; then printf '%s\n\n' "$NOTES"; fi
+            echo "Built from commit \`$SHA\` (run $BUILD_RUN_ID)."
+            echo
+            echo "Dozer is a preview fork of Anka tuned for Donkey Kong Bananza. Support is very limited."
+            echo "Not affiliated with Nintendo or the Eglantine project. See README_DOZER.md in the zip."
+            echo "The macOS build is experimental and has never been run."
+          } > notes.md
+          flags=(--draft --target "$SHA" --title "Dozer $VERSION" --notes-file notes.md)
+          if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
+          gh release create "v$VERSION" "${flags[@]}" release/* --repo "$GITHUB_REPOSITORY"
+          gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" --json url,isDraft -q '.url + " draft=" + (.isDraft|tostring)'

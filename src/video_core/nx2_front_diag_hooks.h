@@ -681,7 +681,7 @@ inline void LogSame(const SameStats& stats, u64 window_ns) {
              "GPU thread front same filter per second: hits {:.0f}, disarmed calls {:.0f} (replay "
              "{:.0f} / check {:.0f} / diag {:.0f} / gap {:.0f} / skip {:.0f}) of {:.0f}, verify "
              "mismatch {}, verify missed {} | EDEN_NX2_JIT_SAME={}",
-             rate(stats.hits), rate(stats.calls - stats.calls_by[0]), by(Same::Disarm::Replay),
+             rate(stats.hits), rate(stats.calls - stats.calls_by[0]), by(Same::Disarm::ShadowReplay),
              by(Same::Disarm::Check), by(Same::Disarm::Diag), by(Same::Disarm::Gap),
              by(Same::Disarm::Skip), rate(stats.calls), stats.mismatches, stats.missed, stats.mode);
 }

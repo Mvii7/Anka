@@ -5,10 +5,12 @@
 
 #include <algorithm>
 #include <array>
-#include <charconv>
+#include <cerrno>
 #include <cmath>
 #include <cstddef>
+#include <cstdlib>
 #include <optional>
+#include <string>
 
 namespace Nx2AutoScript {
 namespace {
@@ -62,9 +64,12 @@ std::vector<std::string_view> Split(std::string_view line) {
 }
 
 std::optional<double> Number(std::string_view word) {
-    double value{};
-    const auto [end, error] = std::from_chars(word.data(), word.data() + word.size(), value);
-    if (error != std::errc{} || end != word.data() + word.size() || !std::isfinite(value)) {
+    // strtod: libc++ (macOS) has no floating-point std::from_chars.
+    const std::string text{word};
+    char* end{};
+    errno = 0;
+    const double value = std::strtod(text.c_str(), &end);
+    if (text.empty() || errno != 0 || end != text.c_str() + text.size() || !std::isfinite(value)) {
         return std::nullopt;
     }
     return value;

@@ -43,7 +43,7 @@ void Pause() {
 #endif
 }
 
-std::atomic<u32> g_back_thread_id{};
+[[maybe_unused]] std::atomic<u32> g_back_thread_id{};
 std::atomic<bool> g_back_busy{};
 
 } // Anonymous namespace

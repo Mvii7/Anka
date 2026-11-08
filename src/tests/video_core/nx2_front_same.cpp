@@ -52,7 +52,7 @@ TEST_CASE("Front same filter arming", "[video_core][nx2_front_same]") {
     // Every input on its own; the first reason in order wins.
     REQUIRE(Why(true, Track, false, false, false, 0) == Disarm::None);
     REQUIRE(Why(false, Track, false, false, false, ~0U) == Disarm::Skip);
-    REQUIRE(Why(true, Replay, false, false, false, ~0U) == Disarm::Replay);
+    REQUIRE(Why(true, Replay, false, false, false, ~0U) == Disarm::ShadowReplay);
     REQUIRE(Why(true, Track, true, false, false, ~0U) == Disarm::Check);
     REQUIRE(Why(true, Track, false, true, false, ~0U) == Disarm::Diag);
     REQUIRE(Why(true, Track, false, false, true, 0) == Disarm::Gap);
@@ -62,7 +62,7 @@ TEST_CASE("Front same filter arming", "[video_core][nx2_front_same]") {
     // The gap counts only with the profile (it stays at 0 without).
     REQUIRE(Why(true, Track, false, false, false, 0) == Disarm::None);
     REQUIRE(Why(false, Replay, true, true, true, 0) == Disarm::Skip);
-    REQUIRE(Why(true, Replay, true, true, true, 0) == Disarm::Replay);
+    REQUIRE(Why(true, Replay, true, true, true, 0) == Disarm::ShadowReplay);
     REQUIRE(Why(true, Track, true, true, true, 0) == Disarm::Check);
     REQUIRE(Why(true, Track, false, true, true, 0) == Disarm::Diag);
     for (const u32 control : {Track, TrackWithFilter, Passthrough, 7U, 0xffffffffU}) {
@@ -146,7 +146,7 @@ TEST_CASE("Front same filter context", "[video_core][nx2_front_same]") {
     REQUIRE(filter.ctx.cmp2 == shadow.data());
     // A call that starts in Replay: armed once the macro leaves it.
     filter.Begin(table.data(), true, Replay, false, false, false, ~0U, regs.data(), shadow.data());
-    REQUIRE(filter.why == Disarm::Replay);
+    REQUIRE(filter.why == Disarm::ShadowReplay);
     REQUIRE(filter.ctx.table == ZeroTable.data());
     filter.Control(Track, regs.data(), shadow.data());
     REQUIRE(filter.ctx.table == table.data());

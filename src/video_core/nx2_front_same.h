@@ -65,7 +65,7 @@ template <std::size_t N>
 enum class Disarm : u8 {
     None,
     Skip,   ///< FrontWrite sends same value writes too (EDEN_NX2_SPLIT_SKIP=0, the setting)
-    Replay, ///< Shadow RAM replay: the register gets its shadow copy, not the value
+    ShadowReplay, ///< Shadow RAM replay: the register gets its shadow copy, not the value
     Check,  ///< The call's writes are compared with NVN's indirect draw (FrontState::checked_writes)
     Diag,   ///< Front diag's register table counts every write (EDEN_NX2_FRONT_DIAG_REGS=0: off)
     Gap,    ///< The profile notes the methods after an indirect draw (FrontState::NoteGapMethod;
@@ -86,7 +86,7 @@ inline constexpr u32 GapMethods = 16;
         return Disarm::Skip;
     }
     if (control == Replay) {
-        return Disarm::Replay;
+        return Disarm::ShadowReplay;
     }
     if (has_check) {
         return Disarm::Check;
