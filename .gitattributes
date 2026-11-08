@@ -6,7 +6,7 @@ dist/qt_themes/* linguist-vendored
 externals/* linguist-vendored
 *.h linguist-language=cpp
 
-# Anka launchers: Windows line endings in the repository too (cmd needs CRLF)
+# Dozer launchers: Windows line endings in the repository too (cmd needs CRLF)
 dist/dozer/*.bat -text
-# Anka build scripts: Unix line endings in every checkout (bash)
+# Dozer build scripts: Unix line endings in every checkout (bash)
 dist/dozer/build/*.sh text eol=lf

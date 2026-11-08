@@ -7,8 +7,9 @@
 -->
 <!-- lang: en-GB -->
 
-> **This is Anka**, a Nintendo Switch 2 emulator for Windows; it is not affiliated with Eden,
-> Eglantine or Franseven. Read [README_ANKA.md](README_ANKA.md) and report problems here. The rest
+> **This is Dozer**, a Nintendo Switch 2 emulator for Windows, a fork of
+> [Anka](https://github.com/EddizEge/Anka) by EddizEge; it is not affiliated with Anka, Eden,
+> Eglantine or Franseven. Read [README_DOZER.md](README_DOZER.md) and report problems here. The rest
 > of this page is the upstream README, unchanged.
 
 <h1 align="center">

@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-    <string>About Anka</string>
+    <string>About Dozer</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_3">
    <item>
@@ -69,7 +69,7 @@
           </sizepolicy>
          </property>
          <property name="text">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:28pt;&quot;&gt;Anka&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:28pt;&quot;&gt;Dozer&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
         </widget>
        </item>
@@ -102,7 +102,7 @@ hr { height: 1px; border-width: 0; }
 li.unchecked::marker { content: &quot;\2610&quot;; }
 li.checked::marker { content: &quot;\2612&quot;; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Noto Sans'; font-size:9pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:12pt;&quot;&gt;Anka is an open-source Nintendo Switch 2 emulator for Windows, focused on performance. &lt;br /&gt;&lt;br /&gt;This software should not be used to play games you have not legally obtained.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'MS Shell Dlg 2'; font-size:12pt;&quot;&gt;Dozer is an open-source Nintendo Switch 2 emulator for Windows, focused on performance. &lt;br /&gt;&lt;br /&gt;This software should not be used to play games you have not legally obtained.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
@@ -128,7 +128,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
        <item>
         <widget class="QLabel" name="labelLinks">
          <property name="text">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://github.com/EddizEge/Anka&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#039be5;&quot;&gt;Source Code&lt;/span&gt;&lt;/a&gt; | &lt;a href=&quot;https://github.com/EddizEge/Anka/issues&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#039be5;&quot;&gt;Report a problem&lt;/span&gt;&lt;/a&gt; | &lt;a href=&quot;https://github.com/EddizEge/Anka/blob/anka/LICENSE.txt&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#039be5;&quot;&gt;License&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://github.com/Mvii7/Dozer&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#039be5;&quot;&gt;Source Code&lt;/span&gt;&lt;/a&gt; | &lt;a href=&quot;https://github.com/Mvii7/Dozer/issues&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#039be5;&quot;&gt;Report a problem&lt;/span&gt;&lt;/a&gt; | &lt;a href=&quot;https://github.com/Mvii7/Dozer/blob/anka/LICENSE.txt&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#039be5;&quot;&gt;License&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="openExternalLinks">
           <bool>true</bool>
@@ -138,7 +138,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
        <item>
         <widget class="QLabel" name="labelLegal">
          <property name="text">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:7pt;&quot;&gt;Copyright © yuzu Emulator Project, Eden Emulator Project and contributors; Anka changes © 2026 EddizEge. This program comes with ABSOLUTELY NO WARRANTY. It is free software under the GNU GPL v3.0 or later; see LICENSE.txt.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:7pt;&quot;&gt;Copyright © yuzu Emulator Project, Eden Emulator Project and contributors; Anka changes © 2026 EddizEge; Dozer changes © 2026 Dozer contributors. This program comes with ABSOLUTELY NO WARRANTY. It is free software under the GNU GPL v3.0 or later; see LICENSE.txt.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="wordWrap">
           <bool>true</bool>
@@ -154,7 +154,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
           </sizepolicy>
          </property>
          <property name="text">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:7pt;&quot;&gt;&quot;Nintendo Switch&quot; is a trademark of Nintendo. Anka is not affiliated with Nintendo in any way.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:7pt;&quot;&gt;&quot;Nintendo Switch&quot; is a trademark of Nintendo. Dozer is not affiliated with Nintendo in any way.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="wordWrap">
           <bool>true</bool>
@@ -164,7 +164,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
        <item>
         <widget class="QLabel" name="labelCredit">
          <property name="text">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:7pt;&quot;&gt;Built on &lt;a href=&quot;https://eden-emulator.github.io/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#039be5;&quot;&gt;Eden&lt;/span&gt;&lt;/a&gt; and Eglantine (Franseven). Not an official release of those projects; please report Anka problems on its GitHub page, not to them.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:7pt;&quot;&gt;Built on &lt;a href=&quot;https://eden-emulator.github.io/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#039be5;&quot;&gt;Eden&lt;/span&gt;&lt;/a&gt; Eglantine (Franseven) and Anka (EddizEge). Not an official release of those projects; please report Dozer problems on its GitHub page, not to them.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="wordWrap">
           <bool>true</bool>

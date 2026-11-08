@@ -123,10 +123,10 @@ Boot Prepare(QWidget* parent, u64 program_id, const QString& game, bool fullscre
         for (const auto& var : plan) {
             SetVariable(var);
         }
-        LOG_INFO(Frontend, "Anka settings for {:016X}{}: {}", program_id,
+        LOG_INFO(Frontend, "Dozer settings for {:016X}{}: {}", program_id,
                  bananza ? " (Donkey Kong Bananza)" : "", Describe(plan).toStdString());
         for (const std::string_view name : g_set_outside) {
-            LOG_INFO(Frontend, "Anka: {} was set outside the program, left as it is", name);
+            LOG_INFO(Frontend, "Dozer: {} was set outside the program, left as it is", name);
         }
         g_applied = Applied{std::move(plan), bananza};
         return Boot::Go;
@@ -135,7 +135,7 @@ Boot Prepare(QWidget* parent, u64 program_id, const QString& game, bool fullscre
         return Boot::Go;
     }
     if (applet) {
-        LOG_INFO(Frontend, "Anka: applet {:016X} runs with this session's settings: {}",
+        LOG_INFO(Frontend, "Dozer: applet {:016X} runs with this session's settings: {}",
                  program_id, Describe(g_applied->plan).toStdString());
         return Boot::Go;
     }
@@ -163,13 +163,13 @@ Boot Prepare(QWidget* parent, u64 program_id, const QString& game, bool fullscre
     box.setDefaultButton(restart);
     box.exec();
     if (box.clickedButton() == restart) {
-        LOG_INFO(Frontend, "Anka: restarting for {:016X}: {}", program_id,
+        LOG_INFO(Frontend, "Dozer: restarting for {:016X}: {}", program_id,
                  Describe(plan).toStdString());
         g_restart = Restart{game, fullscreen};
         return Boot::Restart;
     }
     if (box.clickedButton() == anyway) {
-        LOG_INFO(Frontend, "Anka: {:016X} started with this session's settings: {}",
+        LOG_INFO(Frontend, "Dozer: {:016X} started with this session's settings: {}",
                  program_id, Describe(g_applied->plan).toStdString());
         return Boot::Go;
     }
@@ -212,10 +212,10 @@ bool OfferRestart(QWidget* parent, const QString& running_game, bool fullscreen)
     box.setDefaultButton(later);
     box.exec();
     if (box.clickedButton() != restart) {
-        LOG_INFO(Frontend, "Anka: settings changed, restart later: {}", Describe(plan).toStdString());
+        LOG_INFO(Frontend, "Dozer: settings changed, restart later: {}", Describe(plan).toStdString());
         return false;
     }
-    LOG_INFO(Frontend, "Anka: restarting to apply: {}", Describe(plan).toStdString());
+    LOG_INFO(Frontend, "Dozer: restarting to apply: {}", Describe(plan).toStdString());
     g_restart = Restart{running_game, fullscreen};
     return true;
 }
@@ -257,7 +257,7 @@ bool ApplyPendingGraphics() {
     if (g_pending.frame_gen) {
         ApplyFrameGen(*g_pending.frame_gen);
     }
-    LOG_INFO(Frontend, "Anka: graphics settings chosen during the game applied: reactive flushing "
+    LOG_INFO(Frontend, "Dozer: graphics settings chosen during the game applied: reactive flushing "
                        "{}, barrier feedback loops {}, frame generation {}",
              g_pending.reactive_flushing ? (*g_pending.reactive_flushing ? "on" : "off") : "-",
              g_pending.barrier_feedback_loops ? (*g_pending.barrier_feedback_loops ? "on" : "off")
@@ -297,7 +297,7 @@ void ApplyFrameGen(Perf::FrameGen choice) {
 
 void CancelRestart() {
     if (g_restart) {
-        LOG_INFO(Frontend, "Anka: the window stayed open, no restart");
+        LOG_INFO(Frontend, "Dozer: the window stayed open, no restart");
     }
     g_restart.reset();
 }
@@ -331,7 +331,7 @@ void RestartIfRequested() {
         [](QProcess::CreateProcessArguments* args) { args->inheritHandles = false; });
 #endif
     if (!process.startDetached()) {
-        LOG_ERROR(Frontend, "Anka: the restart failed: {}",
+        LOG_ERROR(Frontend, "Dozer: the restart failed: {}",
                   process.errorString().toStdString());
     }
 }

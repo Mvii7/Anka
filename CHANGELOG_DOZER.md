@@ -1,16 +1,21 @@
-# Anka changelog
+# Dozer changelog
 
 Changes since **PokeDinner-Eglantine 2.0.0** (commit `70ecb39ef0`). The full history is in git
 (`git log 70ecb39ef0..`); this file groups it by topic. Most changes are behind `EDEN_NX2_*`
-switches (`nx2_switches_ANKA.txt`; in the source `dist/nx2_switches.txt`): the opt-in ones are
+switches (`nx2_switches_DOZER.txt`; in the source `dist/nx2_switches.txt`): the opt-in ones are
 off unless a launcher or the menu program's Performance tab sets them, the per-draw shortcuts are on
 and `=0` brings back the 2.0.0 code path.
 
-## Unreleased
+## Unreleased (Dozer)
 
+- **Dozer** is a fork of Anka (EddizEge). The program, its window titles, dialogs, the About box and
+  the build are renamed (`dozer.exe`, `dozer-cli.exe`, the launchers and the documents in
+  `dist/dozer/`), with a new logo drawn by `dist/dozer/dozer_logo.py`: a D whose flat edge is a
+  bulldozer blade. Anka's copyright and credit are kept in the About box and the readmes; the
+  changelog below up to Anka 1.0.1 is Anka's history, which Dozer builds on.
 - The settings tab called *Anka* (Emulation > Configure...) is now called *Performance*, and its
   dialogs no longer carry the name. The settings, presets and the `[Anka]` group of
-  `qt-config.ini` are unchanged.
+  `qt-config.ini` are unchanged, so an existing configuration keeps working.
 
 ## Anka 1.0.1 (`anka-v1.0.1`)
 
@@ -46,9 +51,9 @@ in Donkey Kong Bananza on one PC. About 400 commits, made between 31 October and
   with Nintendo. Upstream names, copyrights and licenses are unchanged.
 - Repository: https://github.com/EddizEge/Anka (branch `anka`, tag `anka-v1.0.0`).
 - A logo of its own: a phoenix rising, with flame wings and a flame crest, gold, orange and red
-  on a dark warm tile. `dist/anka.ico` is the program and window icon (16-256 px),
-  `dist/qt_themes/default/icons/256x256/anka.png` the About image and `dist/anka.bmp` anka-cli's
-  window icon; all three are made by `dist/anka/anka_logo.py`.
+  on a dark warm tile. `dist/dozer.ico` is the program and window icon (16-256 px),
+  `dist/qt_themes/default/icons/256x256/dozer.png` the About image and `dist/dozer.bmp` anka-cli's
+  window icon; all three are made by `dist/dozer/dozer_logo.py`.
 - Window titles: "Anka by EddizEge" (in a game: "Anka by EddizEge | <game> | <version> |
   <GPU>"; anka-cli: "Anka by EddizEge | <branch>-<desc>"). The About dialog says "Anka is an
   open-source Nintendo Switch 2 emulator for Windows, focused on performance.", links Source
@@ -296,7 +301,7 @@ Ideas ported from other forks, credited in the code: Selevet (`SLOT_SKIP`, `USAG
 
 - `/QIntel-jcc-erratum` is a build option (`YUZU_MSVC_JCC_ERRATUM`).
 - Release programs built with link-time code generation and profile-guided optimization, the
-  menu program with anka-cli's profile (`BUILDING_ANKA.md`); the menu program against Qt 6.8.3,
+  menu program with anka-cli's profile (`BUILDING_DOZER.md`); the menu program against Qt 6.8.3,
   whose DLLs and plugins the program zip carries.
 
 ### Not in this release
@@ -313,8 +318,8 @@ Ideas ported from other forks, credited in the code: Selevet (`SLOT_SKIP`, `USAG
 ### Documentation
 
 - `NX2_NOTES.md` and `NX2_GPU_THREAD_SPLIT.md`: what was tried, measured and why.
-- `nx2_switches_ANKA.txt` (in the source `dist/nx2_switches.txt`): every switch with its default.
-- `README_ANKA.md`, this file, `BUILDING_ANKA.md`, the launchers in `dist/anka/`. The release
+- `nx2_switches_DOZER.txt` (in the source `dist/nx2_switches.txt`): every switch with its default.
+- `README_DOZER.md`, this file, `BUILDING_DOZER.md`, the launchers in `dist/dozer/`. The release
   texts are in English only.
 - Launchers (`start-recommended.bat`, `start-reactive-experimental.bat`, `start-safe.bat`;
   their messages start with `[Anka]`): they find the game in the `Games` folder next to them

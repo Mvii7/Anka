@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: Copyright 2026 Eden Emulator Project
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-# Anka launchers: set or check keys of the [Renderer] section of an anka-cli .ini.
+# Dozer launchers: set or check keys of the [Renderer] section of an dozer-cli .ini.
 # The start-*.bat launchers next to this file call it on the first start
-# (powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File anka-config.ps1) to
+# (powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File dozer-config.ps1) to
 # prepare config\sdl2-config.ini and config\sdl2-config-reactive.ini. It only touches the one file
 # named in NX2_INI, which the launcher has just made itself, or only reads it (check).
 # Environment:

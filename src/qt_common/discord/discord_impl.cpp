@@ -69,7 +69,7 @@ std::string DiscordImpl::GetGameString(const std::string& title) {
     return icon_name;
 }
 
-static constexpr char DEFAULT_DISCORD_TEXT[] = "Anka is a Nintendo Switch 2 emulator for Windows";
+static constexpr char DEFAULT_DISCORD_TEXT[] = "Dozer is a Nintendo Switch 2 emulator for Windows";
 static constexpr char DEFAULT_DISCORD_IMAGE[] =
     "https://git.eden-emu.dev/eden-emu/eden/raw/branch/master/dist/qt_themes/default/icons/256x256/"
     "eden.png";

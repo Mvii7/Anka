@@ -96,7 +96,7 @@ EmuWindow_SDL3_GL::EmuWindow_SDL3_GL(InputCommon::InputSubsystem* input_subsyste
     SDL_GL_SetSwapInterval(0);
 
     std::string window_title =
-        fmt::format("Anka by EddizEge | {}-{}", Common::g_scm_branch, Common::g_scm_desc);
+        fmt::format("Dozer | {}-{}", Common::g_scm_branch, Common::g_scm_desc);
     render_window =
         SDL_CreateWindow(window_title.c_str(), Layout::ScreenUndocked::Width,
                          Layout::ScreenUndocked::Height,

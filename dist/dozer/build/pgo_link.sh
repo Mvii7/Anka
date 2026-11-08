@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: Copyright 2026 Eden Emulator Project
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Profile-guided optimization links of the Anka release programs (BUILDING_ANKA.md).
+# Profile-guided optimization links of the Dozer release programs (BUILDING_DOZER.md).
 # Run from Git Bash started inside a Visual Studio 2022 x64 Developer shell (ninja.exe on PATH),
 # after `cmake --build <build> --target yuzu-cmd yuzu -- -d keeprsp` with -DENABLE_LTO=ON.
 # PGO_TARGET picks the program: yuzu-cmd (default, eden-cli) or yuzu (the menu program,
