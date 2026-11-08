@@ -4,6 +4,10 @@ name: release-binaries
 # with "all_platforms" ticked (to try them on another branch before merging).
 # macOS is experimental: the project's docs call it largely untested, so a macOS failure does not
 # fail the run.
+#
+# Releases are made by hand and never by a push: a manual run with "publish_release" ticked skips
+# every build and runs only the publish job, which packages the artifacts of an earlier successful
+# run (build_run_id) into a DRAFT GitHub release. Nothing is public until the draft is published.
 on:
   workflow_dispatch:
     inputs:
@@ -11,6 +15,26 @@ on:
         description: Also build Linux and macOS (they build automatically only on main)
         type: boolean
         default: false
+      publish_release:
+        description: Release instead of build. Skips the builds and drafts a release from build_run_id
+        type: boolean
+        default: false
+      build_run_id:
+        description: Release only. Id of a successful run (the number in its URL) that built all three platforms
+        type: string
+        default: ''
+      version:
+        description: Release only. Version without the v, for example 0.1 (tag v0.1, title Dozer 0.1)
+        type: string
+        default: ''
+      notes:
+        description: Release only. The release message (a draft can be edited on GitHub before publishing)
+        type: string
+        default: ''
+      prerelease:
+        description: Release only. Mark the release as a pre-release
+        type: boolean
+        default: true
   push:
 
 permissions:
@@ -22,6 +46,7 @@ concurrency:
 
 jobs:
   windows:
+    if: ${{ !inputs.publish_release }}
     name: windows-x86_64 binary
     runs-on: windows-2022
     steps:
@@ -104,7 +129,7 @@ jobs:
           windeployqt --release --no-translations build/release/bin/dozer.exe
 
       # The artifact is the bin folder itself: GitHub zips artifacts on download, and uploading a
-      # zip gave a zip inside a zip. The release job zips it once for the release.
+      # zip gave a zip inside a zip. The publish job zips it once for the release.
       - name: Upload Windows binary
         uses: actions/upload-artifact@v4
         with:
@@ -115,7 +140,7 @@ jobs:
 
   linux:
     name: linux-x86_64 binary
-    if: github.ref == 'refs/heads/main' || inputs.all_platforms
+    if: ${{ (github.ref == 'refs/heads/main' || inputs.all_platforms) && !inputs.publish_release }}
     runs-on: ubuntu-24.04
     steps:
       - name: Check out source
@@ -247,7 +272,7 @@ jobs:
   # there: this job only finds out whether it builds. Apple Silicon only (the runner's architecture).
   macos:
     name: macos-arm64 binary (experimental)
-    if: github.ref == 'refs/heads/main' || inputs.all_platforms
+    if: ${{ (github.ref == 'refs/heads/main' || inputs.all_platforms) && !inputs.publish_release }}
     runs-on: macos-15
     continue-on-error: true
     timeout-minutes: 150
@@ -326,3 +351,93 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
+
+  # Disabled unless a manual run ticks "publish_release": the builds above are then skipped and this
+  # is the only job. It downloads the artifacts of an earlier run instead of building again, and
+  # creates a DRAFT release (the tag is made when the draft is published).
+  publish:
+    name: draft GitHub release
+    if: ${{ inputs.publish_release }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ inputs.version }}
+      BUILD_RUN_ID: ${{ inputs.build_run_id }}
+      NOTES: ${{ inputs.notes }}
+      PRERELEASE: ${{ inputs.prerelease }}
+    steps:
+      - name: Check the inputs and the build run
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9][0-9A-Za-z._-]*$ ]] || { echo "version must look like 0.1"; exit 1; }
+          [[ "$BUILD_RUN_ID" =~ ^[0-9]+$ ]] || { echo "build_run_id must be a run number from a URL"; exit 1; }
+          if gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "release v$VERSION already exists"; exit 1
+          fi
+          gh run view "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" \
+            --json status,conclusion,headSha,headBranch,workflowName > run.json
+          cat run.json
+          [ "$(jq -r .workflowName run.json)" = "release-binaries" ] || { echo "not a release-binaries run"; exit 1; }
+          [ "$(jq -r .status run.json)" = "completed" ] || { echo "that run has not finished"; exit 1; }
+          [ "$(jq -r .conclusion run.json)" = "success" ] || { echo "that run did not succeed"; exit 1; }
+          echo "SHA=$(jq -r .headSha run.json)" >> "$GITHUB_ENV"
+
+      # The checkout is at the commit the artifacts were built from, so the launchers, readme and
+      # licenses in the zip are the ones of that build.
+      - name: Check out the built commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - name: Download the build artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" --dir dl
+          find dl -maxdepth 2 | sort
+          ls -d dl/dozer-windows-x86_64-* dl/dozer-linux-x86_64-* >/dev/null
+
+      - name: Package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir release
+          win="Dozer-$VERSION-windows-x86_64"
+          mkdir "$win"
+          cp -r dl/dozer-windows-x86_64-*/. "$win/"
+          cp dist/dozer/*.bat dist/dozer/dozer-config.ps1 "$win/"
+          cp -r dist/dozer/Games "$win/Games"
+          cp README_DOZER.md LICENSE.txt "$win/"
+          cp -r LICENSES "$win/LICENSES"
+          mkdir "$win/user"
+          test -f "$win/dozer.exe" && test -f "$win/dozer-cli.exe"
+          zip -qr "release/$win.zip" "$win"
+          cp dl/dozer-linux-x86_64-*/*.AppImage "release/Dozer-$VERSION-linux-x86_64.AppImage"
+          chmod +x "release/Dozer-$VERSION-linux-x86_64.AppImage"
+          if ls dl/dozer-macos-arm64-*/*.zip >/dev/null 2>&1; then
+            cp dl/dozer-macos-arm64-*/*.zip "release/Dozer-$VERSION-macos-arm64-experimental.zip"
+          else
+            echo "no macOS artifact in that run: releasing without it"
+          fi
+          (cd release && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+
+      - name: Create the draft release
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            if [ -n "$NOTES" ]; then printf '%s\n\n' "$NOTES"; fi
+            echo "Built from commit \`$SHA\` (run $BUILD_RUN_ID)."
+            echo
+            echo "Dozer is a preview fork of Anka tuned for Donkey Kong Bananza. Support is very limited."
+            echo "Not affiliated with Nintendo or the Eglantine project. See README_DOZER.md in the zip."
+            echo "The macOS build is experimental and has never been run."
+          } > notes.md
+          flags=(--draft --target "$SHA" --title "Dozer $VERSION" --notes-file notes.md)
+          if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
+          gh release create "v$VERSION" "${flags[@]}" release/* --repo "$GITHUB_REPOSITORY"
+          gh release view "v$VERSION" --repo "$GITHUB_REPOSITORY" --json url,isDraft -q '.url + " draft=" + (.isDraft|tostring)'
