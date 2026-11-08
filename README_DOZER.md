@@ -16,25 +16,12 @@ Dozer runs on its own: unzip it into a new, empty folder (see "Install"). It shi
 - **`dozer.exe`**, the menu program: a Qt front end (game list, menus, settings) with Dozer's
   settings built in and a **Performance** tab in its settings. This is the easy way.
 - **`dozer-cli.exe`**, the program without menus (SDL), with launchers (`start-*.bat`) that start
-  it with the settings we measured. Our measurements were made with it.
+  it with the recommended settings.
 
 - This is a preview build with no version number yet: the commit is in the window title and the
   log.
 - Source: https://github.com/Mvii7/Dozer (GPLv3, see "License").
 - Changes: `CHANGELOG_DOZER.md`. Every switch: `dist/nx2_switches.txt`.
-
-**Measured by Anka's author in Donkey Kong Bananza, on one machine (not on Dozer).** Every
-number below comes from a Ryzen 7
-5700X (8 cores), 64 GB RAM, an NVIDIA GeForce RTX 4060 Ti and a 1440p 170 Hz display, playing
-Donkey Kong Bananza with the program without menus (then called `eden-cli`, now `dozer-cli.exe`)
-and its launchers. The menu program runs the same emulator code with the same settings, but was
-not measured on its own. The general improvements run in every game, but only Bananza was
-measured: there is no claim of measured speed or tested compatibility for other games. The
-Bananza-only settings turn themselves off in other games. Other CPUs and AMD or Intel GPUs were
-not tried.
-
-**What comes next:** from now on every update goes into one emulator, Dozer. The next release
-brings Zelda support and per-game presets. No dates.
 
 ## What you need
 
@@ -94,7 +81,7 @@ saves (`user\nand`), shader caches and log (`user\log\eden_log.txt`) in it, and 
 `nx2_switches.txt` in `%APPDATA%\eden`, if you made one; see "Switches set outside win").
 
 Settings: **Emulation > Configure... > Performance**. On the first start the preset is
-**Recommended**, the setup we measured, and Dozer also turns *Enable Reactive Flushing* off in
+**Recommended**, and Dozer also turns *Enable Reactive Flushing* off in
 its `qt-config.ini` (Graphics > Advanced).
 
 GPU Mode (GPU accuracy) starts at **Fast** (Low), as in newer Eden versions (2.0.0 started at
@@ -108,12 +95,12 @@ under it.
 
 | Preset | What it sets | Same as |
 |---|---|---|
-| **Recommended** (the first start's choice) | all eight settings below on, *Enable Reactive Flushing* off (Graphics > Advanced): the setup we measured (with GPU Mode Fast, the default). Dozer's first start also turns Reactive Flushing off in `qt-config.ini` by itself; choosing Recommended later turns it off too | `start-recommended.bat` |
-| **Recommended + Reactive Flushing** | all eight on, Reactive Flushing on, barrier feedback loops on (Graphics > Advanced; Reactive Flushing needs it) and `EDEN_NX2_RX_RT_FIT=3`. Experimental: on our PC about 7% slower at the game's opening and about 15% faster in open areas ("Reactive flushing") | `start-reactive-experimental.bat` |
+| **Recommended** (the first start's choice) | all eight settings below on, *Enable Reactive Flushing* off (Graphics > Advanced): the recommended setup (with GPU Mode Fast, the default). Dozer's first start also turns Reactive Flushing off in `qt-config.ini` by itself; choosing Recommended later turns it off too | `start-recommended.bat` |
+| **Recommended + Reactive Flushing** | all eight on, Reactive Flushing on, barrier feedback loops on (Graphics > Advanced; Reactive Flushing needs it) and `EDEN_NX2_RX_RT_FIT=3`. Experimental: slower at the game's opening and faster in open areas in Anka's author's tests. ("Reactive flushing") | `start-reactive-experimental.bat` |
 | **Safe** | all eight off, Frame generation off, and the GPU shortcuts Dozer keeps on by default off too (`EDEN_NX2_LIGHT_DRAW=0` and the rest of `start-safe.bat`'s list), in every game. Other graphics settings such as Reactive Flushing stay as they are; Dozer's fixes and its changes without a switch stay in | `start-safe.bat` |
 | **Custom** | chosen by itself when you change a box by hand | - |
 
-Recommended was measured in Donkey Kong Bananza only. If another game shows image or speed
+Recommended is made for Donkey Kong Bananza only. If another game shows image or speed
 problems, try Safe first and report it with the game's name.
 
 **Frame generation.** The tab also has a **Frame generation** box with three choices:
@@ -186,7 +173,7 @@ as `dozer.exe` (the one next to the programs): the same keys, firmware and saves
 settings in `user\config\sdl2-config.ini`, apart from the menu program's `qt-config.ini`. When
 `sdl2-config.ini` does not exist yet, the launcher makes it as a copy of `qt-config.ini`, so the
 controller and settings you set up in `dozer.exe` come along, and turns reactive flushing off in
-the copy (the measured setup, see "Reactive flushing"). It never changes an existing
+the copy (the recommended setup, see "Reactive flushing"). It never changes an existing
 `sdl2-config.ini`, nor `qt-config.ini`. The editing is done by `dozer-config.ps1` next to the
 launchers, a small, readable PowerShell script; without it the launchers skip this step and
 start the game. If neither file exists, the launcher stops with a message: start `dozer.exe`
@@ -201,8 +188,8 @@ The game starts in full screen; dozer-cli has no menu. **Quit with Alt+F4.**
 
 | Launcher | When to use it |
 |---|---|
-| `start-recommended.bat` | **Recommended.** The fastest settings we measured (Donkey Kong Bananza). |
-| `start-reactive-experimental.bat` | **Experimental.** Reactive flushing on: on our machine about 7% slower at the game's opening and about 15% faster in open areas. If you see image errors, go back to the recommended one. |
+| `start-recommended.bat` | **Recommended.** The recommended settings (Donkey Kong Bananza). |
+| `start-reactive-experimental.bat` | **Experimental.** Reactive flushing on: slower at the game's opening and faster in open areas in Anka's author's tests. If you see image errors, go back to the recommended one. |
 | `start-safe.bat` | The GPU shortcuts Dozer keeps on by default off, the opt-in switches that change play cleared; Dozer's fixes and its changes without a switch stay in: for troubleshooting and for games other than Bananza. |
 
 A launcher starts, in this order: a game file dragged onto it, the `GAME=` line, or the game in
@@ -233,7 +220,7 @@ error. Take the launchers from the release zip: they need Windows line endings (
   they act with `DK_DYN=0` or when the patch does not apply); timed FSR3 generated frames
   (`FG_TIMED=1`, only does something with frame generation on); the RTSS display (`OSD=1`). The
   Bananza-specific lines are marked; for other games use the safe launcher, or remove them. It
-  was measured with reactive flushing **off**: it turns it off in an `sdl2-config.ini` it makes,
+  is meant for reactive flushing **off**: it turns it off in an `sdl2-config.ini` it makes,
   and only prints a note when an existing one has it on ("Reactive flushing").
 - **`start-safe.bat`** - for troubleshooting and for games other than Bananza: Dozer's shortcut
   switches that are on by default set to `0`, the opt-in ones that change play cleared (a few
@@ -243,14 +230,14 @@ error. Take the launchers from the release zip: they need Windows line endings (
   changelog) stay in.
 - **`start-reactive-experimental.bat`** - EXPERIMENTAL, the second choice next to the
   recommended one: the recommended settings with reactive flushing on, plus `RX_RT_FIT=3` (one
-  image for Bananza's opening render target instead of a copy per draw). On our machine it trades
-  the opening for open areas: -7% FPS at the game's opening, +15% in the open area, against the
-  same build with reactive flushing off. Not checked yet: together with frame generation, and the
+  image for Bananza's opening render target instead of a copy per draw). In Anka's author's
+  tests it trades the opening for open areas: slower at the game's opening, faster in open areas,
+  against the same build with reactive flushing off. Not checked yet: together with frame generation, and the
   image with `RX_RT_FIT=3`. Reactive flushing is a config setting, not a switch: with `CONFIG=`
   empty this launcher uses `config\sdl2-config-reactive.ini`, which it makes once as a copy of
   `sdl2-config.ini` with reactive flushing and `barrier_feedback_loops` on ("Reactive flushing"
   below). With a `CONFIG=` file that has reactive flushing off, `RX_RT_FIT=3` still acts, a
-  combination that was not measured.
+  combination that was not tested.
 
 dozer-cli reads the switches only from its environment (the launchers); it does not read the
 Performance tab. `nx2_switches_DOZER.txt` lists every switch with its default and what it does. Under
@@ -271,7 +258,7 @@ without a launcher; the menu program sets the recommended ones from its Performa
 | `PRESENT_INTERVAL_WORD=12:16:4` | off | presents follow the game's own frame interval (Bananza) |
 | `MODE_PACE=2`, `PACE_SPIN_US=1500` | off | steers Bananza's 60/30/20 fps mode by frame timing |
 | `DK_DYN=1` | off | Bananza dynamic frame rate patch, in memory (below) |
-| `DK_DYN_MIN_FPS=<n>` | 40 | the patch's lower limit (30 measured worse) |
+| `DK_DYN_MIN_FPS=<n>` | 40 | the patch's lower limit |
 | `FG_TIMED=1` | off | FSR3 generated frames blended for the time they are shown |
 | `OSD=1` | off | game FPS, display FPS (with frame generation's multiplier) and speed in RTSS |
 | `LIGHT_DRAW`, `LIGHT_UNIFORM`, `UBO_*`, `SYNC_*`, `VERTEX_*`, `RESET_*`, ... (about 60) | **on** | per-draw shortcuts on the GPU thread; `=0` is the 2.0.0 code path, many accept `=2` to check themselves and log |
@@ -304,7 +291,7 @@ PokeDinner-Eglantine 2.0.0 already has frame generation; Dozer adds `FG_TIMED`, 
 multiplier on the OSD and has a **Frame generation** box in its Performance tab ("The Performance tab").
 Two kinds exist:
 
-- **FSR3** (built in, the default kind). This is what we measured.
+- **FSR3** (built in, the default kind). This is the recommended kind.
 - **LSFG** (Lossless Scaling frame generation). It needs `Lossless.dll` from the paid
   *Lossless Scaling* app. **Dozer does not include it**; put your own copy in the user folder's
   `lossless\` folder if you want this kind.
@@ -327,10 +314,8 @@ display; `0` uses `frame_gen_multiplier`, 2-4). `frame_gen_type=0` would pick LS
 ## Reactive flushing
 
 `use_reactive_flushing` (`[Renderer]`) copies data the GPU wrote back to game memory when the
-game reads it. **The program's default on desktop is on.** Our test setup had it **off**, and
-the recommended numbers below were measured that way. On our machine, with earlier builds and
-frame generation off, turning it on gained +13 to +23% FPS in open areas and lost 23 to 30% at
-the game's opening. Look at your `sdl2-config.ini`:
+game reads it. **The program's default on desktop is on.** Dozer's recommended setup has it **off**: in Anka's
+author's tests, turning it on helped in open areas and hurt at the game's opening. Look at your `sdl2-config.ini`:
 
 ```ini
 use_reactive_flushing\default=false
@@ -344,7 +329,7 @@ Flushing** turns it on with barrier feedback loops (and `RX_RT_FIT=3`), **Safe**
 is. The launchers take care of it for dozer-cli. `start-recommended.bat` writes
 these two lines into the `sdl2-config.ini` it makes on the first start; it never changes an
 existing one, it only prints a note when reactive flushing is on there (change the two lines by
-hand, with the program closed, for the measured setup). `start-reactive-experimental.bat` uses
+hand, with the program closed, for the recommended setup). `start-reactive-experimental.bat` uses
 its own copy, `config\sdl2-config-reactive.ini`, made once from `sdl2-config.ini` with
 `use_reactive_flushing=true` and `barrier_feedback_loops=true`. A setting changed later in one
 of the two files does not reach the other: delete `sdl2-config-reactive.ini` and the reactive
@@ -359,59 +344,18 @@ before such a draw; `=3` records a barrier inside the render pass instead (color
 writes before fragment shader reads, by region), so the render pass goes on. Both need
 `barrier_feedback_loops=true` under `[Renderer]` (the switch does nothing without it).
 
-Measured on 5 November (DK-DYN on, frame generation off, LTO + PGO builds, game FPS of two runs
-per arm; each row compares one build with reactive flushing off and on):
-
-| Arms (one build per row) | Opening | Open area |
-|---|---|---|
-| reactive off -> on + `RX_RT_FIT=1` | 43.4 / 42.9 -> 32.9 / 33.8 (-23%) | 46.4 / 46.8 -> 52.6 / 52.9 (+13%) |
-| reactive off -> on + `RX_RT_FIT=3` | 42.7 / 40.8 -> 38.4 / 39.0 (-7%) | 45.4 / 46.2 -> 52.4 / 52.5 (+15%) |
-
-`RX_RT_FIT=3` is clearly better than `=1` at the opening (+16%) and the same in the open area.
-Against reactive flushing off it is a trade that depends on the scene: a little slower at the
-opening, faster in open areas. That is why the release has two setups for play, as launchers
-and as presets of the Performance tab: recommended (reactive flushing off) and reactive experimental
-(on, with `RX_RT_FIT=3`). **Experimental:** reactive flushing was **never measured together with
+In Anka's author's tests `RX_RT_FIT=3` was clearly better than `=1` at the opening and the same in the
+open area. Against reactive flushing off it is a trade that depends on the scene. That is why there
+are two setups for play, as launchers and as presets of the Performance tab: recommended (reactive
+flushing off) and reactive experimental (on, with `RX_RT_FIT=3`). **Experimental:** reactive flushing was **never measured together with
 frame generation**, and the image with `RX_RT_FIT=3` has not been checked by eye yet (its barrier
 inside the render pass covers a fragment reading the pixel it renders, which is what the Vulkan
 spec defines for feedback loops). If you see wrong images with it, set `RX_RT_FIT=1` in the
 launcher or use the recommended one. Do not turn on `RX_MASKED_TARGETS` (known defect: a texture
 blit ignores the mask) or `RX_COALESCE_LOOSE` (diagnostic only).
 
-## Measured results
-
-Measured by Anka's author on the machine above with Donkey Kong Bananza only. FPS is the game's own frame rate
-(frame generation off unless stated), read from RTSS's shared memory or from the emulator log.
-"Same build" rows switch one thing in one program. Scenes: **opening** (the save's starting
-area), **open area** (a wide view of the first level), **far view** (looking over the level by
-hand; camera not exactly the same between runs). Every fork number comes from the program
-without menus (then called `eden-cli`, now `dozer-cli.exe`).
-
-| Change | Arms (A -> B) | Scene, runs | Result |
-|---|---|---|---|
-| Everything, PokeDinner 2.0.0 -> Dozer | 2.0.0's `eglantine.exe` (Qt; handheld mode, GPU accuracy Fast, 1x) / this fork's `eden-cli` builds of 3-5 Nov (mostly TV mode) | 2.0.0: far view by hand, 25 s (31 Oct). Fork: automated runs of the opening and open area | 2.0.0: 17.3 FPS (median frame 58 ms). Fork: 42-53 FPS uncapped (3-4 Nov); 39-46 FPS with DK-DYN, frame generation off (5 Nov, build of commit `2d424d6efd`). **Not a controlled A/B**: program, mode, scenes and runs differ, and the 2.0.0 scene is the heaviest one; in the same far view the fork's builds of 31 Oct - 1 Nov measured 19.7 and ~30.8 FPS (rows below). A rough indication only |
-| GPU-written parameter flush window | same build (31 Oct, before most other changes), `PBFLUSH_WINDOW_KIB=0` -> default | far view, 2 x 25 s each | 18.0 -> 19.7 FPS (+9%; measured before `HLE_INDIRECT`, so it matters mostly with `HLE_INDIRECT=0`) |
-| Terrain indirect draws on the host GPU | same build (1 Nov), `HLE_INDIRECT=0` -> default | far view by hand, 2-4 runs each | ~20.8 -> ~30.8 FPS (~+48%; camera not identical) |
-| Back stages (cut a) | `BACK_STAGES=0` -> `1` | opening, 2 rounds x 2 x 25 s | +8.7% / +7.3% |
-| Per-draw shortcuts (the first set, 2 Nov; not all of them) | off -> on | opening, same runs (one sample of round 2 left out) | +7.5% / +6.8% |
-| Acquire peek | `ACQUIRE_PEEK=0` -> `1` | opening, same runs | +1.4% / +3.9% |
-| Profile-guided optimization (PGO) | LTO build -> LTO + PGO | opening, same runs | +21.5% / +15.8% (3 Nov build and profile; this release's program reuses that profile, see "Known issues"; not measured this way) |
-| Front macro JIT filter | off -> `JIT_SAME=1` + `FRONT_MACRO_LEAN=1` | opening, 2 rounds x 2 | 39.6 -> 42.1 FPS (+6%) |
-| Reactive flushing | off -> on | open area / opening, nightly automated runs (3-4 Nov builds) | +13 to +23% / -23 to -30% |
-| Reactive flushing with `RX_RT_FIT=1` | same build, reactive off -> on + `RX_RT_FIT=1` (DK-DYN on) | opening / open area, 2 runs each (5 Nov) | -23% / +13% |
-| Reactive flushing with `RX_RT_FIT=3` | same build, reactive off -> on + `RX_RT_FIT=3` (DK-DYN on) | opening / open area, 2 runs each (5 Nov) | -7% / +15% (`=3` against `=1`: +16% at the opening, the same in the open area) |
-| `DK_DYN_MIN_FPS=30` | unset (40) -> 30 | opening and open area, 2 runs per arm in each scene | -4% / -5% (FPS ranges overlap at the opening; more frames near 30 is the clearer sign): not recommended |
-
-With DK-DYN and FSR3 frame generation aiming at 120 (an earlier build of the recommended
-setup), a 3.6 minute session of normal play logged a median of 46 game FPS (lowest 35), 119
-frames a second on screen (lowest 97) and a median game speed of 99.8% (lowest 93%). That is one
-session, not a benchmark.
-
 ## Known issues
 
-- **The menu program was not measured.** `dozer.exe` runs the same emulator code with the same
-  switches and the same PGO profile as `dozer-cli.exe`, but every number here comes from the
-  program without menus (then called `eden-cli`).
 - **A game started from the Home Menu applet** in `dozer.exe` runs with the session's settings;
   Dozer does not ask about a restart there.
 - **Restart starts the game normally**: with its per-game settings and its first program.
@@ -425,7 +369,7 @@ session, not a benchmark.
   `start-safe.bat` (or the Safe preset), and report where.
 - **Reactive flushing** (the program's default; the recommended launcher turns it off only in a
   `sdl2-config.ini` it makes, the Recommended preset, also on Dozer's first start, in
-  `qt-config.ini`) costs FPS at the game's opening (above); its new switches were not measured
+  `qt-config.ini`) can cost FPS at the game's opening; its new switches were not tried
   with frame generation.
 - **AMD and Intel GPUs were not tried**; neither were other games. The Bananza switches
   (`PRESENT_INTERVAL_WORD`, `MODE_PACE`, `DK_DYN`) are meant for Bananza only.
