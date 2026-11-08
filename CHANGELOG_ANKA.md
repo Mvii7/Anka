@@ -129,12 +129,20 @@ in Donkey Kong Bananza on one PC. About 400 commits, made between 31 October and
 
 - NVN's indexed indirect draw records are drawn on the host GPU (`vkCmdDrawIndexedIndirect`)
   instead of being read back on the CPU each frame (`HLE_INDIRECT`, on).
-- Consecutive terrain indirect draws merge into one multi-draw on the split back
-  (`INDIRECT_BATCH`, on); the indirect draw reset's uploads are batched, sorted and written in
+- Consecutive terrain indirect draws can merge into one multi-draw on the split back
+  (`INDIRECT_BATCH=1`, off: merged, Bananza's terrain drew garbage polygons and lost chunks);
+  the indirect draw reset's uploads are batched, sorted and written in
   runs (`RESET_BATCH`, `RESET_SORT`, `RESET_RUNS`, `RESET_LAST`, on).
 - GPU-written macro parameters are flushed with the 256 KiB window around them, and no second
   drain follows a flush check (`PBFLUSH_WINDOW_KIB`).
 - Macro parameters are executed without a second FIFO copy (snowstormxd, picked from upstream).
+- The software 2D blit untiles and tiles with the Switch 2 GOB order (`BLIT_NATIVE_TILING`, Orchid
+  `6a1bd310`, from MFS-code/Eglantine-steamdeck): small mip-chain copies came out as a weave of
+  misplaced 4x4 blocks, the cause of the stripes on far, minified terrain.
+- A present image is cropped to the rectangle the game sets in the present request (words 6 to
+  8), as in the Selevet and ZendNevs forks: Bananza handheld draws into part of a larger image,
+  and the whole image showed stale tiles around the frame. Mario Kart World's fixed crop is
+  kept for presents without one.
 
 ### Split GPU thread
 

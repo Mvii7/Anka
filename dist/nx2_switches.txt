@@ -115,8 +115,9 @@
 # HLE_INDIRECT=0: run NVN's indexed indirect draw macro as it is, reading its records on the
 # CPU (default: one host indirect draw from the GPU-written records).
 #EDEN_NX2_HLE_INDIRECT=0
-# INDIRECT_BATCH=0: one host draw per call of NVN's multi-draw macro (default: merged).
-#EDEN_NX2_INDIRECT_BATCH=0
+# INDIRECT_BATCH=1: calls of NVN's multi-draw macro whose records follow each other share one
+# host draw (default: one host draw per call; merged, Bananza's terrain glitched after minutes).
+#EDEN_NX2_INDIRECT_BATCH=1
 # LAYOUT_MEMO=0: look the layout size up every time (default: remembered).
 #EDEN_NX2_LAYOUT_MEMO=0
 # SAME_SKIP=0: constant buffer writes of bytes memory already holds are still made (default:
@@ -174,6 +175,10 @@
 #EDEN_NX2_RESET_LAST=0
 #EDEN_NX2_RESET_RUNS=0
 #EDEN_NX2_RESET_SORT=0
+# BLIT_NATIVE_TILING=0: the software 2D blit (small mip copies) untiles and tiles in the Tegra X1
+# GOB order, as before (default: the Switch 2 order, from the Orchid fork). The old order wrote
+# small mips as a weave of misplaced 4x4 blocks, which shows as stripes on far, minified terrain.
+#EDEN_NX2_BLIT_NATIVE_TILING=0
 # ASYNC_SKIP=1: skip draws whose pipeline is still compiling (things pop in; off).
 #EDEN_NX2_ASYNC_SKIP=1
 
@@ -235,6 +240,13 @@
 # DK_DYN_MIN_FPS=<1-60>: with DK_DYN, move the game's 40 fps floor (unset: 40; 30 measured
 # worse on our machine).
 #EDEN_NX2_DK_DYN_MIN_FPS=40
+
+# --- read traps (core/memory/read_traps.h; ported from the ZendNevs fork) ---
+# On by default with use_reactive_flushing=false (Switch 2 titles, fastmem, not NCE): a buffer
+# page the GPU writes is read-protected until the guest CPU's first read, which flushes it and
+# notes it, so later GPU writes there are copied back at fences. Bananza's trees come from such
+# GPU-written data. With reactive flushing on they do nothing. 0 turns them off.
+#EDEN_NX2_READ_TRAPS=0
 
 # --- reactive flushing (video_core/nx2_reactive_flush.h, common/nx2_reactive.h) ---
 # All off by default. Most matter only with use_reactive_flushing=true in the config;
