@@ -6,9 +6,9 @@
 Not affiliated with Nintendo or the Eglantine project; please report problems in this
 repository's Issues, not to them. https://github.com/Mvii7/Dozer/issues
 
-**Support is very limited.** Dozer is built for one game, Donkey Kong Bananza, mainly for its
-maintainer's own use, and shared as it is. Other games are not supported yet. Dozer may be tuned for
-more games later; any game it is tuned for will be listed here.
+**Support is very limited.** Dozer is currently tuned for one game, Donkey Kong Bananza, mainly
+for its maintainer's own use, and shared as it is. Other games are not supported yet. More may be
+added later, and any game Dozer is tuned for will be listed here.
 
 ## At a glance
 
