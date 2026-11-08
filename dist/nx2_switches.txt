@@ -5,7 +5,7 @@
 # A variable already set in the environment wins over this file.
 # Between files, %APPDATA%\eden\nx2_switches.txt (yours) wins over this one, so editing
 # this file is never needed: copy the lines you want into your own and restart.
-# A switch set here or in the environment wins over anka.exe's Performance tab, which never changes
+# A switch set here or in the environment wins over anka.exe's Tuning tab, which never changes
 # it (its box is greyed out, its tooltip names the value).
 #
 # Restart the emulator after editing.
@@ -62,7 +62,7 @@
 # ======================================================================================
 # Anka additions (since PokeDinner 2.0.0, commit 70ecb39ef0). Every switch below was
 # added by this fork. anka-cli reads only its environment: set them in a launcher .bat
-# (the Anka launchers set the recommended ones; anka.exe sets them from its Performance tab).
+# (the Anka launchers set the recommended ones; anka.exe sets them from its Tuning tab).
 # The value shown is the one that changes the default. Unless noted, a switch is read
 # once, at its first use.
 # Source files are under src/; NX2_NOTES.md and NX2_GPU_THREAD_SPLIT.md have the details.

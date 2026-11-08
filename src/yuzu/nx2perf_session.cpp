@@ -148,12 +148,12 @@ Boot Prepare(QWidget* parent, u64 program_id, const QString& game, bool fullscre
         why = QObject::tr("Donkey Kong Bananza's own settings are still on from Bananza; they "
                           "are only for Bananza.");
     } else {
-        why = QObject::tr("The performance settings changed since this session's first game.");
+        why = QObject::tr("The tuning settings changed since this session's first game.");
     }
     QMessageBox box{parent};
     box.setIcon(QMessageBox::Information);
-    box.setWindowTitle(QObject::tr("Performance"));
-    box.setText(QObject::tr("Restart to start this game with the right performance settings?"));
+    box.setWindowTitle(QObject::tr("Tuning"));
+    box.setText(QObject::tr("Restart to start this game with the right tuning settings?"));
     box.setInformativeText(why + QStringLiteral("\n\n") +
                            QObject::tr("These settings are read once per session, so the "
                                        "program restarts and starts the game."));
@@ -204,7 +204,7 @@ bool OfferRestart(QWidget* parent, const QString& running_game, bool fullscreen)
     }
     QMessageBox box{parent};
     box.setIcon(QMessageBox::Question);
-    box.setWindowTitle(QObject::tr("Performance"));
+    box.setWindowTitle(QObject::tr("Tuning"));
     box.setText(QObject::tr("Restart now to apply?"));
     box.setInformativeText(text);
     QPushButton* const restart = box.addButton(QObject::tr("Restart Now"), QMessageBox::AcceptRole);

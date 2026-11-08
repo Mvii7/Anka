@@ -3,12 +3,12 @@
 Changes since **PokeDinner-Eglantine 2.0.0** (commit `70ecb39ef0`). The full history is in git
 (`git log 70ecb39ef0..`); this file groups it by topic. Most changes are behind `EDEN_NX2_*`
 switches (`nx2_switches_ANKA.txt`; in the source `dist/nx2_switches.txt`): the opt-in ones are
-off unless a launcher or the menu program's Performance tab sets them, the per-draw shortcuts are on
+off unless a launcher or the menu program's Tuning tab sets them, the per-draw shortcuts are on
 and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased
 
-- The settings tab called *Anka* (Emulation > Configure...) is now called *Performance*, and its
+- The settings tab called *Anka* (Emulation > Configure...) is now called *Tuning*, and its
   dialogs no longer carry the name. The settings, presets and the `[Anka]` group of
   `qt-config.ini` are unchanged.
 

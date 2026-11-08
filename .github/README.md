@@ -56,7 +56,7 @@ does this). The game starts in full screen: **quit with Alt+F4**.
 
 ## Settings
 
-In `anka.exe`: **Emulation > Configure... > Performance**. The **Preset** box at the top has four
+In `anka.exe`: **Emulation > Configure... > Tuning**. The **Preset** box at the top has four
 choices:
 
 - **Recommended** (the first start's choice): all eight settings on, Reactive Flushing off
@@ -96,7 +96,7 @@ The tab also has a **Frame generation** box:
   It steps between 1x and 4x only while the screen can show the extra frames and the game's own
   frame rate holds (a step that lowers the game's frame rate by more than 8% is undone).
 - *Other (Graphics tab)* is shown, not chosen, when the Graphics tab holds another frame
-  generation setup; the Performance tab leaves it as it is.
+  generation setup; the Tuning tab leaves it as it is.
 
 Generated frames need a screen faster than the game's frame rate; on a 60 Hz screen they only
 help below 30 fps. The presets do not change it, except Safe, which sets it to Off. The box
@@ -106,7 +106,7 @@ multiplier / target frame rate).
 Reactive Flushing (through a preset) and Frame generation are graphics settings, which cannot
 change in a running game: changed while a game runs, Anka keeps them and applies them when you
 press **Restart Now**, or when the game stops if you chose **Later** (the tab says so).
-Details: "The Performance tab" in [`README_ANKA.md`](../README_ANKA.md).
+Details: "The Tuning tab" in [`README_ANKA.md`](../README_ANKA.md).
 
 ## Saves and settings
 

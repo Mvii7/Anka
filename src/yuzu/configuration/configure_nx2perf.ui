@@ -14,7 +14,7 @@
    <string>Form</string>
   </property>
   <property name="accessibleName">
-   <string>Performance</string>
+   <string>Tuning</string>
   </property>
   <layout class="QVBoxLayout" name="layout">
    <item>
