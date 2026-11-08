@@ -6,6 +6,6 @@ SPDX-License-Identifier: GPL-2.0-or-later
 <RCC>
     <qresource prefix="/img">
         <file alias="eglantine.ico">../../dist/eden.ico</file>
-        <file alias="anka.ico">../../dist/anka.ico</file>
+        <file alias="dozer.ico">../../dist/dozer.ico</file>
     </qresource>
 </RCC>

@@ -7,6 +7,6 @@ externals/* linguist-vendored
 *.h linguist-language=cpp
 
 # Anka launchers: Windows line endings in the repository too (cmd needs CRLF)
-dist/anka/*.bat -text
+dist/dozer/*.bat -text
 # Anka build scripts: Unix line endings in every checkout (bash)
-dist/anka/build/*.sh text eol=lf
+dist/dozer/build/*.sh text eol=lf

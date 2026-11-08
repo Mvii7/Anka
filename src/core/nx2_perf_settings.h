@@ -12,7 +12,7 @@
 #include "core/loader/nx2_dk_dynamic_fps.h"
 
 // Anka's settings in the Qt program (anka.exe): the EDEN_NX2_* switches of the launchers
-// (dist/anka/start-*.bat), as a preset and on / off settings kept in the [Anka] group of
+// (dist/dozer/start-*.bat), as a preset and on / off settings kept in the [Anka] group of
 // qt-config.ini, the Recommended preset until changed. The program sets the variables in its own
 // environment before a game boots (yuzu/nx2perf_session.h); anka-cli and the launchers don't read
 // these settings.
