@@ -331,6 +331,7 @@ struct DeviceDispatch : InstanceDispatch {
     PFN_vkFreeDescriptorSets vkFreeDescriptorSets{};
     PFN_vkFreeMemory vkFreeMemory{};
     PFN_vkGetBufferMemoryRequirements2 vkGetBufferMemoryRequirements2{};
+    PFN_vkGetDeviceFaultInfoEXT vkGetDeviceFaultInfoEXT{};
     PFN_vkGetDeviceQueue vkGetDeviceQueue{};
     PFN_vkGetEventStatus vkGetEventStatus{};
     PFN_vkGetFenceStatus vkGetFenceStatus{};

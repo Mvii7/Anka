@@ -47,6 +47,7 @@ add_executable(tests
     video_core/nx2_reg_replica.cpp
     video_core/nx2_root.cpp
     video_core/nx2_desc_secondary.cpp
+    video_core/nx2_device_fault.cpp
     video_core/frame_gen_pacer.cpp
     video_core/nx2_fg_timing.cpp
     video_core/nx2_stage_bind.cpp

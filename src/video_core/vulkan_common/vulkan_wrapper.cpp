@@ -215,6 +215,7 @@ void Load(VkDevice device, DeviceDispatch& dld) noexcept {
     X(vkFreeDescriptorSets);
     X(vkFreeMemory);
     X(vkGetBufferMemoryRequirements2);
+    X(vkGetDeviceFaultInfoEXT);
     X(vkGetDeviceQueue);
     X(vkGetEventStatus);
     X(vkGetFenceStatus);

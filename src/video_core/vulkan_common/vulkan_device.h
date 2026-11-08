@@ -17,6 +17,7 @@
 #include "common/common_types.h"
 #include "common/logging.h"
 #include "common/settings.h"
+#include "video_core/vulkan_common/nx2_device_fault.h"
 #include "video_core/vulkan_common/vulkan_wrapper.h"
 
 VK_DEFINE_HANDLE(VmaAllocator)
@@ -246,6 +247,10 @@ public:
 
     /// Reports a device loss.
     void ReportLoss() const;
+
+    /// Logs the driver's VK_EXT_device_fault report of a device loss, once per process ("device
+    /// fault info not supported" without it). ReportLoss does it too.
+    void ReportFault() const;
 
     /// Reports a shader to Nsight Aftermath.
     void SaveShader(std::span<const u32> spirv) const;
@@ -1273,6 +1278,9 @@ private:
 
     /// Nsight Aftermath GPU crash tracker
     std::unique_ptr<NsightAftermathTracker> nsight_aftermath_tracker;
+
+    bool has_device_fault{};                        ///< VK_EXT_device_fault's deviceFault is on
+    mutable Nx2DeviceFault::Once device_fault_once; ///< ReportFault's report made
 };
 
 } // namespace Vulkan

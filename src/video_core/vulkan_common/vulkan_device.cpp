@@ -749,6 +749,30 @@ Device::Device(VkInstance instance_, vk::PhysicalDevice physical_, VkSurfaceKHR 
                                VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
     }
 
+    // VK_EXT_device_fault, only for ReportFault's report of a device loss: nothing else uses it, and
+    // a driver without it (or without its deviceFault feature) changes nothing
+    VkPhysicalDeviceFaultFeaturesEXT fault_features{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FAULT_FEATURES_EXT,
+        .pNext = nullptr,
+        .deviceFault = VK_FALSE,
+        .deviceFaultVendorBinary = VK_FALSE,
+    };
+    if (supported_extensions.contains(VK_EXT_DEVICE_FAULT_EXTENSION_NAME)) {
+        VkPhysicalDeviceFeatures2 fault_query{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+            .pNext = &fault_features,
+            .features = {},
+        };
+        physical.GetFeatures2(fault_query);
+        if (fault_features.deviceFault) {
+            fault_features.pNext = const_cast<void*>(first_next);
+            fault_features.deviceFaultVendorBinary = VK_FALSE;
+            first_next = &fault_features;
+            loaded_extensions.insert(VK_EXT_DEVICE_FAULT_EXTENSION_NAME);
+            has_device_fault = true;
+        }
+    }
+
     logical = vk::Device::Create(physical, queue_cis, ExtensionListForVulkan(loaded_extensions), first_next, dld);
 
     graphics_queue = logical.GetQueue(graphics_family);
@@ -932,9 +956,75 @@ VkFormat Device::GetSupportedFormat(VkFormat wanted_format, VkFormatFeatureFlags
 
 void Device::ReportLoss() const {
     LOG_CRITICAL(Render_Vulkan, "Device loss occurred!");
+    ReportFault();
 
     // Wait for the log to flush and for Nsight Aftermath to dump the results
     std::this_thread::sleep_for(std::chrono::seconds{15});
+}
+
+static_assert(VK_DEVICE_FAULT_ADDRESS_TYPE_NONE_EXT == 0);
+static_assert(VK_DEVICE_FAULT_ADDRESS_TYPE_READ_INVALID_EXT == 1);
+static_assert(VK_DEVICE_FAULT_ADDRESS_TYPE_WRITE_INVALID_EXT == 2);
+static_assert(VK_DEVICE_FAULT_ADDRESS_TYPE_EXECUTE_INVALID_EXT == 3);
+static_assert(VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_UNKNOWN_EXT == 4);
+static_assert(VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_INVALID_EXT == 5);
+static_assert(VK_DEVICE_FAULT_ADDRESS_TYPE_INSTRUCTION_POINTER_FAULT_EXT == 6);
+
+void Device::ReportFault() const {
+    if (!device_fault_once.First()) {
+        return;
+    }
+    if (!has_device_fault || dld.vkGetDeviceFaultInfoEXT == nullptr) {
+        LOG_CRITICAL(Render_Vulkan, "nx2 device fault: device fault info not supported");
+        return;
+    }
+    // First the counts, then the reports themselves (not the vendor binary: deviceFaultVendorBinary
+    // stays off)
+    VkDeviceFaultCountsEXT counts{
+        .sType = VK_STRUCTURE_TYPE_DEVICE_FAULT_COUNTS_EXT,
+        .pNext = nullptr,
+        .addressInfoCount = 0,
+        .vendorInfoCount = 0,
+        .vendorBinarySize = 0,
+    };
+    VkResult result = dld.vkGetDeviceFaultInfoEXT(*logical, &counts, nullptr);
+    if (result != VK_SUCCESS) {
+        LOG_CRITICAL(Render_Vulkan, "nx2 device fault: vkGetDeviceFaultInfoEXT failed: {}",
+                     vk::Exception{result}.what());
+        return;
+    }
+    std::vector<VkDeviceFaultAddressInfoEXT> addresses(counts.addressInfoCount);
+    std::vector<VkDeviceFaultVendorInfoEXT> vendors(counts.vendorInfoCount);
+    counts.vendorBinarySize = 0;
+    VkDeviceFaultInfoEXT info{
+        .sType = VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_EXT,
+        .pNext = nullptr,
+        .description = {},
+        .pAddressInfos = addresses.empty() ? nullptr : addresses.data(),
+        .pVendorInfos = vendors.empty() ? nullptr : vendors.data(),
+        .pVendorBinaryData = nullptr,
+    };
+    result = dld.vkGetDeviceFaultInfoEXT(*logical, &counts, &info);
+    if (result != VK_SUCCESS && result != VK_INCOMPLETE) {
+        LOG_CRITICAL(Render_Vulkan, "nx2 device fault: vkGetDeviceFaultInfoEXT failed: {}",
+                     vk::Exception{result}.what());
+        return;
+    }
+    addresses.resize(std::min<size_t>(addresses.size(), counts.addressInfoCount));
+    vendors.resize(std::min<size_t>(vendors.size(), counts.vendorInfoCount));
+    LOG_CRITICAL(Render_Vulkan, "nx2 device fault: \"{}\", {} address infos, {} vendor infos",
+                 Nx2DeviceFault::Text(info.description, sizeof(info.description)),
+                 addresses.size(), vendors.size());
+    for (const VkDeviceFaultAddressInfoEXT& address : addresses) {
+        LOG_CRITICAL(Render_Vulkan, "nx2 device fault: address {} {:#018x} (precision {:#x})",
+                     Nx2DeviceFault::AddressTypeName(static_cast<u32>(address.addressType)),
+                     address.reportedAddress, address.addressPrecision);
+    }
+    for (const VkDeviceFaultVendorInfoEXT& vendor : vendors) {
+        LOG_CRITICAL(Render_Vulkan, "nx2 device fault: vendor \"{}\" code {:#x} data {:#x}",
+                     Nx2DeviceFault::Text(vendor.description, sizeof(vendor.description)),
+                     vendor.vendorFaultCode, vendor.vendorFaultData);
+    }
 }
 
 void Device::SaveShader(std::span<const u32> spirv) const {
