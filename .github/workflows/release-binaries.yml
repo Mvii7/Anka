@@ -1,10 +1,16 @@
 name: release-binaries
 
-# Every push builds Windows. A push to main also builds Linux and macOS.
+# Every push builds Windows. A push to main also builds Linux and macOS, and so does a manual run
+# with "all_platforms" ticked (to try them on another branch before merging).
 # macOS is experimental: the project's docs call it largely untested, so a macOS failure does not
 # fail the run.
 on:
   workflow_dispatch:
+    inputs:
+      all_platforms:
+        description: Also build Linux and macOS (they build automatically only on main)
+        type: boolean
+        default: false
   push:
 
 permissions:
@@ -109,7 +115,7 @@ jobs:
 
   linux:
     name: linux-x86_64 binary
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || inputs.all_platforms
     runs-on: ubuntu-24.04
     steps:
       - name: Check out source
@@ -241,7 +247,7 @@ jobs:
   # there: this job only finds out whether it builds. Apple Silicon only (the runner's architecture).
   macos:
     name: macos-arm64 binary (experimental)
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || inputs.all_platforms
     runs-on: macos-15
     continue-on-error: true
     timeout-minutes: 150
