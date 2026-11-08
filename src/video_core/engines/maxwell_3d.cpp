@@ -1526,7 +1526,7 @@ bool IndirectTopologySafe(u32 topology) {
 // global_base_vertex_index and global_base_instance_index, the base vertex and instance into
 // c[0][0x640] (CB_OFFSET and two CB_DATA), draw begin, index_buffer.count, draw end; then it
 // resets the base registers and c[0][0x640].
-std::array<std::pair<u32, u32>, 16> IndirectDrawWrites(std::span<const u32> p) {
+[[maybe_unused]] std::array<std::pair<u32, u32>, 16> IndirectDrawWrites(std::span<const u32> p) {
     return {{{0x5f7, p[3]}, {0x446, p[4]}, {0x50d, p[4]}, {0x50e, p[5]}, {0x8e3, 0x640},
              {0x8e4, p[4]}, {0x8e5, p[5]}, {0x586, p[0]}, {0x5f8, p[1]}, {0x585, 0},
              {0x446, 0}, {0x50d, 0}, {0x50e, 0}, {0x8e3, 0x640}, {0x8e4, 0}, {0x8e5, 0}}};
