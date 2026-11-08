@@ -19,8 +19,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: linux-x86_64
-            runner: ubuntu-24.04
+          # Linux is off for now: add `- platform: linux-x86_64` with `runner: ubuntu-24.04` back.
           - platform: windows-x86_64
             runner: windows-2022
 
