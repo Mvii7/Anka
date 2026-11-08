@@ -465,7 +465,7 @@ std::unique_ptr<ComboboxTranslationMap> ComboboxEnumeration(QObject* parent) {
                           {
                               PAIR(NvdecEmulation, Off, tr("No Video Output")),
                               PAIR(NvdecEmulation, Cpu, tr("CPU Video Decoding")),
-                              PAIR(NvdecEmulation, Gpu, tr("GPU Video Decoding (Default)")),
+                              PAIR(NvdecEmulation, Gpu, tr("GPU Video Decoding")),
                           }});
     translations->insert(
         {Settings::EnumMetadata<Settings::ResolutionSetup>::Index(),
