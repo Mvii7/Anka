@@ -136,6 +136,10 @@ in Donkey Kong Bananza on one PC. About 400 commits, made between 31 October and
 - GPU-written macro parameters are flushed with the 256 KiB window around them, and no second
   drain follows a flush check (`PBFLUSH_WINDOW_KIB`).
 - Macro parameters are executed without a second FIFO copy (snowstormxd, picked from upstream).
+- The `max(x, -x)` fold for NVIDIA also covers predicate masks merged by predicated moves
+  (ZendNevs): NVIDIA's compiler miscompiles that form into a device loss, which Bananza's shaders
+  reached a few minutes into a run. Draw-parameter constant buffer reads outside vertex shaders are
+  left alone.
 - The software 2D blit untiles and tiles with the Switch 2 GOB order (`BLIT_NATIVE_TILING`, Orchid
   `6a1bd310`, from MFS-code/Eglantine-steamdeck): small mip-chain copies came out as a weave of
   misplaced 4x4 blocks, the cause of the stripes on far, minified terrain.
