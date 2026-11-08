@@ -1243,11 +1243,23 @@ private:
                 !system.Host1x().GetSyncpointManager().IsReadyGuest(fence_id, w[24])) {
                 ++m_stats.ran_ahead;
             }
+            // EDEN_NX2_FRAME_TIMES=<file>: every frame's time as "<stats line> <us>" lines (the
+            // stats line it falls in, counted from 0), for percentiles such as the 1% low over the
+            // stats lines' windows. The game's frames (present to present), not the images frame
+            // generation adds on the way to the screen.
+            static std::FILE* const frame_times = [] {
+                const char* path = std::getenv("EDEN_NX2_FRAME_TIMES");
+                return path != nullptr && path[0] != '\0' ? std::fopen(path, "w") : nullptr;
+            }();
+            static unsigned long long stats_lines = 0;
             if (m_stats.last_present != std::chrono::steady_clock::time_point{}) {
                 const long long frame = to_us(entered - m_stats.last_present);
                 m_stats.frame_us += frame;
                 m_stats.max_frame_us = (std::max)(m_stats.max_frame_us, frame);
                 m_stats.hitches += frame > 100'000 ? 1 : 0;
+                if (frame_times != nullptr) {
+                    std::fprintf(frame_times, "%llu %lld\n", stats_lines, frame);
+                }
                 if (m_pace_one) {
                     m_stats.dyn_step.Add(frame);
                 }
@@ -1324,6 +1336,10 @@ private:
                          m_stats.fence_us / 600, m_stats.max_fence_us, m_stats.composite_us / 600,
                          m_stats.pace_us / 600, extra);
                 m_stats = {.last_present = entered, .output_frames = output_frames};
+                ++stats_lines;
+                if (frame_times != nullptr) {
+                    std::fflush(frame_times);
+                }
             }
         }
         constexpr u64 AvailableSlots = 0x7fff;
