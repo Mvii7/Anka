@@ -2200,6 +2200,9 @@ VideoCore::RasterizerDownloadArea RasterizerVulkan::GetFlushArea(DAddr addr, u64
             if (flush_buffer && stats) {
                 Common::Nx2Reactive::Add(Common::Nx2Reactive::Counter::FirstReadFlushes, 1);
             }
+        } else if (buffer_cache.ReadTrapsActive()) {
+            // A trapped read (or a slow-path read) of GPU-written buffer data: flush it now.
+            flush_buffer = buffer_cache.IsRegionGpuModified(page_start, page_end - page_start);
         }
     }
     {
