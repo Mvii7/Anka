@@ -1906,6 +1906,10 @@ private:
         }
         u32 crop_width = layout.width;
         u32 crop_height = layout.height;
+        // The game's own crop: Bananza handheld draws into a part of a larger present image.
+        const auto present_crop = Nx2PresentCrop(crop_origin, crop_end, flags, layout.width,
+                                                 layout.height);
+        const bool has_present_crop = (flags & 2) != 0;
         // Mario Kart World draws into the top-left corner of its present images: 2560x1440 docked
         // (in 3840x2160 images), 1920x1080 handheld. It keeps its docked images after a switch to
         // handheld, and showing all of them put the frame in a corner with stale docked frames
@@ -1913,10 +1917,6 @@ private:
         if (!has_present_crop && system.GetApplicationProcessProgramID() == 0x0400C3F00006E000ULL) {
             if (!Settings::IsDockedMode()) {
                 crop_width = (std::min)(crop_width, 1920U);
-        // The game's own crop: Bananza handheld draws into a part of a larger present image.
-        const auto present_crop = Nx2PresentCrop(crop_origin, crop_end, flags, layout.width,
-                                                 layout.height);
-        const bool has_present_crop = (flags & 2) != 0;
                 crop_height = (std::min)(crop_height, 1080U);
             } else if (layout.width == 3840 && layout.height == 2160) {
                 crop_width = 2560;
@@ -1931,17 +1931,17 @@ private:
             const char* v = std::getenv("EDEN_NX2_CROP_HEIGHT");
             return v ? static_cast<u32>(std::strtoul(v, nullptr, 10)) : 0U;
         }();
+        Common::Rectangle<int> crop{0, 0, static_cast<int>(crop_width),
+                                    static_cast<int>(crop_height)};
+        if (has_present_crop) {
+            crop = present_crop;
+        }
         if (env_crop_w != 0 && env_crop_h != 0) {
             crop = {0, 0, static_cast<int>(env_crop_w), static_cast<int>(env_crop_h)};
         }
         const u64 shown = (u64{layout.width} << 48) | (u64{layout.height} << 32) |
                           (static_cast<u64>(crop.GetWidth()) << 16) | crop.GetHeight();
         if (shown != m_shown_layout) {
-        Common::Rectangle<int> crop{0, 0, static_cast<int>(crop_width),
-                                    static_cast<int>(crop_height)};
-        if (has_present_crop) {
-            crop = present_crop;
-        }
             m_shown_layout = shown;
             LOG_INFO(Service, "nx2:vi2 composite image {} layout {}x{}, crop ({},{})-({},{}) "
                      "metadata {:08x} {:08x} {:08x}", image_id, layout.width, layout.height,
