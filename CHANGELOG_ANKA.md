@@ -136,6 +136,10 @@ in Donkey Kong Bananza on one PC. About 400 commits, made between 31 October and
   drain follows a flush check (`PBFLUSH_WINDOW_KIB`).
 - Macro parameters are executed without a second FIFO copy (snowstormxd, picked from upstream).
 
+- A present image is cropped to the rectangle the game sets in the present request (words 6 to
+  8), as in the Selevet and ZendNevs forks: Bananza handheld draws into part of a larger image,
+  and the whole image showed stale tiles around the frame. Mario Kart World's fixed crop is
+  kept for presents without one.
 ### Split GPU thread
 
 - The back can run as a pipeline of stages (`BACK_STAGES=1`, `BACK_CUTS=a`, off by default): the

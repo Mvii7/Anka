@@ -1043,6 +1043,7 @@ add_library(core STATIC
     hle/service/nx2_gsv.h
     hle/service/nx2_ipc_trace.cpp
     hle/service/nx2_ipc_trace.h
+    hle/service/nx2_present.h
     hle/service/nx2_present_rate.h
     hle/service/nx2_vi2_events.h
     hle/service/services.cpp
