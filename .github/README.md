@@ -10,26 +10,19 @@ for its maintainer's own use, and shared as it is. Other games are not supported
 
 ## Downloads and setup
 
-Builds are made by GitHub Actions: open the latest run of the `anka` branch in the Actions tab and
-download the `dozer-windows-x86_64-...` artifact, or use the
-[Releases page](https://github.com/Mvii7/Dozer/releases) when a release is published.
+Download the latest release for your system from the
+[Releases page](https://github.com/Mvii7/Dozer/releases).
 
 Dozer runs on its own. You need Windows 10 or 11 (64-bit) and a GPU with a current Vulkan
-driver, and the Microsoft Visual C++ runtime installed; the build carries the Qt 6.8.3 DLLs and
+driver, and the Microsoft Visual C++ runtime installed; the release carries the Qt 6.8.3 DLLs and
 plugins.
 
-1. Unzip the build into a new folder and make an empty folder named `user` next to `dozer.exe`:
-   that makes Dozer portable (settings, keys, firmware and saves stay in it). Dozer also reads
-   `.nup` game files (see the README).
+1. Unzip the release into a new folder. If it has no `user` folder, make an empty one next to
+   `dozer.exe`: that makes Dozer portable (settings, keys, firmware and saves stay in it). Dozer
+   also reads `.nup` game files (see the README).
 2. Run **`dozer.exe`**.
 3. Install your own keys and firmware as with other Eden-based emulators (Dozer provides none;
    only use what you legally own).
-
-Coming from PokeDinner-Eglantine 2.0.0: copy your user folder next to `dozer.exe` (see
-[Saves and settings](#saves-and-settings)).
-
-**Do not unzip Dozer into a PokeDinner-Eglantine 2.0.0 folder:** its Qt DLLs would replace
-2.0.0's.
 
 To uninstall, delete the Dozer folder; move your games and its `user` folder (keys, firmware,
 saves) out first if you want to keep them.
@@ -110,38 +103,7 @@ Details: "The Performance tab" in [`README_DOZER.md`](../README_DOZER.md).
 With a `user` folder next to `dozer.exe` (make an empty one), Dozer runs in portable mode: its
 settings (`user\config\qt-config.ini`), keys, firmware, saves (`user\nand`) and log stay in that
 folder, apart from any other emulator; it does not use `%APPDATA%\eden` (except that `dozer.exe`
-also reads a `nx2_switches.txt` there, if you made one). Coming from PokeDinner-Eglantine 2.0.0,
-copy your 2.0.0 user folder next to `dozer.exe` (a portable 2.0.0 has it next to
-`eglantine.exe`; otherwise copy the contents of `%APPDATA%\eden` into Dozer's `user` folder):
-your keys, firmware, saves, game list and controller come along, and 2.0.0 keeps its own copy.
-
-## What is faster
-
-These are **Anka's measurements**, made by its author, not Dozer's: Donkey Kong Bananza only, one PC
-only (Ryzen 7 5700X, 64 GB RAM, NVIDIA GeForce RTX 4060 Ti, 1440p 170 Hz display), with the program
-without menus (then called eden-cli), frame generation off unless stated. Dozer contains those
-changes and later fixes, and has not been measured the same way. Its maintainer's own play tests
-(Ryzen 7 5700X3D, RTX 5070 Ti, Donkey Kong Bananza) found it faster than the other forks tried, with
-no numbers published yet.
-
-**Only Donkey Kong Bananza was measured.** The general improvements run in every game, but other
-games, other CPUs and AMD or Intel GPUs were not tried, so there is no claim of measured speed or
-tested compatibility for them.
-
-- 2.0.0's `eglantine.exe` measured 17.3 FPS in the heaviest view (far view, by hand); Anka's
-  builds measured 42-53 FPS uncapped and 39-46 FPS with the dynamic frame rate patch in the
-  opening and open area. This is **not a controlled A/B** (different scenes, modes and runs),
-  only a rough indication.
-- Single steps, each against the same build: split GPU thread stages +7.3 to +8.7%, per-draw
-  shortcuts +6.8 to +7.5%, the macro JIT filter +6% (39.6 -> 42.1 FPS), profile-guided
-  optimization +15.8 to +21.5%, the terrain's indirect draws on the host GPU about +48% in the
-  far view (~20.8 -> ~30.8 FPS).
-- With the dynamic frame rate patch and FSR3 frame generation aiming at 120, one 3.6 minute
-  session of normal play had a median of 46 game FPS, 119 frames a second on screen and 99.8%
-  game speed. One session, not a benchmark.
-
-The method and every measurement: "Measured results" in [`README_DOZER.md`](../README_DOZER.md);
-every change since PokeDinner-Eglantine 2.0.0: [`CHANGELOG_DOZER.md`](../CHANGELOG_DOZER.md).
+also reads a `nx2_switches.txt` there, if you made one).
 
 ## Building
 

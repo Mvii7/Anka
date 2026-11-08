@@ -53,16 +53,16 @@ brings Zelda support and per-game presets. No dates.
 
 ## Download and check
 
-Builds are made by GitHub Actions: open the latest run of the `anka` branch in the Actions tab and
-download the `dozer-windows-x86_64-...` artifact, or use the Releases page when a release is
-published. The program is not signed: Windows SmartScreen may warn the first time.
+Download the latest release for your system from the Releases page
+(https://github.com/Mvii7/Dozer/releases). The program is not signed: Windows SmartScreen may warn
+the first time.
 
 ## Install
 
 This is an experimental build with no warranty (see "License").
 
-1. Unzip the build into a new, empty folder and make an empty folder named `user` next to
-   `dozer.exe` (portable mode: settings, keys, firmware and saves stay in it).
+1. Unzip the release into a new, empty folder. If it has no `user` folder, make an empty one next
+   to `dozer.exe` (portable mode: settings, keys, firmware and saves stay in it).
 2. Run **`dozer.exe`** (its window title is "Dozer").
 3. Install your own keys and firmware as with other Eden-based emulators (Dozer provides none;
    only use what you legally own).
@@ -92,15 +92,6 @@ starts in portable mode: it keeps its settings (`user\config\qt-config.ini`), ke
 saves (`user\nand`), shader caches and log (`user\log\eden_log.txt`) in it, and does not use
 `%APPDATA%\eden` or another emulator's folder (the one exception: `dozer.exe` also reads a
 `nx2_switches.txt` in `%APPDATA%\eden`, if you made one; see "Switches set outside win").
-
-**Do not unzip Dozer into a PokeDinner-Eglantine 2.0.0 folder:** its Qt DLLs would replace
-2.0.0's.
-
-**Coming from PokeDinner-Eglantine 2.0.0:** copy your user folder next to `dozer.exe`. (In a
-portable 2.0.0 setup that is the `user` folder next to `eglantine.exe`; otherwise copy the
-contents of `%APPDATA%\eden` into Dozer's `user\` folder.) Your keys, firmware, saves, game list
-and controller come along. Copy, do not move: 2.0.0 keeps its own folder, and each program
-changes only its own copy of your saves.
 
 Settings: **Emulation > Configure... > Performance**. On the first start the preset is
 **Recommended**, the setup we measured, and Dozer also turns *Enable Reactive Flushing* off in
