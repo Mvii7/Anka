@@ -10,12 +10,14 @@
 #include <type_traits>
 #include <bit>
 #include <numeric>
+#include "common/logging.h"
 #include "shader_recompiler/environment.h"
 #include "shader_recompiler/exception.h"
 #include "shader_recompiler/frontend/ir/ir_emitter.h"
 #include "shader_recompiler/frontend/ir/modifiers.h"
 #include "shader_recompiler/frontend/ir/value.h"
 #include "shader_recompiler/ir_opt/passes.h"
+#include "shader_recompiler/ir_opt/predicate_mask.h"
 
 namespace Shader::Optimization {
 namespace {
@@ -909,6 +911,12 @@ void FoldConstBuffer(Environment& env, IR::Block& block, IR::Inst& inst) {
     if (!replacement) {
         return;
     }
+    // Draw parameters only exist in vertex shaders.
+    if (env.ShaderStage() != Stage::VertexA && env.ShaderStage() != Stage::VertexB) {
+        LOG_WARNING(Shader, "Stage {} reads draw parameter copy at cbuf {} {:#x}: left as it is",
+                    static_cast<u32>(env.ShaderStage()), bank_value, offset_value);
+        return;
+    }
     const auto new_attribute = [replacement]() {
         switch (*replacement) {
         case ReplaceConstant::BaseInstance:
@@ -954,6 +962,8 @@ void FoldDriverConstBuffer(Environment& env, IR::Block& block, IR::Inst& inst, u
 }
 
 void FoldSMax32(IR::Block& block, IR::Inst& inst) {
+    // guest shaders normalize predicate masks with max(x, -x): it is 1 for -1 and 1, and 0 for
+    // 0. NVIDIA's compiler miscompiles the max form which crashes with a vkDeviceLost
     for (size_t index = 0; index < 2; ++index) {
         const IR::Value value{inst.Arg(index).Resolve()};
         const IR::Inst* const negation{inst.Arg(1 - index).TryInstRecursive()};
@@ -961,26 +971,25 @@ void FoldSMax32(IR::Block& block, IR::Inst& inst) {
             negation->Arg(0).Resolve() != value) {
             continue;
         }
-        const IR::Inst* const select{value.TryInstRecursive()};
-        if (!select || select->GetOpcode() != IR::Opcode::SelectU32) {
-            continue;
-        }
-        const IR::Value true_value{select->Arg(1).Resolve()};
-        const IR::Value false_value{select->Arg(2).Resolve()};
-        const auto is_mask = [](const IR::Value& candidate) {
-            return candidate.IsImmediate() &&
-                   (candidate.U32() == 0 || candidate.U32() == 1 ||
-                    candidate.U32() == 0xffffffffU);
-        };
-        if (!is_mask(true_value) || !is_mask(false_value)) {
-            continue;
-        }
-        // max(x, -x) is 0 or 1 for boolean and predicate-mask constants.
         IR::IREmitter ir{block, IR::Block::InstructionList::s_iterator_to(inst)};
-        inst.ReplaceUsesWith(ir.Select(IR::U1{select->Arg(0)},
-                                      ir.Imm32(true_value.U32() != 0 ? 1U : 0U),
-                                      ir.Imm32(false_value.U32() != 0 ? 1U : 0U)));
-        return;
+        const IR::Inst* const select{value.TryInstRecursive()};
+        if (select && select->GetOpcode() == IR::Opcode::SelectU32 &&
+            IsMaskConstant(select->Arg(1).Resolve()) &&
+            IsMaskConstant(select->Arg(2).Resolve())) {
+            // absolute value on both arms
+            const IR::Value true_value{select->Arg(1).Resolve()};
+            const IR::Value false_value{select->Arg(2).Resolve()};
+            inst.ReplaceUsesWith(ir.Select(IR::U1{select->Arg(0)},
+                                           ir.Imm32(true_value.U32() != 0 ? 1U : 0U),
+                                           ir.Imm32(false_value.U32() != 0 ? 1U : 0U)));
+            return;
+        }
+        // mask merged by predicated moves (phi of -s and 1 - s) is still -1, 0 or 1 when the
+        // it can be proven it, and max(x, -x) of such a mask is exactly x & 1.
+        if (MaskValues(value) != MaskUnknown) {
+            inst.ReplaceUsesWith(ir.BitwiseAnd(IR::U32{value}, ir.Imm32(1)));
+            return;
+        }
     }
 }
 void ConstantPropagation(Environment& env, IR::Block& block, IR::Inst& inst) {
@@ -1140,6 +1149,9 @@ void ConstantPropagation(Environment& env, IR::Block& block, IR::Inst& inst) {
     case IR::Opcode::GetCbufU32:
         if (env.HasHLEMacroState()) {
             FoldConstBuffer(env, block, inst);
+            if (inst.GetOpcode() == IR::Opcode::Identity) {
+                break;
+            }
         }
         if (env.IsProprietaryDriver()) {
             FoldDriverConstBuffer(env, block, inst, 1);
