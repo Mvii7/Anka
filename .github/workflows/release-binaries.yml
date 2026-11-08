@@ -433,7 +433,8 @@ jobs:
             if [ -n "$NOTES" ]; then printf '%s\n\n' "$NOTES"; fi
             echo "Built from commit \`$SHA\` (run $BUILD_RUN_ID)."
             echo
-            echo "Dozer is a preview fork of Anka tuned for Donkey Kong Bananza. Support is very limited."
+            echo "Dozer is a preview fork of Anka tuned for Donkey Kong Bananza. Support is very limited,"
+            echo "and more games may be added later."
             echo "Not affiliated with Nintendo or the Eglantine project. See README_DOZER.md in the zip."
             echo "The macOS build is experimental and has never been run."
           } > notes.md
