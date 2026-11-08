@@ -86,6 +86,11 @@ jobs:
           restore-keys: |
             cpm-${{ runner.os }}-
 
+      # Compiled files are cached across runs, so a push that changes a few files rebuilds only
+      # those. The first run, and one after a compiler or flag change, is a full build.
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
       - name: Configure Linux
         if: matrix.platform == 'linux-x86_64'
         shell: bash
@@ -108,9 +113,14 @@ jobs:
       - name: Configure Windows
         if: matrix.platform == 'windows-x86_64'
         shell: bash
+        env:
+          SCCACHE_GHA_ENABLED: 'true'
         run: >-
           cmake -S . -B build/release -G Ninja
           -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_C_COMPILER_LAUNCHER=sccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+          -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded
           -DBUILD_TESTING=OFF
           -DYUZU_TESTS=OFF
           -DYUZU_CMD=ON
@@ -123,7 +133,14 @@ jobs:
 
       - name: Build
         shell: bash
+        env:
+          SCCACHE_GHA_ENABLED: 'true'
         run: cmake --build build/release --target yuzu yuzu-cmd --parallel
+
+      - name: sccache statistics
+        if: always()
+        shell: bash
+        run: sccache --show-stats || true
 
       # A self-contained AppImage: linuxdeploy bundles every library the two programs need except
       # the base system ones (glibc, X11/Wayland client libraries, the GPU driver and Vulkan loader),
