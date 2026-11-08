@@ -305,11 +305,18 @@ jobs:
           restore-keys: |
             cpm-${{ runner.os }}-
 
+      - name: Set up sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
       - name: Configure macOS
         shell: bash
+        env:
+          SCCACHE_GHA_ENABLED: 'true'
         run: >-
           cmake -S . -B build/release -G Ninja
           -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_C_COMPILER_LAUNCHER=sccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
           -DBUILD_TESTING=OFF
           -DYUZU_TESTS=OFF
           -DYUZU_CMD=ON
@@ -324,7 +331,14 @@ jobs:
 
       - name: Build
         shell: bash
+        env:
+          SCCACHE_GHA_ENABLED: 'true'
         run: cmake --build build/release --target yuzu yuzu-cmd --parallel -- -k 0
+
+      - name: sccache statistics
+        if: always()
+        shell: bash
+        run: sccache --show-stats || true
 
       # macdeployqt puts the Qt frameworks inside the app and signs it ad hoc (-codesign=-): an
       # unsigned arm64 app does not start. It is not notarised, so macOS asks before the first run.
