@@ -182,7 +182,7 @@ jobs:
         shell: bash
         env:
           SCCACHE_GHA_ENABLED: 'true'
-        run: cmake --build build/release --target yuzu yuzu-cmd --parallel
+        run: cmake --build build/release --target yuzu yuzu-cmd --parallel -- -k 0
 
       - name: sccache statistics
         if: always()
@@ -299,7 +299,7 @@ jobs:
 
       - name: Build
         shell: bash
-        run: cmake --build build/release --target yuzu yuzu-cmd --parallel
+        run: cmake --build build/release --target yuzu yuzu-cmd --parallel -- -k 0
 
       # macdeployqt puts the Qt frameworks inside the app and signs it ad hoc (-codesign=-): an
       # unsigned arm64 app does not start. It is not notarised, so macOS asks before the first run.

@@ -2756,7 +2756,7 @@ void Maxwell3D::StageApplySide(const u64* words, u32 count) {
     }
     if ((parts & SideDirtyFlags) != 0) {
         DirtyFlags flags;
-        std::memcpy(&flags, in, sizeof(DirtyFlags));
+        std::memcpy(static_cast<void*>(&flags), in, sizeof(DirtyFlags));
         in += DirtyFlagWords;
         dirty.flags |= flags;
     }
