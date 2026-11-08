@@ -1,6 +1,6 @@
 <p align="center"><img src="../dist/qt_themes/default/icons/256x256/dozer.png" width="128" alt="Dozer"></p>
 
-<p align="center"><b>Dozer — a Nintendo Switch 2 emulator for Windows, focused on performance.</b></p>
+<p align="center"><b>Dozer — a Nintendo Switch 2 emulator for Windows, tuned for Donkey Kong Bananza.</b></p>
 
 <p align="center">Not affiliated with Nintendo, the Eden project or Franseven; please report problems in
 this repository's <a href="https://github.com/Mvii7/Dozer/issues">Issues</a>, not to them.</p>

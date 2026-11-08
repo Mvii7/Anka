@@ -1,6 +1,6 @@
 # Dozer
 
-**Dozer — a Nintendo Switch 2 emulator for Windows, focused on performance.** A fork of
+**Dozer — a Nintendo Switch 2 emulator for Windows, tuned for Donkey Kong Bananza.** A fork of
 [Anka](https://github.com/EddizEge/Anka) by EddizEge.
 
 Not affiliated with Nintendo, the Eden project or Franseven; please report problems in this
