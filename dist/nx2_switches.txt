@@ -1,11 +1,11 @@
-# Anka switches (EDEN_NX2_*) - nx2_switches.txt next to anka.exe is read at every start of the
-# menu program anka.exe. The program without menus, anka-cli.exe, does not read it: give it the
+# Dozer switches (EDEN_NX2_*) - nx2_switches.txt next to dozer.exe is read at every start of the
+# menu program dozer.exe. The program without menus, dozer-cli.exe, does not read it: give it the
 # variables in its environment (a launcher .bat).
 # One NAME=VALUE per line. Lines starting with # are ignored.
 # A variable already set in the environment wins over this file.
 # Between files, %APPDATA%\eden\nx2_switches.txt (yours) wins over this one, so editing
 # this file is never needed: copy the lines you want into your own and restart.
-# A switch set here or in the environment wins over anka.exe's Anka tab, which never changes
+# A switch set here or in the environment wins over dozer.exe's Tuning tab, which never changes
 # it (its box is greyed out, its tooltip names the value).
 #
 # Restart the emulator after editing.
@@ -27,7 +27,7 @@
 #EDEN_NX2_SPLIT_SKIP=1
 #EDEN_NX2_AUTO_STUB=1
 
-# --- GPU thread shortcuts (on by default; =0 as before; added by Anka) ---
+# --- GPU thread shortcuts (on by default; =0 as before; added by Dozer) ---
 # =2 keeps them on and logs what they would get wrong: VERTEX_CLEAN, LIGHT_SYNC_SKIP,
 # FAST_PRIORITY_SCAN, DESC_XLAT.
 #EDEN_NX2_VERTEX_SKIP=0
@@ -46,7 +46,7 @@
 #EDEN_NX2_TC_EXPECTED_MIB=21322
 #EDEN_NX2_TC_CRITICAL_MIB=22346
 
-# --- experiments (off by default; NX2_NOTES.md; added by Anka) ---
+# --- experiments (off by default; NX2_NOTES.md; added by Dozer) ---
 #EDEN_NX2_PACE_GUEST_SLEEP=1
 #EDEN_NX2_PACE_GUEST_TAIL_US=1000
 # vi2 104 = GetHdrStatus, SDR reply (one line "104: 1 0 0" in a file works too)
@@ -60,9 +60,9 @@
 #EDEN_NX2_ROOT_TABLES=1
 
 # ======================================================================================
-# Anka additions (since PokeDinner 2.0.0, commit 70ecb39ef0). Every switch below was
-# added by this fork. anka-cli reads only its environment: set them in a launcher .bat
-# (the Anka launchers set the recommended ones; anka.exe sets them from its Anka tab).
+# Dozer additions (since PokeDinner 2.0.0, commit 70ecb39ef0). Every switch below was
+# added by this fork. dozer-cli reads only its environment: set them in a launcher .bat
+# (the Dozer launchers set the recommended ones; dozer.exe sets them from its Tuning tab).
 # The value shown is the one that changes the default. Unless noted, a switch is read
 # once, at its first use.
 # Source files are under src/; NX2_NOTES.md and NX2_GPU_THREAD_SPLIT.md have the details.
@@ -304,7 +304,7 @@
 # FG_DIAG=1: frame generation timing lines in the log.
 #EDEN_NX2_FG_DIAG=1
 # OSD=1: game FPS, display FPS (with the frame generation multiplier) and game speed in
-# RivaTuner Statistics Server's OSD every 0.5 s (anka-cli and anka.exe on Windows; RTSS must
+# RivaTuner Statistics Server's OSD every 0.5 s (dozer-cli and dozer.exe on Windows; RTSS must
 # be running).
 #EDEN_NX2_OSD=1
 
@@ -341,4 +341,4 @@
 #EDEN_NX2_PROFILE_TSC=0
 #EDEN_NX2_PROBE_FRONT_US=100
 # AUTO_INPUT_FILE=<file>: timed presses on a virtual pad. AUTO_EXIT=<s>[@boot|@present|@album]:
-# close the window that many seconds later (anka-cli, for unattended measuring).
+# close the window that many seconds later (dozer-cli, for unattended measuring).

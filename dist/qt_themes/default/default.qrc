@@ -22,7 +22,7 @@ SPDX-License-Identifier: GPL-2.0-or-later
         <file alias="48x48/star.png">icons/48x48/star.png</file>
         <file alias="256x256/plus_folder.png">icons/256x256/plus_folder.png</file>
         <file alias="256x256/eglantine.png">icons/256x256/eden.png</file>
-        <file alias="256x256/anka.png">icons/256x256/anka.png</file>
+        <file alias="256x256/dozer.png">icons/256x256/dozer.png</file>
     </qresource>
     <qresource prefix="default">
         <file>style.qss</file>

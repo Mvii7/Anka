@@ -123,10 +123,10 @@ Boot Prepare(QWidget* parent, u64 program_id, const QString& game, bool fullscre
         for (const auto& var : plan) {
             SetVariable(var);
         }
-        LOG_INFO(Frontend, "Anka settings for {:016X}{}: {}", program_id,
+        LOG_INFO(Frontend, "Dozer settings for {:016X}{}: {}", program_id,
                  bananza ? " (Donkey Kong Bananza)" : "", Describe(plan).toStdString());
         for (const std::string_view name : g_set_outside) {
-            LOG_INFO(Frontend, "Anka: {} was set outside the program, left as it is", name);
+            LOG_INFO(Frontend, "Dozer: {} was set outside the program, left as it is", name);
         }
         g_applied = Applied{std::move(plan), bananza};
         return Boot::Go;
@@ -135,7 +135,7 @@ Boot Prepare(QWidget* parent, u64 program_id, const QString& game, bool fullscre
         return Boot::Go;
     }
     if (applet) {
-        LOG_INFO(Frontend, "Anka: applet {:016X} runs with this session's settings: {}",
+        LOG_INFO(Frontend, "Dozer: applet {:016X} runs with this session's settings: {}",
                  program_id, Describe(g_applied->plan).toStdString());
         return Boot::Go;
     }
@@ -148,14 +148,14 @@ Boot Prepare(QWidget* parent, u64 program_id, const QString& game, bool fullscre
         why = QObject::tr("Donkey Kong Bananza's own settings are still on from Bananza; they "
                           "are only for Bananza.");
     } else {
-        why = QObject::tr("The Anka settings changed since this session's first game.");
+        why = QObject::tr("The tuning settings changed since this session's first game.");
     }
     QMessageBox box{parent};
     box.setIcon(QMessageBox::Information);
-    box.setWindowTitle(QObject::tr("Anka"));
-    box.setText(QObject::tr("Restart to start this game with the right Anka settings?"));
+    box.setWindowTitle(QObject::tr("Tuning"));
+    box.setText(QObject::tr("Restart to start this game with the right tuning settings?"));
     box.setInformativeText(why + QStringLiteral("\n\n") +
-                           QObject::tr("Anka's settings are read once per session, so the "
+                           QObject::tr("These settings are read once per session, so the "
                                        "program restarts and starts the game."));
     QPushButton* const restart = box.addButton(QObject::tr("Restart"), QMessageBox::AcceptRole);
     QPushButton* const anyway = box.addButton(QObject::tr("Start Anyway"), QMessageBox::NoRole);
@@ -163,13 +163,13 @@ Boot Prepare(QWidget* parent, u64 program_id, const QString& game, bool fullscre
     box.setDefaultButton(restart);
     box.exec();
     if (box.clickedButton() == restart) {
-        LOG_INFO(Frontend, "Anka: restarting for {:016X}: {}", program_id,
+        LOG_INFO(Frontend, "Dozer: restarting for {:016X}: {}", program_id,
                  Describe(plan).toStdString());
         g_restart = Restart{game, fullscreen};
         return Boot::Restart;
     }
     if (box.clickedButton() == anyway) {
-        LOG_INFO(Frontend, "Anka: {:016X} started with this session's settings: {}",
+        LOG_INFO(Frontend, "Dozer: {:016X} started with this session's settings: {}",
                  program_id, Describe(g_applied->plan).toStdString());
         return Boot::Go;
     }
@@ -189,7 +189,7 @@ bool OfferRestart(QWidget* parent, const QString& running_game, bool fullscreen)
     if (!Perf::NeedsRestart(applied, plan) && !(applied && pending_new)) {
         return false;
     }
-    QString text = QObject::tr("This session's game already started with the earlier Anka "
+    QString text = QObject::tr("This session's game already started with the earlier "
                                "settings; the new ones take effect after a restart.");
     if (pending) {
         text += QStringLiteral("\n\n") +
@@ -199,23 +199,23 @@ bool OfferRestart(QWidget* parent, const QString& running_game, bool fullscreen)
     }
     if (!running_game.isEmpty()) {
         text += QStringLiteral("\n\n") +
-                QObject::tr("Anka opens again with the running game: unsaved game progress is "
+                QObject::tr("The program opens again with the running game: unsaved game progress is "
                             "lost.");
     }
     QMessageBox box{parent};
     box.setIcon(QMessageBox::Question);
-    box.setWindowTitle(QObject::tr("Anka"));
-    box.setText(QObject::tr("Restart Anka now to apply?"));
+    box.setWindowTitle(QObject::tr("Tuning"));
+    box.setText(QObject::tr("Restart now to apply?"));
     box.setInformativeText(text);
     QPushButton* const restart = box.addButton(QObject::tr("Restart Now"), QMessageBox::AcceptRole);
     QPushButton* const later = box.addButton(QObject::tr("Later"), QMessageBox::RejectRole);
     box.setDefaultButton(later);
     box.exec();
     if (box.clickedButton() != restart) {
-        LOG_INFO(Frontend, "Anka: settings changed, restart later: {}", Describe(plan).toStdString());
+        LOG_INFO(Frontend, "Dozer: settings changed, restart later: {}", Describe(plan).toStdString());
         return false;
     }
-    LOG_INFO(Frontend, "Anka: restarting to apply: {}", Describe(plan).toStdString());
+    LOG_INFO(Frontend, "Dozer: restarting to apply: {}", Describe(plan).toStdString());
     g_restart = Restart{running_game, fullscreen};
     return true;
 }
@@ -257,7 +257,7 @@ bool ApplyPendingGraphics() {
     if (g_pending.frame_gen) {
         ApplyFrameGen(*g_pending.frame_gen);
     }
-    LOG_INFO(Frontend, "Anka: graphics settings chosen during the game applied: reactive flushing "
+    LOG_INFO(Frontend, "Dozer: graphics settings chosen during the game applied: reactive flushing "
                        "{}, barrier feedback loops {}, frame generation {}",
              g_pending.reactive_flushing ? (*g_pending.reactive_flushing ? "on" : "off") : "-",
              g_pending.barrier_feedback_loops ? (*g_pending.barrier_feedback_loops ? "on" : "off")
@@ -297,7 +297,7 @@ void ApplyFrameGen(Perf::FrameGen choice) {
 
 void CancelRestart() {
     if (g_restart) {
-        LOG_INFO(Frontend, "Anka: the window stayed open, no restart");
+        LOG_INFO(Frontend, "Dozer: the window stayed open, no restart");
     }
     g_restart.reset();
 }
@@ -331,7 +331,7 @@ void RestartIfRequested() {
         [](QProcess::CreateProcessArguments* args) { args->inheritHandles = false; });
 #endif
     if (!process.startDetached()) {
-        LOG_ERROR(Frontend, "Anka: the restart failed: {}",
+        LOG_ERROR(Frontend, "Dozer: the restart failed: {}",
                   process.errorString().toStdString());
     }
 }

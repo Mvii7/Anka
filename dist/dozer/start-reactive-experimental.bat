@@ -1,15 +1,23 @@
 @echo off
 setlocal DisableDelayedExpansion
-rem Anka - RECOMMENDED: the settings measured best on our PC (Donkey Kong Bananza).
-rem Anka launcher for anka-cli.exe (Anka's program without menus).
-rem Put this file next to anka-cli.exe.
+rem Dozer - REACTIVE (EXPERIMENTAL): recommended + reactive flushing + RX_RT_FIT=3.
+rem Dozer launcher for dozer-cli.exe (Dozer's program without menus).
+rem Put this file next to dozer-cli.exe.
 rem Start: put your game (.nsp .xci .nsz .xcz .nup) in the Games folder next to this file and double-click
 rem this file; or drag a game file onto it; or write the game's path in GAME below.
 rem First start: when the user folder has no config\sdl2-config.ini yet, it is made as a copy of
-rem config\qt-config.ini (the controller and settings of the menu program, anka.exe). An existing
-rem sdl2-config.ini is never changed. The .ini edits are made by anka-config.ps1 next to this file
+rem config\qt-config.ini (the controller and settings of the menu program, dozer.exe). An existing
+rem sdl2-config.ini is never changed. The .ini edits are made by dozer-config.ps1 next to this file
 rem (a small, readable PowerShell script). Quit the game with Alt+F4.
-rem Bananza-specific lines are marked; for other games use start-safe.bat.
+rem The second choice next to start-recommended.bat. Reactive flushing copies GPU-written data
+rem back to the game. On our PC (5 Nov, DK_DYN on, frame generation off) it traded the opening
+rem for open areas: with RX_RT_FIT=3, -7 percent FPS at the game's opening and +15 percent in
+rem the open area against the same build with it off. Not checked yet: together with frame
+rem generation, and the image with RX_RT_FIT=3 (README, "Reactive flushing"). If you see wrong
+rem images, set RX_RT_FIT=1 below or use start-recommended.bat. Reactive flushing is a config
+rem setting, not a switch: with CONFIG empty this launcher uses config\sdl2-config-reactive.ini,
+rem made once as a copy of sdl2-config.ini with use_reactive_flushing=true and
+rem barrier_feedback_loops=true.
 rem ---- your settings -------------------------------------------------------------------
 rem GAME: the game to start (a drag-and-drop file wins over this line, this line over Games).
 set "GAME="
@@ -23,7 +31,7 @@ rem OSD: 1 = FPS / speed overlay through RivaTuner Statistics Server (if running
 set "OSD=1"
 rem ---------------------------------------------------------------------------------------
 set "HERE=%~dp0"
-if not exist "%HERE%anka-cli.exe" goto noexe
+if not exist "%HERE%dozer-cli.exe" goto noexe
 if not "%~1"=="" set "GAME=%~f1"
 cd /d "%HERE%"
 if defined GAME goto havegame
@@ -62,7 +70,6 @@ set EDEN_NX2_MEMBAR=
 set EDEN_NX2_BACK_CORE=
 set EDEN_NX2_FRONT_CORE=
 set EDEN_NX2_FG_DIAG=
-set EDEN_NX2_RX_RT_FIT=
 set EDEN_NX2_FLUSH_FIRST_READ=
 set EDEN_NX2_READ_LATCH_AGE=
 set EDEN_NX2_RX_ONE_SUBMIT=
@@ -73,7 +80,7 @@ set EDEN_NX2_REACTIVE_STATS=
 set EDEN_NX2_RX_NO_COPYBACK=
 set EDEN_NX2_RX_NO_RT_LATCH=
 set EDEN_NX2_RX_COALESCE_LOOSE=
-rem The recommended switches (README_ANKA.md, "Launchers").
+rem The recommended switches (README_DOZER.md, "Launchers").
 rem Split GPU thread: the back as stages (cut a), acquire peek, leaner front macro path.
 set EDEN_NX2_BACK_STAGES=1
 set EDEN_NX2_BACK_CUTS=a
@@ -91,11 +98,16 @@ rem does something when frame generation is on in the config, README).
 set EDEN_NX2_FG_TIMED=1
 rem Game FPS, display FPS and speed in RivaTuner Statistics Server's overlay (OSD above).
 set EDEN_NX2_OSD=%OSD%
+rem Reactive flushing: Bananza's opening renders into one image instead of a copy per draw
+rem (needs barrier_feedback_loops=true in the config); 3 keeps the render pass going with a
+rem barrier inside it, 1 ends it (slower). Do not add RX_MASKED_TARGETS (known defect) or
+rem RX_COALESCE_LOOSE (diagnostic only).
+set EDEN_NX2_RX_RT_FIT=3
 if defined CONFIG goto withconfig
-"%HERE%anka-cli.exe" %FULLSCREEN% -g "%GAME%"
+"%HERE%dozer-cli.exe" %FULLSCREEN% -g "%GAME%"
 goto ran
 :withconfig
-"%HERE%anka-cli.exe" -c "%CONFIG%" %FULLSCREEN% -g "%GAME%"
+"%HERE%dozer-cli.exe" -c "%CONFIG%" %FULLSCREEN% -g "%GAME%"
 :ran
 rem Keep the window open when the emulator stopped with an error (any non-zero code, a crash's
 rem is negative), so it can be read.
@@ -119,14 +131,14 @@ exit /b 1
 echo.
 echo  The CONFIG file in this .bat was not found:
 echo  "%CONFIG%"
-echo  anka-cli would make a new one with default settings. Fix the CONFIG line
+echo  dozer-cli would make a new one with default settings. Fix the CONFIG line
 echo  (right click, Edit) or empty it.
 echo.
 pause
 exit /b 1
 :noexe
 echo.
-echo  anka-cli.exe is not next to this .bat. Put both in the Anka folder (README_ANKA.md).
+echo  dozer-cli.exe is not next to this .bat. Put both in the Dozer folder (README_DOZER.md).
 echo.
 pause
 exit /b 1
@@ -178,11 +190,11 @@ set /a I+=1
 if "%I%"=="%PICK%" set "GAME=%F%"
 exit /b 0
 
-rem ---- the config: the user folder as anka-cli finds it (user\ next to the program, else
+rem ---- the config: the user folder as dozer-cli finds it (user\ next to the program, else
 rem %APPDATA%\eden); an existing sdl2-config.ini is only read, never written ---------------
 :prepconfig
-if exist "%HERE%anka-config.ps1" goto prepstart
-echo  [Anka] anka-config.ps1 is not next to this .bat: the settings step is skipped.
+if exist "%HERE%dozer-config.ps1" goto prepstart
+echo  [Dozer] dozer-config.ps1 is not next to this .bat: the settings step is skipped.
 exit /b 0
 :prepstart
 set "UDIR=%APPDATA%\eden"
@@ -195,41 +207,48 @@ if not exist "%CDIR%\qt-config.ini" goto noini
 copy /y "%CDIR%\qt-config.ini" "%SDL%" >nul
 if errorlevel 1 goto noini
 set "FRESH=1"
-echo  [Anka] config\sdl2-config.ini was made from qt-config.ini: the controller and settings of
-echo            the menu program (anka.exe) are used.
+echo  [Dozer] config\sdl2-config.ini was made from qt-config.ini: the controller and settings of
+echo            the menu program (dozer.exe) are used.
 :sdlready
-if not defined FRESH goto checkrx
+if not defined FRESH goto rxcopy
 set "NX2_INI=%SDL%"
 set "NX2_SET=use_reactive_flushing\default=false|use_reactive_flushing=false"
 call :psset
-if errorlevel 1 goto checkrx
-echo  [Anka] Reactive flushing off in the new copy (the measured setup).
+:rxcopy
+set "RXI=%CDIR%\sdl2-config-reactive.ini"
+if exist "%RXI%" goto rxuse
+copy /y "%SDL%" "%RXI%" >nul
+if errorlevel 1 goto rxfail
+set "NX2_INI=%RXI%"
+set "NX2_SET=use_reactive_flushing\default=false|use_reactive_flushing=true|barrier_feedback_loops\default=false|barrier_feedback_loops=true"
+call :psset
+if errorlevel 1 goto rxfail
+echo  [Dozer] config\sdl2-config-reactive.ini made (reactive flushing on).
+:rxuse
+set "CONFIG=%RXI%"
 exit /b 0
-:checkrx
-set "NX2_INI=%SDL%"
-set "NX2_MODE=check"
-"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%HERE%anka-config.ps1"
-rem exit code 42 = reactive flushing on; anything else (0, or PowerShell not found) = no note
-if errorlevel 43 exit /b 0
-if not errorlevel 42 exit /b 0
-echo  [Anka] Note: reactive flushing is on in your sdl2-config.ini; this launcher was measured with
-echo            it off (README_ANKA.md, "Reactive flushing"). The file was not changed.
+:rxfail
+rem the half-made copy is this launcher's own (it did not exist above): remove it, try again next time
+if exist "%RXI%" del /f /q "%RXI%" >nul 2>&1
+echo  [Dozer] config\sdl2-config-reactive.ini could not be made: this start uses sdl2-config.ini
+echo            as it is (reactive flushing as set there).
+pause
 exit /b 0
 :noini
 echo.
-echo  [Anka] No settings yet: neither config\sdl2-config.ini nor config\qt-config.ini in
+echo  [Dozer] No settings yet: neither config\sdl2-config.ini nor config\qt-config.ini in
 echo            "%CDIR%".
-echo            Start anka.exe once and set up your controller there, then start this again.
+echo            Start dozer.exe once and set up your controller there, then start this again.
 echo.
 pause
 exit /b 1
 :psset
 set "NX2_MODE=set"
-"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%HERE%anka-config.ps1"
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%HERE%dozer-config.ps1"
 if errorlevel 1 goto psfail
 exit /b 0
 :psfail
-echo  [Anka] Could not edit "%NX2_INI%".
+echo  [Dozer] Could not edit "%NX2_INI%".
 exit /b 1
 :end
 endlocal

@@ -87,19 +87,19 @@ jobs:
       - name: Package Windows binary
         shell: pwsh
         run: |
-          foreach ($exe in 'eglantine.exe', 'eden-cli.exe') {
+          foreach ($exe in 'dozer.exe', 'dozer-cli.exe') {
             if (-not (Test-Path "build/release/bin/$exe")) {
               throw "build/release/bin/$exe was not produced"
             }
           }
-          windeployqt --release --no-translations build/release/bin/eglantine.exe
+          windeployqt --release --no-translations build/release/bin/dozer.exe
 
       # The artifact is the bin folder itself: GitHub zips artifacts on download, and uploading a
       # zip gave a zip inside a zip. The release job zips it once for the release.
       - name: Upload Windows binary
         uses: actions/upload-artifact@v4
         with:
-          name: eglantine-windows-x86_64-${{ github.sha }}
+          name: dozer-windows-x86_64-${{ github.sha }}
           path: build/release/bin/
           if-no-files-found: error
           retention-days: 7

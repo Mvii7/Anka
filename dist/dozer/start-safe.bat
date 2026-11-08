@@ -1,16 +1,16 @@
 @echo off
 setlocal DisableDelayedExpansion
-rem Anka - SAFE: the shortcuts Anka keeps on by default set to 0, its opt-in switches cleared.
-rem Anka launcher for anka-cli.exe (Anka's program without menus).
-rem Put this file next to anka-cli.exe.
+rem Dozer - SAFE: the shortcuts Dozer keeps on by default set to 0, its opt-in switches cleared.
+rem Dozer launcher for dozer-cli.exe (Dozer's program without menus).
+rem Put this file next to dozer-cli.exe.
 rem Start: put your game (.nsp .xci .nsz .xcz .nup) in the Games folder next to this file and double-click
 rem this file; or drag a game file onto it; or write the game's path in GAME below.
 rem First start: when the user folder has no config\sdl2-config.ini yet, it is made as a copy of
-rem config\qt-config.ini (the controller and settings of the menu program, anka.exe). An existing
-rem sdl2-config.ini is never changed. The .ini edits are made by anka-config.ps1 next to this file
+rem config\qt-config.ini (the controller and settings of the menu program, dozer.exe). An existing
+rem sdl2-config.ini is never changed. The .ini edits are made by dozer-config.ps1 next to this file
 rem (a small, readable PowerShell script). Quit the game with Alt+F4.
 rem Use it to tell whether a problem comes from the new switches. Changes that have no
-rem switch stay in (CHANGELOG_ANKA.md).
+rem switch stay in (CHANGELOG_DOZER.md).
 rem ---- your settings -------------------------------------------------------------------
 rem GAME: the game to start (a drag-and-drop file wins over this line, this line over Games).
 set "GAME="
@@ -20,7 +20,7 @@ rem FULLSCREEN: -f starts in full screen; empty = window.
 set "FULLSCREEN=-f"
 rem ---------------------------------------------------------------------------------------
 set "HERE=%~dp0"
-if not exist "%HERE%anka-cli.exe" goto noexe
+if not exist "%HERE%dozer-cli.exe" goto noexe
 if not "%~1"=="" set "GAME=%~f1"
 cd /d "%HERE%"
 if defined GAME goto havegame
@@ -144,10 +144,10 @@ set EDEN_NX2_UPSCALE_SCAN=0
 set EDEN_NX2_UPSCALE_LEARN=0
 set EDEN_NX2_UPSCALE_HEADER=0
 if defined CONFIG goto withconfig
-"%HERE%anka-cli.exe" %FULLSCREEN% -g "%GAME%"
+"%HERE%dozer-cli.exe" %FULLSCREEN% -g "%GAME%"
 goto ran
 :withconfig
-"%HERE%anka-cli.exe" -c "%CONFIG%" %FULLSCREEN% -g "%GAME%"
+"%HERE%dozer-cli.exe" -c "%CONFIG%" %FULLSCREEN% -g "%GAME%"
 :ran
 rem Keep the window open when the emulator stopped with an error (any non-zero code, a crash's
 rem is negative), so it can be read.
@@ -171,14 +171,14 @@ exit /b 1
 echo.
 echo  The CONFIG file in this .bat was not found:
 echo  "%CONFIG%"
-echo  anka-cli would make a new one with default settings. Fix the CONFIG line
+echo  dozer-cli would make a new one with default settings. Fix the CONFIG line
 echo  (right click, Edit) or empty it.
 echo.
 pause
 exit /b 1
 :noexe
 echo.
-echo  anka-cli.exe is not next to this .bat. Put both in the Anka folder (README_ANKA.md).
+echo  dozer-cli.exe is not next to this .bat. Put both in the Dozer folder (README_DOZER.md).
 echo.
 pause
 exit /b 1
@@ -230,7 +230,7 @@ set /a I+=1
 if "%I%"=="%PICK%" set "GAME=%F%"
 exit /b 0
 
-rem ---- the config: the user folder as anka-cli finds it (user\ next to the program, else
+rem ---- the config: the user folder as dozer-cli finds it (user\ next to the program, else
 rem %APPDATA%\eden); an existing sdl2-config.ini is only read, never written ---------------
 :prepconfig
 set "UDIR=%APPDATA%\eden"
@@ -243,25 +243,25 @@ if not exist "%CDIR%\qt-config.ini" goto noini
 copy /y "%CDIR%\qt-config.ini" "%SDL%" >nul
 if errorlevel 1 goto noini
 set "FRESH=1"
-echo  [Anka] config\sdl2-config.ini was made from qt-config.ini: the controller and settings of
-echo            the menu program (anka.exe) are used.
+echo  [Dozer] config\sdl2-config.ini was made from qt-config.ini: the controller and settings of
+echo            the menu program (dozer.exe) are used.
 :sdlready
 exit /b 0
 :noini
 echo.
-echo  [Anka] No settings yet: neither config\sdl2-config.ini nor config\qt-config.ini in
+echo  [Dozer] No settings yet: neither config\sdl2-config.ini nor config\qt-config.ini in
 echo            "%CDIR%".
-echo            Start anka.exe once and set up your controller there, then start this again.
+echo            Start dozer.exe once and set up your controller there, then start this again.
 echo.
 pause
 exit /b 1
 :psset
 set "NX2_MODE=set"
-"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%HERE%anka-config.ps1"
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%HERE%dozer-config.ps1"
 if errorlevel 1 goto psfail
 exit /b 0
 :psfail
-echo  [Anka] Could not edit "%NX2_INI%".
+echo  [Dozer] Could not edit "%NX2_INI%".
 exit /b 1
 :end
 endlocal

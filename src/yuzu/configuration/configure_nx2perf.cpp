@@ -116,7 +116,7 @@ void ConfigureNx2Perf::ShowPreset() {
     switch (preset) {
     case Perf::Preset::Recommended:
         ui->preset_text->setText(tr("All settings on, Reactive Flushing off (Graphics, Advanced): "
-                                    "the setup Anka was measured with (GPU Mode Fast, the default). Like "
+                                    "the setup this was measured with (GPU Mode Fast, the default). Like "
                                     "start-recommended.bat."));
         break;
     case Perf::Preset::Reactive:
@@ -126,7 +126,7 @@ void ConfigureNx2Perf::ShowPreset() {
                "start-reactive-experimental.bat."));
         break;
     case Perf::Preset::Safe:
-        ui->preset_text->setText(tr("All settings below off, and the GPU shortcuts Anka keeps on by "
+        ui->preset_text->setText(tr("All settings below off, and the GPU shortcuts that are on by "
                                     "default off too (the variables start-safe.bat sets to 0). "
                                     "Frame generation off; other graphics settings such as "
                                     "Reactive Flushing stay as they are."));
@@ -211,7 +211,7 @@ void ConfigureNx2Perf::ChooseFrameGen(Perf::FrameGen chosen) {
 
 void ConfigureNx2Perf::ShowPending() {
     ui->status->setText(tr("A game is running: Reactive Flushing and frame generation cannot change "
-                           "in it. Anka applies them when it restarts (Restart Now) or when the "
+                           "in it. They are applied when the program restarts (Restart Now) or when the "
                            "game stops."));
 }
 

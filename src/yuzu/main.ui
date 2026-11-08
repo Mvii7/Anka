@@ -11,11 +11,11 @@
    </rect>
   </property>
   <property name="windowTitle">
-  <string>Anka by EddizEge</string>
+  <string>Dozer</string>
   </property>
   <property name="windowIcon">
    <iconset resource="yuzu.qrc">
-    <normaloff>:/img/anka.ico</normaloff>:/img/anka.ico</iconset>
+    <normaloff>:/img/dozer.ico</normaloff>:/img/dozer.ico</iconset>
   </property>
   <property name="tabShape">
    <enum>QTabWidget::TabShape::Rounded</enum>
@@ -59,7 +59,7 @@
     </widget>
     <widget class="QMenu" name="menuOpen_Eden_Folders">
      <property name="title">
-      <string>Open &amp;Anka Folders</string>
+      <string>Open &amp;Dozer Folders</string>
      </property>
      <addaction name="action_Root_Data_Folder"/>
      <addaction name="action_NAND_Folder"/>
@@ -292,7 +292,7 @@
   </action>
   <action name="action_About">
    <property name="text">
-    <string>&amp;About Anka</string>
+    <string>&amp;About Dozer</string>
    </property>
   </action>
   <action name="action_Single_Window_Mode">
@@ -555,7 +555,7 @@
   </action>
   <action name="action_Eden_Dependencies">
    <property name="text">
-    <string>&amp;Anka Dependencies</string>
+    <string>&amp;Dozer Dependencies</string>
    </property>
   </action>
   <action name="action_Data_Manager">

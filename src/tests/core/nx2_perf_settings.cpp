@@ -19,7 +19,7 @@ using namespace Core::Nx2PerfSettings;
 constexpr u64 Bananza = 0x040074A01BF12000ULL;
 constexpr u64 OtherGame = 0x0100000000010000ULL;
 
-// start-recommended.bat's lines (dist/anka), DK_DYN and OSD at their defaults (1).
+// start-recommended.bat's lines (dist/dozer), DK_DYN and OSD at their defaults (1).
 const std::vector<Var> RecommendedBananza{
     {"EDEN_NX2_BACK_STAGES", "1"},
     {"EDEN_NX2_BACK_CUTS", "a"},

@@ -20,12 +20,12 @@ Files: dist/qt_themes/default/icons/256x256/eden.png
 Copyright: 2025 Eden Emulator Project
 License: GPL-3.0-or-later
 
-Files: dist/anka.ico
-       dist/anka.bmp
-       dist/qt_themes/default/icons/256x256/anka.png
-Copyright: 2026 EddizEge
+Files: dist/dozer.ico
+       dist/dozer.bmp
+       dist/qt_themes/default/icons/256x256/dozer.png
+Copyright: 2026 Dozer contributors
 License: GPL-3.0-or-later
-Comment: The Anka logo; dist/anka/anka_logo.py draws it
+Comment: The Dozer logo; dist/dozer/dozer_logo.py draws it
 
 Files: dist/qt_themes/qdarkstyle*/LICENSE.*
        dist/qt_themes/qdarkstyle*/style.qrc

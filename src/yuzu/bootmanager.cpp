@@ -118,7 +118,7 @@ struct NullRenderWidget : public RenderWidget {
 GRenderWindow::GRenderWindow(MainWindow* parent,
                              std::shared_ptr<InputCommon::InputSubsystem> input_subsystem_)
     : QWidget(parent), input_subsystem{std::move(input_subsystem_)} {
-    setWindowTitle(QStringLiteral("Anka by EddizEge | %1-%2")
+    setWindowTitle(QStringLiteral("Dozer | %1-%2")
                        .arg(QString::fromUtf8(Common::g_scm_branch),
                             QString::fromUtf8(Common::g_scm_desc)));
     setAttribute(Qt::WA_AcceptTouchEvents);
@@ -862,7 +862,7 @@ bool GRenderWindow::InitializeOpenGL() {
     return true;
 #else
     QMessageBox::warning(this, tr("OpenGL not available!"),
-                         tr("Anka has not been compiled with OpenGL support."));
+                         tr("Dozer has not been compiled with OpenGL support."));
     return false;
 #endif
 }
