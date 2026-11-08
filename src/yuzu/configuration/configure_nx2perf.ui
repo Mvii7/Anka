@@ -14,13 +14,13 @@
    <string>Form</string>
   </property>
   <property name="accessibleName">
-   <string>Anka</string>
+   <string>Performance</string>
   </property>
   <layout class="QVBoxLayout" name="layout">
    <item>
     <widget class="QLabel" name="intro">
      <property name="text">
-      <string>Anka's speed settings. They apply when a game starts; once a game has run in this session, a change needs a restart (Anka asks).</string>
+      <string>Speed settings. They apply when a game starts; once a game has run in this session, a change needs a restart (you are asked).</string>
      </property>
      <property name="wordWrap">
       <bool>true</bool>

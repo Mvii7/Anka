@@ -148,14 +148,14 @@ Boot Prepare(QWidget* parent, u64 program_id, const QString& game, bool fullscre
         why = QObject::tr("Donkey Kong Bananza's own settings are still on from Bananza; they "
                           "are only for Bananza.");
     } else {
-        why = QObject::tr("The Anka settings changed since this session's first game.");
+        why = QObject::tr("The performance settings changed since this session's first game.");
     }
     QMessageBox box{parent};
     box.setIcon(QMessageBox::Information);
-    box.setWindowTitle(QObject::tr("Anka"));
-    box.setText(QObject::tr("Restart to start this game with the right Anka settings?"));
+    box.setWindowTitle(QObject::tr("Performance"));
+    box.setText(QObject::tr("Restart to start this game with the right performance settings?"));
     box.setInformativeText(why + QStringLiteral("\n\n") +
-                           QObject::tr("Anka's settings are read once per session, so the "
+                           QObject::tr("These settings are read once per session, so the "
                                        "program restarts and starts the game."));
     QPushButton* const restart = box.addButton(QObject::tr("Restart"), QMessageBox::AcceptRole);
     QPushButton* const anyway = box.addButton(QObject::tr("Start Anyway"), QMessageBox::NoRole);
@@ -189,7 +189,7 @@ bool OfferRestart(QWidget* parent, const QString& running_game, bool fullscreen)
     if (!Perf::NeedsRestart(applied, plan) && !(applied && pending_new)) {
         return false;
     }
-    QString text = QObject::tr("This session's game already started with the earlier Anka "
+    QString text = QObject::tr("This session's game already started with the earlier "
                                "settings; the new ones take effect after a restart.");
     if (pending) {
         text += QStringLiteral("\n\n") +
@@ -199,13 +199,13 @@ bool OfferRestart(QWidget* parent, const QString& running_game, bool fullscreen)
     }
     if (!running_game.isEmpty()) {
         text += QStringLiteral("\n\n") +
-                QObject::tr("Anka opens again with the running game: unsaved game progress is "
+                QObject::tr("The program opens again with the running game: unsaved game progress is "
                             "lost.");
     }
     QMessageBox box{parent};
     box.setIcon(QMessageBox::Question);
-    box.setWindowTitle(QObject::tr("Anka"));
-    box.setText(QObject::tr("Restart Anka now to apply?"));
+    box.setWindowTitle(QObject::tr("Performance"));
+    box.setText(QObject::tr("Restart now to apply?"));
     box.setInformativeText(text);
     QPushButton* const restart = box.addButton(QObject::tr("Restart Now"), QMessageBox::AcceptRole);
     QPushButton* const later = box.addButton(QObject::tr("Later"), QMessageBox::RejectRole);
