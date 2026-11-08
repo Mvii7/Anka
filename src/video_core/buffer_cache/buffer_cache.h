@@ -930,6 +930,8 @@ template <class P>
 void BufferCache<P>::AgeCpuReads() {
     const u64 dropped = read_page_ages.Expire(frame_tick, read_latch_age, [this](DAddr page) {
         cpu_read_ranges.Subtract(page, DEVICE_PAGESIZE);
+        // Neither copied back nor trapped any more: the next GPU write traps it again.
+        read_trapped_ranges.Subtract(page, DEVICE_PAGESIZE);
     });
     Common::Nx2Reactive::BumpReadAreaEpoch();
     if (dropped != 0 && Common::Nx2Reactive::StatsEnabled()) {
@@ -2973,6 +2975,8 @@ void BufferCache<P>::DeleteBuffer(BufferId buffer_id, bool do_not_mark) {
     if constexpr (requires { runtime.OnBufferDeleted(slot_buffers[buffer_id]); }) {
         runtime.OnBufferDeleted(slot_buffers[buffer_id]);
     }
+    read_trapped_ranges.Subtract(slot_buffers[buffer_id].CpuAddr(),
+                                 slot_buffers[buffer_id].SizeBytes());
     bool dirty_index{false};
     boost::container::small_vector<u64, NUM_VERTEX_BUFFERS> dirty_vertex_buffers;
     const auto scalar_replace = [buffer_id](Binding& binding) {

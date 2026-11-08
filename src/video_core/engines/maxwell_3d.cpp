@@ -1504,12 +1504,14 @@ bool HleIndirectEnabled() {
     return enabled;
 }
 
-// EDEN_NX2_INDIRECT_BATCH=0: one host draw (and one draw setup on the back) per call of NVN's
-// indexed indirect draw macro, even for calls whose records follow each other in memory.
+// EDEN_NX2_INDIRECT_BATCH=1: calls of NVN's indexed indirect draw macro whose records follow each
+// other in memory share one host draw (and one draw setup on the back). Off by default: one host
+// draw per call. Merged, Bananza's terrain drew garbage polygons and lost chunks after minutes
+// of play, and the merge saved little on a Ryzen 7 5700X3D with an RTX 5070 Ti.
 bool IndirectBatchEnabled() {
     static const bool enabled = [] {
         const char* value = std::getenv("EDEN_NX2_INDIRECT_BATCH");
-        return value == nullptr || value[0] != '0';
+        return value != nullptr && value[0] == '1';
     }();
     return enabled;
 }
