@@ -3,7 +3,8 @@
 
 """Dozer's mark: a D whose flat edge is a bulldozer blade, with speed lines, on a dark tile.
 
-The source of dist/dozer.ico, dist/dozer.bmp and dist/qt_themes/default/icons/256x256/dozer.png;
+The source of dist/dozer.ico, dist/dozer.icns (the macOS app icon), dist/dozer.bmp and
+dist/qt_themes/default/icons/256x256/dozer.png;
 needs only Pillow:
     python dist/dozer/dozer_logo.py [output folder for a preview sheet]
 Drawn in a unit square at 8x and scaled down, so the edges stay smooth. 16 and 24 px leave out the
@@ -120,6 +121,10 @@ def main():
     render(256).save(png, optimize=True)
     bmp = os.path.join(DIST, 'dozer.bmp')
     write_bmp(frames[-1], bmp)
+    icns_frames = [render(s) for s in (16, 32, 64, 128, 256, 512)]
+    icns = os.path.join(DIST, 'dozer.icns')
+    icns_frames[-1].save(icns, format='ICNS', append_images=icns_frames[:-1])
+    print(icns)
     print(ico)
     print(png)
     print(bmp)
