@@ -81,7 +81,7 @@ ConfigureDialog::ConfigureDialog(QWidget* parent, HotkeyRegistry& registry_,
     ui->tabWidget->addTab(input_tab.get(), tr("Controls"));
     ui->tabWidget->addTab(profile_tab.get(), tr("Profiles"));
     ui->tabWidget->addTab(network_tab.get(), tr("Network"));
-    ui->tabWidget->addTab(nx2perf_tab.get(), tr("Performance"));
+    ui->tabWidget->addTab(nx2perf_tab.get(), tr("Tuning"));
     ui->tabWidget->addTab(system_tab.get(), tr("System"));
     ui->tabWidget->addTab(ui_tab.get(), tr("Game List"));
     ui->tabWidget->addTab(web_tab.get(), tr("Web"));
@@ -192,7 +192,7 @@ void ConfigureDialog::PopulateSelectionList() {
           {graphics_tab.get(), graphics_advanced_tab.get(), graphics_extensions_tab.get()}},
          {tr("Audio"), {audio_tab.get()}},
          {tr("Controls"), input_tab->GetSubTabs()},
-         {tr("Performance"), {nx2perf_tab.get()}}},
+         {tr("Tuning"), {nx2perf_tab.get()}}},
     };
 
     [[maybe_unused]] const QSignalBlocker blocker(ui->selectorList);

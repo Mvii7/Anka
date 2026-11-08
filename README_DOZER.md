@@ -14,7 +14,7 @@ maintainer's own use, and shared as it is. Other games are not supported.
 Dozer runs on its own: unzip it into a new, empty folder (see "Install"). It ships two programs:
 
 - **`dozer.exe`**, the menu program: a Qt front end (game list, menus, settings) with Dozer's
-  settings built in and a **Performance** tab in its settings. This is the easy way.
+  settings built in and a **Tuning** tab in its settings. This is the easy way.
 - **`dozer-cli.exe`**, the program without menus (SDL), with launchers (`start-*.bat`) that start
   it with the recommended settings.
 
@@ -80,7 +80,7 @@ saves (`user\nand`), shader caches and log (`user\log\eden_log.txt`) in it, and 
 `%APPDATA%\eden` or another emulator's folder (the one exception: `dozer.exe` also reads a
 `nx2_switches.txt` in `%APPDATA%\eden`, if you made one; see "Switches set outside win").
 
-Settings: **Emulation > Configure... > Performance**. On the first start the preset is
+Settings: **Emulation > Configure... > Tuning**. On the first start the preset is
 **Recommended**, and Dozer also turns *Enable Reactive Flushing* off in
 its `qt-config.ini` (Graphics > Advanced).
 
@@ -88,7 +88,7 @@ GPU Mode (GPU accuracy) starts at **Fast** (Low), as in newer Eden versions (2.0
 Accurate, High, on desktop); our measurements used Fast. If a game shows image errors, set
 Graphics > Advanced > GPU Mode to Accurate for that game (its Properties) or globally.
 
-### The Performance tab
+### The Tuning tab
 
 At the top of the tab is a **Preset** box; a one-line description of the chosen preset is shown
 under it.
@@ -110,7 +110,7 @@ problems, try Safe first and report it with the game's name.
 | **Off** (the default) | frame generation off |
 | **2x** | FSR3, one generated frame per real frame (fixed). On a 60 Hz screen it holds the game at 30 fps |
 | **Dynamic** | FSR3 with a 120 fps target, capped at the screen's refresh rate when it is known. It steps between 1x and 4x only while the screen can show the extra frames and the game's own frame rate holds: a step that lowers the game's frame rate by more than 8% is undone |
-| *Other (Graphics tab)* | not a choice: shown when the Graphics tab holds another frame generation setup (LSFG, or another multiplier or target frame rate), which the Performance tab leaves as it is |
+| *Other (Graphics tab)* | not a choice: shown when the Graphics tab holds another frame generation setup (LSFG, or another multiplier or target frame rate), which the Tuning tab leaves as it is |
 
 Generated frames need a screen faster than the game's frame rate; on a 60 Hz screen they only
 help below 30 fps. The presets do not change this box, except Safe, which sets it to Off. The
@@ -240,7 +240,7 @@ error. Take the launchers from the release zip: they need Windows line endings (
   combination that was not tested.
 
 dozer-cli reads the switches only from its environment (the launchers); it does not read the
-Performance tab. `nx2_switches_DOZER.txt` lists every switch with its default and what it does. Under
+Tuning tab. `nx2_switches_DOZER.txt` lists every switch with its default and what it does. Under
 that name no program reads it: `dozer.exe` (not dozer-cli) reads a `nx2_switches.txt` next to it
 and one in `%APPDATA%\eden`, so copy the lines you want into a `nx2_switches.txt` of your own.
 
@@ -248,7 +248,7 @@ and one in `%APPDATA%\eden`, so copy the lines you want into a `nx2_switches.txt
 
 All are environment variables named `EDEN_NX2_<NAME>`. The full list (about 230 new names, most
 of them diagnostics or tuning knobs) is in `nx2_switches_DOZER.txt`. "Default" is dozer-cli
-without a launcher; the menu program sets the recommended ones from its Performance tab.
+without a launcher; the menu program sets the recommended ones from its Tuning tab.
 
 | Switch | Default | What it does |
 |---|---|---|
@@ -280,7 +280,7 @@ changed, and with the switch unset no module is touched. It only applies to Bana
 moves the 40 fps limit.
 
 It is off by default in dozer-cli; `start-recommended.bat` turns it on (`DK_DYN=1` at its top),
-and so does the menu program's Performance tab (Dynamic frame rate, on in the Recommended presets,
+and so does the menu program's Tuning tab (Dynamic frame rate, on in the Recommended presets,
 Bananza only). With it the game's frame time varies by design (any rate between 40 and 60, in
 steps of 2); below 40 fps the game still drops to its 30 fps rule. While it is applied,
 `PRESENT_INTERVAL_WORD` and `MODE_PACE` are set aside and presents are paced to every vblank.
@@ -288,7 +288,7 @@ steps of 2); below 40 fps the game still drops to its 30 fps rule. While it is a
 ## Frame generation (optional)
 
 PokeDinner-Eglantine 2.0.0 already has frame generation; Dozer adds `FG_TIMED`, shows the
-multiplier on the OSD and has a **Frame generation** box in its Performance tab ("The Performance tab").
+multiplier on the OSD and has a **Frame generation** box in its Tuning tab ("The Tuning tab").
 Two kinds exist:
 
 - **FSR3** (built in, the default kind). This is the recommended kind.
@@ -296,7 +296,7 @@ Two kinds exist:
   *Lossless Scaling* app. **Dozer does not include it**; put your own copy in the user folder's
   `lossless\` folder if you want this kind.
 
-In the menu program, choose 2x or Dynamic in the Performance tab's Frame generation box (it writes the
+In the menu program, choose 2x or Dynamic in the Tuning tab's Frame generation box (it writes the
 Graphics tab's frame generation settings, which you can also set there). To turn FSR3
 frame generation on for dozer-cli, close the program and add these lines under `[Renderer]` in
 `config\sdl2-config.ini` (the `\default=false` lines make dozer-cli read the value):
@@ -323,7 +323,7 @@ use_reactive_flushing=false
 ```
 
 matches our recommended setup; `=true` (or no such lines) is reactive flushing on. In the menu
-program it is *Enable Reactive Flushing* under Graphics > Advanced: the Performance tab's
+program it is *Enable Reactive Flushing* under Graphics > Advanced: the Tuning tab's
 **Recommended** preset turns it off (also on Dozer's first start), **Recommended + Reactive
 Flushing** turns it on with barrier feedback loops (and `RX_RT_FIT=3`), **Safe** leaves it as it
 is. The launchers take care of it for dozer-cli. `start-recommended.bat` writes
@@ -346,7 +346,7 @@ writes before fragment shader reads, by region), so the render pass goes on. Bot
 
 In Anka's author's tests `RX_RT_FIT=3` was clearly better than `=1` at the opening and the same in the
 open area. Against reactive flushing off it is a trade that depends on the scene. That is why there
-are two setups for play, as launchers and as presets of the Performance tab: recommended (reactive
+are two setups for play, as launchers and as presets of the Tuning tab: recommended (reactive
 flushing off) and reactive experimental (on, with `RX_RT_FIT=3`). **Experimental:** reactive flushing was **never measured together with
 frame generation**, and the image with `RX_RT_FIT=3` has not been checked by eye yet (its barrier
 inside the render pass covers a fragment reading the pixel it renders, which is what the Vulkan
