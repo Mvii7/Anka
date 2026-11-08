@@ -5,15 +5,6 @@
 <p align="center">Not affiliated with Nintendo, the Eden project or Franseven; please report problems in
 this repository's <a href="https://github.com/Mvii7/Dozer/issues">Issues</a>, not to them.</p>
 
-## The name
-
-Dozer rips through Switch 2 games like a bulldozer. It is a performance-focused fork of
-[Anka](https://github.com/EddizEge/Anka) by EddizEge, which is built on Eglantine (Franseven), Eden
-and yuzu, with fixes found while playing Donkey Kong Bananza.
-
-The full documentation is [`README_DOZER.md`](../README_DOZER.md). The `README.md` at the top of
-this tree is the upstream project's own.
-
 ## Downloads and setup
 
 Builds are made by GitHub Actions: open the latest run of the `anka` branch in the Actions tab and
