@@ -6,7 +6,9 @@
 
 #include <algorithm>
 #include <array>
+#include <deque>
 #include <optional>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -43,54 +45,79 @@ namespace {
 // bank 0 holds the tensor upscaler's sizes (Nx2UpscalePick::SizesFromBank0), every texture and
 // image the shader reads or writes, with the constant bank word naming it. Needs the matrix
 // multiply emulated (the default, so EDEN_NX2_TENSOR unset): a rejected program has no bindings.
+// =2 also keeps a ring of the last 48 compute dispatches (program, grid, bindings) and prints it
+// with the first dispatch of each upscaler program, then the next 16 dispatches as they happen:
+// the passes that read the depth and motion vectors.
 template <typename Views>
-void LogUpscaleBindings(TextureCache& texture_cache, Tegra::MemoryManager& gpu_memory,
-                        GPUVAddr bank0, u32 block_x, u32 grid_x, u32 grid_y, u64 shader_hash,
-                        const Shader::Info& info, const Views& views) {
-    std::array<u32, 12> words{};
-    gpu_memory.ReadBlockUnsafe(bank0, words.data(), sizeof(words));
-    if (!Tegra::Engines::Nx2UpscalePick::SizesFromBank0(words, block_x, grid_x, grid_y)) {
-        return;
-    }
-    static std::unordered_map<const Shader::Info*, u32> calls;
-    const u32 call = calls[&info]++;
-    if (call >= 2) {
-        return;
-    }
-    LOG_INFO(HW_GPU, "Upscale bindings: program {:#x} dispatch {}: {}x{} -> {}x{}", shader_hash,
-             call, words[6] + 1, words[7] + 1, words[10] + 1, words[11] + 1);
+std::string DescribeBindings(TextureCache& texture_cache, const Shader::Info& info,
+                             const Views& views) {
+    std::string text;
     std::size_t at{};
-    const auto log_group = [&](const char* kind, const auto& descs) {
+    const auto add_group = [&](const char* kind, const auto& descs) {
         for (const auto& desc : descs) {
             for (u32 i = 0; i < desc.count; ++i, ++at) {
                 if (at >= views.size() || !views[at].id) {
                     continue;
                 }
                 const auto& view = texture_cache.GetImageView(views[at].id);
-                u32 type = 0;
-                if constexpr (requires { desc.type; }) {
-                    type = static_cast<u32>(desc.type);
-                }
                 bool written = false;
                 if constexpr (requires { desc.is_written; }) {
                     written = desc.is_written;
                 }
-                LOG_INFO(HW_GPU,
-                         "  {} bank {} +{:#x} (+{:#x} per index): {}x{}, pixel format {}, "
-                         "type {}{}",
-                         kind, desc.cbuf_index, desc.cbuf_offset, 1U << desc.size_shift,
-                         view.size.width, view.size.height, static_cast<u32>(view.format),
-                         type, written ? ", written" : "");
+                text += fmt::format("\n  {} bank {} +{:#x}: {}x{}, pixel format {}{}", kind,
+                                    desc.cbuf_index, desc.cbuf_offset, view.size.width,
+                                    view.size.height, static_cast<u32>(view.format),
+                                    written ? ", written" : "");
             }
         }
     };
-    log_group("texture buffer", info.texture_buffer_descriptors);
-    log_group("image buffer", info.image_buffer_descriptors);
-    log_group("texture", info.texture_descriptors);
-    log_group("image", info.image_descriptors);
+    add_group("texture buffer", info.texture_buffer_descriptors);
+    add_group("image buffer", info.image_buffer_descriptors);
+    add_group("texture", info.texture_descriptors);
+    add_group("image", info.image_descriptors);
     for (const auto& desc : info.storage_buffers_descriptors) {
-        LOG_INFO(HW_GPU, "  storage buffer bank {} +{:#x}{}", desc.cbuf_index, desc.cbuf_offset,
-                 desc.is_written ? ", written" : "");
+        text += fmt::format("\n  storage buffer bank {} +{:#x}{}", desc.cbuf_index,
+                            desc.cbuf_offset, desc.is_written ? ", written" : "");
+    }
+    return text;
+}
+
+template <typename Views>
+void LogUpscaleBindings(TextureCache& texture_cache, Tegra::MemoryManager& gpu_memory,
+                        GPUVAddr bank0, u32 block_x, u32 grid_x, u32 grid_y, u64 shader_hash,
+                        const Shader::Info& info, const Views& views, bool ring_mode) {
+    static std::deque<std::string> ring;
+    static u32 live = 0;
+    std::array<u32, 12> words{};
+    gpu_memory.ReadBlockUnsafe(bank0, words.data(), sizeof(words));
+    const auto sizes = Tegra::Engines::Nx2UpscalePick::SizesFromBank0(words, block_x, grid_x,
+                                                                      grid_y);
+    std::string entry;
+    if (ring_mode) {
+        entry = fmt::format("compute program {:#x}: grid {}x{}, block {}{}", shader_hash, grid_x,
+                            grid_y, block_x, DescribeBindings(texture_cache, info, views));
+    }
+    static std::unordered_map<u64, u32> calls;
+    const u32 call = sizes ? calls[shader_hash]++ : 0;
+    if (sizes && call < 2) {
+        LOG_INFO(HW_GPU, "Upscale bindings: program {:#x} dispatch {}: {}x{} -> {}x{}{}",
+                 shader_hash, call, sizes->in_w, sizes->in_h, sizes->out_w, sizes->out_h,
+                 ring_mode ? std::string{} : DescribeBindings(texture_cache, info, views));
+        if (ring_mode && call == 0) {
+            for (const auto& line : ring) {
+                LOG_INFO(HW_GPU, "  before: {}", line);
+            }
+            live = 16;
+        }
+    } else if (ring_mode && live > 0) {
+        --live;
+        LOG_INFO(HW_GPU, "  after: {}", entry);
+    }
+    if (ring_mode) {
+        ring.push_back(std::move(entry));
+        if (ring.size() > 48) {
+            ring.pop_front();
+        }
     }
 }
 
@@ -292,13 +319,14 @@ bool ComputePipeline::Configure(Tegra::Engines::KeplerCompute& kepler_compute,
     }
     texture_cache.FillImageViews(std::span(views.data(), views.size()), true);
 
-    static const bool bindings_diag = [] {
+    static const int bindings_diag = [] {
         const char* text = std::getenv("EDEN_NX2_UPSCALE_BINDINGS");
-        return text != nullptr && text[0] != '0';
+        return text == nullptr || text[0] == '0' ? 0 : (text[0] == '2' ? 2 : 1);
     }();
-    if (bindings_diag) [[unlikely]] {
+    if (bindings_diag != 0) [[unlikely]] {
         LogUpscaleBindings(texture_cache, gpu_memory, cbufs[0].Address(), qmd.block_dim_x,
-                           qmd.grid_dim_x, qmd.grid_dim_y, shader_hash, info, views);
+                           qmd.grid_dim_x, qmd.grid_dim_y, shader_hash, info, views,
+                           bindings_diag == 2);
     }
 
     buffer_cache.UnbindComputeTextureBuffers();
