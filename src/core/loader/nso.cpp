@@ -129,6 +129,7 @@ bool ReportVrrSupported(std::span<u8> image, std::string_view module_name) {
             return false;
         }
         std::memcpy(image.data() + *value, Code.data(), sizeof(Code));
+        Core::g_nx2_vrr_reported.store(true, std::memory_order_relaxed);
         LOG_INFO(Loader, "{}: QueryVrrSupported at {:#x} now reports VRR support", module_name, *value);
         return true;
     }

@@ -1016,6 +1016,7 @@ public:
         const u64 application = system.GetApplicationProcessProgramID();
         m_pace_one = Nx2DkDynPace::PaceOne(dk_dyn, application, std::getenv("EDEN_NX2_PACE_ONE"));
         m_dk_dyn_applied = Nx2DkDynPace::ReportVrr(dk_dyn, application);
+        m_vrr_sdk = Core::g_nx2_vrr_reported.load(std::memory_order_relaxed) && !dk_dyn;
         if (Nx2DkDynPace::ReportVrr(dk_dyn, application)) {
             if (GetReplies() == nullptr) {
                 static const FunctionInfo vrr[] = {
@@ -1194,7 +1195,12 @@ private:
         } else {
             PaceToVblank(PresentInterval(w), PresentRate(w));
         }
-        if (!m_pace_one && VideoCommon::Nx2ModePace::Enabled()) [[unlikely]] {
+        if (m_vrr_sdk && !m_vrr_sdk_logged) [[unlikely]] {
+            m_vrr_sdk_logged = true;
+            LOG_INFO(Service, "nx2:vi2 EDEN_NX2_REPORT_VRR: the game's own VRR mode; the present "
+                              "interval is honoured, EDEN_NX2_MODE_PACE is set aside");
+        }
+        if (!m_pace_one && !m_vrr_sdk && VideoCommon::Nx2ModePace::Enabled()) [[unlikely]] {
             if (VideoCommon::Nx2ModePace::Hold(PresentInterval(w), GuestSleeperOrNull()) &&
                 VblankGridMode() == 0) {
                 // The vblank pacing starts over from the held present: no short frames after it.
@@ -1210,7 +1216,7 @@ private:
         if (VideoCommon::Nx2ModeGov::Enabled()) [[unlikely]] {
             VideoCommon::Nx2ModeGov::Present(PresentInterval(w), composited, paced);
         }
-        if (!m_pace_one && VideoCommon::Nx2ModePace::Enabled()) [[unlikely]] {
+        if (!m_pace_one && !m_vrr_sdk && VideoCommon::Nx2ModePace::Enabled()) [[unlikely]] {
             VideoCommon::Nx2ModePace::Present(PresentInterval(w), entered, composited, paced);
             // EDEN_NX2_MODE_PACE=2: a released present lets the next one come early (a fast frame
             // to the game, which is what takes it up); 0 with =1.
@@ -2088,6 +2094,11 @@ private:
     bool m_dk_dyn_applied{};
     bool m_pace_one_logged{};
     bool m_vrr_reported{};
+    // EDEN_NX2_REPORT_VRR applied (Core::g_nx2_vrr_reported): the game's own VRR mode. MODE_PACE,
+    // which holds presents to steer the fixed 60 / 30 / 20 modes, is set aside; the present
+    // interval of word 12 is still honoured (1 in 40-60 fps, 2 or 3 below the floor).
+    bool m_vrr_sdk{};
+    bool m_vrr_sdk_logged{};
 
     // EDEN_NX2_VI2_REPLY_FILE / EDEN_NX2_VI2_REPLY (off by default): replies from a table that may
     // change while the game runs (nx2_vi2_reply.h), shared by every vi2 session. Null when off.
@@ -2602,6 +2613,11 @@ private:
         static const std::optional<Nx2Vi2Events::VrrVsyncRates> rates =
             []() -> std::optional<Nx2Vi2Events::VrrVsyncRates> {
             const char* text = std::getenv("EDEN_NX2_VRR_VSYNC");
+            // With EDEN_NX2_REPORT_VRR the vsync events follow the presents by default, as the
+            // game's VRR mode measures its frame time from them: 60:40, the game's own range.
+            if (text == nullptr && Core::g_nx2_vrr_reported.load(std::memory_order_relaxed)) {
+                text = "60:40";
+            }
             if (text == nullptr || text[0] == '\0' || std::string_view{text} == "0") {
                 return std::nullopt;
             }

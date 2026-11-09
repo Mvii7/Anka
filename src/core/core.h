@@ -126,6 +126,11 @@ extern std::atomic<u32> g_nx2_session;
 /// EDEN_NX2_DK_DYN: Donkey Kong Bananza's dynamic frame rate patch went into its main module as it
 /// loaded (core/loader/nx2_dk_dynamic_fps.h); vi2 then reports VRR and paces every vblank.
 extern std::atomic<bool> g_nx2_dk_dyn_applied;
+/// EDEN_NX2_REPORT_VRR: the SDK's QueryVrrSupported was made to report VRR as the module loaded
+/// (core/loader/nso.cpp), so the game runs its own VRR mode. vi2 then keeps its present interval
+/// (word 12) but sets the 60 / 30 / 20 mode steering (MODE_PACE) aside, and the vsync events follow
+/// the presents (60:40 unless EDEN_NX2_VRR_VSYNC says otherwise).
+extern std::atomic<bool> g_nx2_vrr_reported;
 
 class CpuManager;
 class Debugger;
