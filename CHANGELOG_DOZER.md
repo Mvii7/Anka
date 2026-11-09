@@ -8,6 +8,9 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- Rumble: HID command 214 (the Switch 2 titles' vibration, sent every frame) is forwarded to the
+  controller through the existing vibration path; it was accepted and dropped. From the Selevet
+  fork (`49e2ed7`); not tried with a controller yet.
 - **Dozer** is a fork of Anka (EddizEge). The program, its window titles, dialogs, the About box and
   the build are renamed (`dozer.exe`, `dozer-cli.exe`, the launchers and the documents in
   `dist/dozer/`), with a new logo drawn by `dist/dozer/dozer_logo.py`: a D whose flat edge is a
