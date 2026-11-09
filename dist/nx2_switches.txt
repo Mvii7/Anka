@@ -16,6 +16,9 @@
 # pusher's EDEN_NX2_PB_CHECK and SEM_WATCH (all EDEN_NX2_...).
 
 # --- workarounds / behaviour ---
+# REPORT_VRR=1: the Switch 2 SDK's QueryVrrSupported reports VRR, so a game that has a VRR mode
+# (Bananza: 40-60 fps) times its own frames (from the Selevet fork). Use it without DK_DYN.
+#EDEN_NX2_REPORT_VRR=1
 #EDEN_NX2_BUFFER_DOWNLOADS=1
 #EDEN_NX2_SPLIT=1
 #EDEN_NX2_MME_JIT=0

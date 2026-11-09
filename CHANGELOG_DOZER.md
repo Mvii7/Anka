@@ -8,6 +8,9 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- `EDEN_NX2_REPORT_VRR=1` (off by default, for testing): the Switch 2 SDK reports VRR support so
+  a game uses its own VRR mode (Bananza 40-60 fps) without the dynamic frame rate patch of its
+  code (`DK_DYN`). From the Selevet fork.
 - **Dozer** is a fork of Anka (EddizEge). The program, its window titles, dialogs, the About box and
   the build are renamed (`dozer.exe`, `dozer-cli.exe`, the launchers and the documents in
   `dist/dozer/`), with a new logo drawn by `dist/dozer/dozer_logo.py`: a D whose flat edge is a

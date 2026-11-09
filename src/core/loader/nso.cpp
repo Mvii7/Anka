@@ -5,10 +5,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <algorithm>
+#include <array>
 #include <cinttypes>
 #include <cstdlib>
 #include <cstring>
+#include <optional>
 #include <span>
+#include <string_view>
 #include <vector>
 
 #include "common/common_funcs.h"
@@ -47,6 +50,89 @@ static_assert(sizeof(MODHeader) == 0x1c, "MODHeader has incorrect size.");
 
 constexpr u32 PageAlignSize(u32 size) {
     return static_cast<u32>((size + Core::Memory::YUZU_PAGEMASK) & ~Core::Memory::YUZU_PAGEMASK);
+}
+
+// The Switch 2 SDK's nn::vi::detail::DefaultDisplay::QueryVrrSupported learns VRR support from a
+// display mode capability event Eden never signals, so it reports none. Title 4 then assumes a fixed
+// 60 Hz display and its speed swings with the frame rate; told VRR works, it enables it and times
+// its frames itself. Make the exported function store true and succeed (any SDK version: found by
+// name). From the Selevet fork (8b076b1). Dozer: EDEN_NX2_REPORT_VRR=1 turns it on (off by default
+// for now; use it without EDEN_NX2_DK_DYN, which rewrites Bananza's frame controller instead).
+bool ReportVrrSupported(std::span<u8> image, std::string_view module_name) {
+    static const bool enabled = [] {
+        const char* value = std::getenv("EDEN_NX2_REPORT_VRR");
+        return value != nullptr && value[0] == '1';
+    }();
+    if (!enabled || image.size() < 8) {
+        return false;
+    }
+    const auto read32 = [&](u64 offset) -> std::optional<u32> {
+        if (offset + 4 > image.size()) return std::nullopt;
+        u32 value;
+        std::memcpy(&value, image.data() + offset, 4);
+        return value;
+    };
+    const auto read64 = [&](u64 offset) -> std::optional<u64> {
+        if (offset + 8 > image.size()) return std::nullopt;
+        u64 value;
+        std::memcpy(&value, image.data() + offset, 8);
+        return value;
+    };
+    const auto mod0 = read32(4);
+    if (!mod0 || read32(*mod0) != Common::MakeMagic('M', 'O', 'D', '0')) {
+        return false;
+    }
+    const auto dynamic_rel = read32(*mod0 + 4);
+    if (!dynamic_rel) {
+        return false;
+    }
+    u64 symtab = 0, strtab = 0, strsz = 0, hash = 0;
+    for (u64 entry = *mod0 + static_cast<s32>(*dynamic_rel);; entry += 16) {
+        const auto tag = read64(entry), value = read64(entry + 8);
+        if (!tag || !value || *tag == 0) break;
+        switch (*tag) {
+        case 4: hash = *value; break;    // DT_HASH
+        case 5: strtab = *value; break;  // DT_STRTAB
+        case 6: symtab = *value; break;  // DT_SYMTAB
+        case 10: strsz = *value; break;  // DT_STRSZ
+        default: break;
+        }
+    }
+    if (symtab == 0 || strtab == 0) {
+        return false;
+    }
+    // DT_HASH gives the symbol count; with only DT_GNU_HASH (the Switch 2 SDK) the table runs up
+    // to the string table, which follows it.
+    std::optional<u32> count = hash != 0 ? read32(hash + 4) : std::nullopt;
+    if (!count && strtab > symtab) {
+        count = static_cast<u32>((strtab - symtab) / 24);
+    }
+    if (!count) {
+        return false;
+    }
+    constexpr std::string_view Target = "_ZNK2nn2vi6detail14DefaultDisplay17QueryVrrSupportedEPb";
+    for (u32 index = 0; index < *count; ++index) {
+        const u64 symbol = symtab + u64{index} * 24;
+        const auto name_offset = read32(symbol);
+        const auto value = read64(symbol + 8);
+        if (!name_offset || !value || *value == 0 || *name_offset + Target.size() >= strsz ||
+            strtab + *name_offset + Target.size() >= image.size()) {
+            continue;
+        }
+        const auto* name = reinterpret_cast<const char*>(image.data() + strtab + *name_offset);
+        if (std::string_view{name, Target.size()} != Target || name[Target.size()] != '\0') {
+            continue;
+        }
+        // mov w8, #1; strb w8, [x1]; mov w0, #0; ret
+        static constexpr std::array<u32, 4> Code{0x52800028, 0x39000028, 0x52800000, 0xd65f03c0};
+        if (*value + sizeof(Code) > image.size()) {
+            return false;
+        }
+        std::memcpy(image.data() + *value, Code.data(), sizeof(Code));
+        LOG_INFO(Loader, "{}: QueryVrrSupported at {:#x} now reports VRR support", module_name, *value);
+        return true;
+    }
+    return false;
 }
 } // Anonymous namespace
 
@@ -176,6 +262,10 @@ std::optional<VAddr> AppLoader_NSO::LoadModule(Kernel::KProcess& process, Core::
         pi_header = pm->PatchNSO(pi_header, name);
 
         std::copy(pi_header.begin() + sizeof(NSOHeader), pi_header.end(), patchable_section.data());
+    }
+
+    if (name == "sdk") {
+        ReportVrrSupported(std::span{codeset.memory}.subspan(module_start), name);
     }
 
     // EDEN_NX2_DK_DYN=1 (off by default): Donkey Kong Bananza's dynamic frame rate
