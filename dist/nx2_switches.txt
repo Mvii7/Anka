@@ -20,6 +20,10 @@
 #EDEN_NX2_SPLIT=1
 #EDEN_NX2_MME_JIT=0
 #EDEN_NX2_PBFLUSH=0
+# ALWAYS_CONTINUE=1: an open method keeps consuming the next GPFIFO entry even when that entry
+# is a called command buffer (the previous behaviour). Default: only a short macro or compute
+# parameter tail continues; the called buffer runs on its own, so its vertex streams are written.
+#EDEN_NX2_ALWAYS_CONTINUE=1
 #EDEN_NX2_RESETFIX=0
 #EDEN_NX2_FENCE_BATCH=1
 #EDEN_NX2_SKIP_SAME=0

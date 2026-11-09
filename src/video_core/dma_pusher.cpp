@@ -264,10 +264,17 @@ bool DmaPusher::Step() {
             }
         }
         if (command_resume_offset == 0) {
-            // A method's data continues across GP entries, whatever their level: title 4 ends a
-            // main entry after a macro's first word and supplies the remaining parameters in a
-            // 5-word subroutine entry. EDEN_NX2_PARK_SPLIT_METHODS restores the old guess (an
-            // entry elsewhere is a call that starts clean; resume where the split one ended).
+            // Method data continues into the next entry when that entry is the rest of the same
+            // pushbuffer, or a short macro / compute-inline parameter tail (title 4 ends a main
+            // entry after a macro's first word and puts the other five in their own entry;
+            // Bananza's terrain draws do the same with the GPU-written indirect record).
+            // Any other entry is a command buffer NVN called while the method was open. Feeding
+            // it to the open method consumes its first words as data, and the vertex-stream
+            // writes at the start of that buffer never run: the draw keeps the previous mesh's
+            // vertex buffer under this mesh's indices (Bananza's black shape with a white halo).
+            // EDEN_NX2_ALWAYS_CONTINUE=1 feeds every entry to the open method.
+            // EDEN_NX2_PARK_SPLIT_METHODS=1 parks parameter tails too.
+            static const bool always_continue = std::getenv("EDEN_NX2_ALWAYS_CONTINUE") != nullptr;
             static const bool park_split_methods = std::getenv("EDEN_NX2_PARK_SPLIT_METHODS") != nullptr;
             if (g_nx2_ampere) {
                 if (static u32 split_logs{}; dma_state.method_count != 0 && split_logs < 64) {
@@ -285,7 +292,7 @@ bool DmaPusher::Step() {
                     LOG_DEBUG(HW_GPU, "  previous entry ends {:08x}; next entry starts {:08x}",
                               fmt::join(prev_words, " "), fmt::join(next_words, " "));
                 }
-                if (park_split_methods) {
+                if (!always_continue && (park_split_methods || !IsOpenParameterTail(header))) {
                     ResolveSplitMethod(header.addr);
                 }
             }
@@ -445,10 +452,34 @@ size_t DmaPusher::ProcessCommands(std::span<const CommandHeader> commands, size_
     return commands.size();
 }
 
+bool DmaPusher::IsOpenParameterTail(const CommandListHeader& header) const {
+    // Contiguous with the entry that split: the same pushbuffer, not a called one.
+    if (dma_state.method_count == 0 || header.addr == split_method_end) {
+        return false;
+    }
+    // Longer than the method still wants, or longer than the parameter flushes: a command
+    // buffer, not the tail. Its words would otherwise be split between the open method and the
+    // parser, and the vertex-stream methods in the first part would not run.
+    if (header.size == 0 || header.size > dma_state.method_count || header.size > 64) {
+        return false;
+    }
+    const auto* const engine_state = subchannels[dma_state.subchannel];
+    if (engine_state == nullptr) {
+        return false;
+    }
+    const auto engine = subchannel_type[dma_state.subchannel];
+    const bool compute_upload = engine == Engines::EngineTypes::KeplerCompute &&
+                                dma_state.method == ComputeInline && dma_state.non_incrementing;
+    const bool macro_parameters =
+        engine == Engines::EngineTypes::Maxwell3D && dma_state.method >= MacroRegistersStart;
+    return compute_upload || macro_parameters;
+}
+
 // NVN on Switch 2 ends GPFIFO entries in the middle of a method's data and calls another command
 // buffer (e.g. a compute dispatch) before the entry that carries the rest, which starts right
 // where the first one ended. An entry starting anywhere else is such a call: run it with a clean
 // method state and resume the unfinished method when the stream continues at that address.
+// A short macro or compute parameter tail is not such a call (IsOpenParameterTail).
 void DmaPusher::ResolveSplitMethod(GPUVAddr entry_address) {
     const auto continued = std::ranges::find(parked_methods, entry_address,
                                              &ParkedMethod::resume_address);
