@@ -119,6 +119,9 @@ public:
      * being flushed.
      */
     void ReadBlockUnsafe(GPUVAddr gpu_src_addr, void* dest_buffer, std::size_t size) const;
+    /// Reads `count` consecutive words as Read<u32> would, including the syncpoint shim,
+    /// in one copy when the range does not overlap that shim.
+    void ReadWordsUnsafe(GPUVAddr gpu_src_addr, u32* dest, std::size_t count) const;
     /// `caches_told`: the caller hands the range to every cache itself (else its pages count as
     /// written around the caches, Tegra::Nx2MarkUntrackedWrite).
     void WriteBlockUnsafe(GPUVAddr gpu_dest_addr, const void* src_buffer, std::size_t size,

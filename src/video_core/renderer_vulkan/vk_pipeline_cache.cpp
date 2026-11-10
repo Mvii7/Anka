@@ -471,6 +471,22 @@ size_t GraphicsPipelineCacheKey::Hash() const noexcept {
     return static_cast<size_t>(hash);
 }
 
+namespace {
+
+// NVIDIA's and AMD's proprietary drivers already keep a disk cache of pipelines. A second
+// VkPipelineCache held every pipeline of the session in memory and was copied whole on each save.
+bool DriverCachesPipelines(const Device& device) {
+    switch (device.GetDriverID()) {
+    case VK_DRIVER_ID_NVIDIA_PROPRIETARY:
+    case VK_DRIVER_ID_AMD_PROPRIETARY:
+        return true;
+    default:
+        return false;
+    }
+}
+
+} // namespace
+
 bool GraphicsPipelineCacheKey::operator==(const GraphicsPipelineCacheKey& rhs) const noexcept {
     // EDEN_NX2_KEY_CMP (elBart0 0017): the shader hashes as six words first, then the state's
     // bytes in use; the same bytes as one memcmp of Size() (no padding between them). =0 one
@@ -505,7 +521,8 @@ PipelineCache::PipelineCache(Tegra::MaxwellDeviceMemoryManager& device_memory_,
       render_pass_cache{render_pass_cache_}, buffer_cache{buffer_cache_},
       texture_cache{texture_cache_}, shader_notify{shader_notify_},
       use_asynchronous_shaders{Settings::values.use_asynchronous_shaders.GetValue()},
-      use_vulkan_pipeline_cache{Settings::values.use_vulkan_driver_pipeline_cache.GetValue()},
+      use_vulkan_pipeline_cache{Settings::values.use_vulkan_driver_pipeline_cache.GetValue() &&
+                                !DriverCachesPipelines(device_)},
       // Translation threads compile in parallel with the pipeline workers: not on drivers that
       // break with parallel compiles.
       use_async_translation{use_asynchronous_shaders && IsAsyncTranslationAllowed() &&
@@ -519,6 +536,9 @@ PipelineCache::PipelineCache(Tegra::MaxwellDeviceMemoryManager& device_memory_,
                            Common::ThreadPlacement::Background),
       translation_workers(num_translation_threads, "VkPipelineTranslator", {},
                           Common::ThreadPlacement::Background) {
+    if (Settings::values.use_vulkan_driver_pipeline_cache.GetValue() && !use_vulkan_pipeline_cache) {
+        LOG_INFO(Render_Vulkan, "This driver keeps its own pipeline cache; not keeping a second one");
+    }
     if (use_async_translation) {
         LOG_INFO(Render_Vulkan,
                  "Native graphics pipelines are translated on {} worker threads, wait budget "

@@ -334,9 +334,12 @@ private:
 
     static GpuSplit instance;
 
-    alignas(64) std::atomic<u64> published{};
-    alignas(64) std::atomic<u64> consumed{};
-    alignas(64) std::atomic<bool> back_waiting{};
+    // 128 bytes: an x86 prefetcher pulls the next 64-byte line too, so these two counters
+    // (one written by each thread) do not share a prefetched pair. back_waiting and wake are
+    // touched together and stay on one line.
+    alignas(128) std::atomic<u64> published{};
+    alignas(128) std::atomic<u64> consumed{};
+    alignas(128) std::atomic<bool> back_waiting{};
     std::atomic<u32> wake{};
     std::jthread back_thread;
 };
