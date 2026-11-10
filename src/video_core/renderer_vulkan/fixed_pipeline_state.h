@@ -21,8 +21,6 @@ namespace Vulkan {
 using Maxwell = Tegra::Engines::Maxwell3D::Regs;
 
 struct DynamicFeatures {
-    u32 driver_id;
-    u32 driver_version;
     bool has_extended_dynamic_state;
     bool has_extended_dynamic_state_2;
     bool has_extended_dynamic_state_2_logic_op;
@@ -234,6 +232,10 @@ struct FixedPipelineState {
     };
     std::array<u8, Maxwell::NumRenderTargets> color_formats;
 
+    // Inside Size(), so they used to be part of the key. A driver update then missed every
+    // graphics pipeline. They stay so older vulkan.bin records still line up, and are always
+    // zero: Refresh stores zero, and a loaded key is cleared the same way. The driver's own
+    // cache is vulkan_pipelines.bin.
     u32 driver_id;
     u32 driver_version;
     u32 alpha_test_ref;

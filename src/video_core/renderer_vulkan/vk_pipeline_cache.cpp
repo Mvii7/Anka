@@ -678,8 +678,6 @@ PipelineCache::PipelineCache(Tegra::MaxwellDeviceMemoryManager& device_memory_,
     LOG_INFO(Render_Vulkan, "DynamicState setting value: {}", u32(Settings::values.dyna_state.GetValue()));
 
     dynamic_features = {};
-    dynamic_features.driver_id = device.GetDriverID();
-    dynamic_features.driver_version = device.GetDriverVersion();
 
     // User granularity enforced in vulkan_device.cpp switch statement:
     //   Level 0: Core Dynamic States only
@@ -814,6 +812,10 @@ void PipelineCache::LoadDiskResources(u64 title_id, std::stop_token stop_loading
         std::unique_ptr<PipelineStatistics> statistics;
     } state;
 
+    // Records written under an older driver differ only in these two words. Clearing them makes
+    // the key match a pipeline built now; a second record of the same key is not built again.
+    ::Common::unordered_set<GraphicsPipelineCacheKey> loaded_graphics_keys;
+
     if (device.IsKhrPipelineExecutablePropertiesEnabled()) {
         state.statistics = std::make_unique<PipelineStatistics>(device);
     }
@@ -839,6 +841,8 @@ void PipelineCache::LoadDiskResources(u64 title_id, std::stop_token stop_loading
     const auto load_graphics{[&](std::ifstream& file, std::vector<FileEnvironment> envs) {
         GraphicsPipelineCacheKey key;
         file.read(reinterpret_cast<char*>(&key), sizeof(key));
+        key.state.driver_id = 0;
+        key.state.driver_version = 0;
 
         if ((key.state.extended_dynamic_state != 0) !=
                 dynamic_features.has_extended_dynamic_state ||
@@ -865,6 +869,10 @@ void PipelineCache::LoadDiskResources(u64 title_id, std::stop_token stop_loading
         const bool key_uses_transform_feedback = key.state.xfb_enabled != 0;
         if (key_uses_transform_feedback && key_requests_provoking_last &&
             !dynamic_features.has_provoking_vertex_tf_preserve) {
+            return;
+        }
+
+        if (!loaded_graphics_keys.insert(key).second) {
             return;
         }
 
@@ -983,9 +991,6 @@ void ReportNewPipelineKey(const GraphicsPipelineCacheKey& key) {
     }
     if (std::memcmp(&now.dynamic_state, &before.dynamic_state, sizeof(now.dynamic_state)) != 0) {
         diffs += " dynamic_state";
-    }
-    if (now.driver_id != before.driver_id || now.driver_version != before.driver_version) {
-        diffs += " driver";
     }
     const size_t size = now.Size();
     if (diffs.empty() && size > offsetof(FixedPipelineState, attachments)) {
@@ -1788,7 +1793,17 @@ vk::PipelineCache PipelineCache::LoadVulkanPipelineCache(const std::filesystem::
         LOG_INFO(Render_Vulkan,
                  "Loaded Vulkan driver pipeline cache: ", Common::FS::PathToUTF8String(filename));
 
-        return create_pipeline_cache(cache_size, cache_data.data());
+        try {
+            return create_pipeline_cache(cache_size, cache_data.data());
+        } catch (const vk::Exception& exception) {
+            // A driver update can reject the blob. The guest pipelines in vulkan.bin still load.
+            LOG_INFO(Render_Vulkan,
+                     "Vulkan driver pipeline cache was not accepted ({}); starting a new one",
+                     static_cast<int>(exception.GetResult()));
+            file.close();
+            Common::FS::RemoveFile(filename);
+            return create_pipeline_cache(0, nullptr);
+        }
 
     } catch (const std::ios_base::failure& e) {
         LOG_ERROR(Common_Filesystem, "{}", e.what());

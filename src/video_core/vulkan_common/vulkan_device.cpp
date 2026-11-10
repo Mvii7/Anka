@@ -862,7 +862,15 @@ void Device::LoadStaticPipelineCache() {
         create(0, nullptr);
         return;
     }
-    create(data.size(), data.empty() ? nullptr : data.data());
+    try {
+        create(data.size(), data.empty() ? nullptr : data.data());
+    } catch (const vk::Exception& exception) {
+        // A driver update can reject the blob. Pipelines are built again into a new cache.
+        LOG_INFO(Render_Vulkan, "Static pipeline cache was not accepted ({}); starting a new one",
+                 static_cast<int>(exception.GetResult()));
+        Common::FS::RemoveFile(filename);
+        create(0, nullptr);
+    }
 }
 
 void Device::SaveStaticPipelineCache() const {
