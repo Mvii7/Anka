@@ -346,6 +346,9 @@ public:
         return image_view_epoch;
     }
 
+    /// Queue a compute image for the next fence's download when it is the water collision map.
+    bool PublishComputeCollisionImage(u32 index);
+
     /// Create channel state.
     void CreateChannel(Tegra::Control::ChannelState& channel) final override;
 
@@ -522,9 +525,6 @@ private:
 
     /// Bind an image view as render target, downloading resources preemtively if needed
     void BindRenderTarget(ImageViewId* old_id, ImageViewId new_id);
-
-    /// Queue a compute image for the next fence's download when it is the water collision map.
-    bool PublishComputeCollisionImage(u32 index);
 
     /// EDEN_NX2_REACTIVE_STATS: counts a render target download BindRenderTarget queued, by why
     /// the image is forced_flushed, and logs the image at its first one.
