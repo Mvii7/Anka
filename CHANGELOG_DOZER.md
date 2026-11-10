@@ -8,6 +8,9 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- The HostTiming thread sleeps in the OS between events instead of waiting in MWAITX / UMWAIT,
+  which kept a whole core busy on x86 Windows (from Lichii `b9bb5a09`; Lichii measured about one
+  core less CPU and no change in fps). `EDEN_NX2_HOSTTIMING_STATS=1` logs its waits once a second.
 - Rumble: HID command 214 (the Switch 2 titles' vibration, sent every frame) is forwarded to the
   controller through the existing vibration path; it was accepted and dropped. From the Selevet
   fork (`49e2ed7`); not tried with a controller yet.
