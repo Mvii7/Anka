@@ -160,7 +160,7 @@ TEST_CASE("Nx2PerfSettings: presets set the launchers' variables", "[core]") {
     auto reactive = RecommendedBananza;
     reactive.push_back({"EDEN_NX2_RX_RT_FIT", "3"});
     REQUIRE(Wanted(FromPreset(Preset::Reactive, Recommended()), true) == reactive);
-    // Safe: none of the eight, every per-draw shortcut =0 (start-safe.bat), in any game.
+    // Safe: none of the boxes, every per-draw shortcut =0 (start-safe.bat), in any game.
     for (const bool bananza : {true, false}) {
         const auto safe = Wanted(AllOff(), bananza);
         REQUIRE(safe.size() == SafeOff.size());
@@ -171,6 +171,22 @@ TEST_CASE("Nx2PerfSettings: presets set the launchers' variables", "[core]") {
     // Custom with everything off sets nothing; Custom with the boxes on: only the boxes'.
     REQUIRE(Wanted(Custom(AllOff()), true).empty());
     REQUIRE(Wanted(Custom(Recommended()), true) == RecommendedBananza);
+    const std::vector<Var> recommended_mkw{
+        {"EDEN_NX2_BACK_STAGES", "1"},
+        {"EDEN_NX2_BACK_CUTS", "a"},
+        {"EDEN_NX2_ACQUIRE_PEEK", "1"},
+        {"EDEN_NX2_JIT_SAME", "1"},
+        {"EDEN_NX2_FRONT_MACRO_LEAN", "1"},
+        {"EDEN_NX2_FG_TIMED", "1"},
+        {"EDEN_NX2_OSD", "1"},
+        {"EDEN_NX2_MKW_DYN", "1"},
+    };
+    REQUIRE(IsMkw(Loader::Nx2MkwDynamicFps::ProgramId));
+    REQUIRE_FALSE(IsMkw(Bananza));
+    REQUIRE(Wanted(Recommended(), false, true) == recommended_mkw);
+    Switches mkw_off = Recommended();
+    mkw_off.mkw_dyn = false;
+    REQUIRE(Wanted(mkw_off, false, true).size() == recommended_mkw.size() - 1);
 }
 
 TEST_CASE("Nx2PerfSettings: keys are distinct and cover every field", "[core]") {

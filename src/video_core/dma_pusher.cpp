@@ -305,6 +305,9 @@ bool DmaPusher::Step() {
             command_resume_offset +=
                 ProcessCommands(commands.subspan(command_resume_offset), command_resume_offset);
         } else {
+            if (header.sync) {
+                VideoCommon::GpuSplit::Get().NoteSync();
+            }
             if (!indirect_record) {
                 FlushGpuWrittenCommands(dma_state.dma_get, size_t{header.size} * sizeof(u32));
             }
@@ -520,6 +523,25 @@ bool DmaPusher::WantsSegment() const {
            (engine == Engines::EngineTypes::Maxwell3D && dma_state.method >= MacroRegistersStart);
 }
 
+namespace {
+
+bool MemoryWriterEngine(Engines::EngineTypes type) {
+    return type == Engines::EngineTypes::KeplerCompute || type == Engines::EngineTypes::MaxwellDMA ||
+           type == Engines::EngineTypes::KeplerMemory;
+}
+
+struct MemoryWriterNote {
+    VideoCommon::GpuSplit& split;
+    bool note;
+    ~MemoryWriterNote() {
+        if (note) {
+            split.NoteMemoryWriter();
+        }
+    }
+};
+
+} // namespace
+
 void DmaPusher::CallMethod(u32 argument) {
     if (g_semaphore_watch != 0) [[unlikely]] {
         WatchArgument(dma_state.method, argument);
@@ -541,10 +563,11 @@ void DmaPusher::CallMethod(u32 argument) {
             ReportUnboundSubchannel();
             return;
         }
+        const auto type = subchannel_type[dma_state.subchannel];
+        MemoryWriterNote writer{split, split.Active() && MemoryWriterEngine(type)};
         if (split.Active()) {
             const GPUVAddr segment = dma_state.dma_get + dma_state.dma_word_offset;
             if (split.FrontMacros()) {
-                const auto type = subchannel_type[dma_state.subchannel];
                 if (type == Engines::EngineTypes::Maxwell3D) {
                     auto* const maxwell3d = static_cast<Engines::Maxwell3D*>(subchannel);
                     if (maxwell3d->GetNativeMacroEngine().native_turing) {
@@ -600,10 +623,11 @@ void DmaPusher::CallMultiMethod(const u32* base_start, u32 num_methods) {
             ReportUnboundSubchannel();
             return;
         }
+        const auto type = subchannel_type[dma_state.subchannel];
+        MemoryWriterNote writer{split, split.Active() && MemoryWriterEngine(type)};
         if (split.Active()) {
             const GPUVAddr segment = dma_state.dma_get + dma_state.dma_word_offset;
             if (split.FrontMacros()) {
-                const auto type = subchannel_type[dma_state.subchannel];
                 if (type == Engines::EngineTypes::Maxwell3D) {
                     auto* const maxwell3d = static_cast<Engines::Maxwell3D*>(subchannel);
                     if (maxwell3d->GetNativeMacroEngine().native_turing) {
@@ -679,11 +703,21 @@ void DmaPusher::FlushGpuWrittenCommands(GPUVAddr address, size_t size) {
     if (!IsGpuWrittenRange(address, size)) {
         return;
     }
-    // The caches belong to the split's back: it first runs what the front queued (the dispatch
-    // that writes these words among it).
+    // The caches belong to the split's back. A memory writer queued after the last host sync may
+    // still be filling this list, so that case drains the whole queue. Otherwise wait only until
+    // the back reaches that sync (EDEN_NX2_CMDPAGE_DRAIN=1 keeps the full drain).
     VideoCommon::Nx2Profile::Add(VideoCommon::Nx2Profile::Counter::CommandListChecks, 1);
-    if (VideoCommon::Nx2FrontDiag::CountDrain(
-            VideoCommon::GpuSplit::Get(), VideoCommon::Nx2Profile::DrainSite::PusherCommandList)) {
+    auto& split = VideoCommon::GpuSplit::Get();
+    static const bool always_drain = [] {
+        const char* value = std::getenv("EDEN_NX2_CMDPAGE_DRAIN");
+        return value != nullptr && value[0] == '1';
+    }();
+    const bool full_drain = always_drain || !split.Active() || split.MemoryWriterAfterSync();
+    const bool waited = full_drain
+                            ? VideoCommon::Nx2FrontDiag::CountDrain(
+                                  split, VideoCommon::Nx2Profile::DrainSite::PusherCommandList)
+                            : split.WaitForSync();
+    if (waited) {
         VideoCommon::Nx2Profile::Add(VideoCommon::Nx2Profile::Counter::CommandListDrainWaits, 1);
     }
     if (memory_manager.IsMemoryDirty(address, size, VideoCommon::CacheType::BufferCache)) {

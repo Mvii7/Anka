@@ -120,7 +120,7 @@ public:
 
     [[nodiscard]] GraphicsPipeline* CurrentGraphicsPipeline();
 
-    [[nodiscard]] ComputePipeline* CurrentComputePipeline();
+    [[nodiscard]] ComputePipeline* CurrentComputePipeline(u64* native_key = nullptr);
 
     void LoadDiskResources(u64 title_id, std::stop_token stop_loading,
                            const VideoCore::DiskResourceLoadCallback& callback);

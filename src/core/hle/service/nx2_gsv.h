@@ -28,6 +28,7 @@
 #include "common/settings.h"
 #include "common/thread.h"
 #include "core/core.h"
+#include "core/loader/nx2_mkw_dynamic_fps.h"
 #include "core/device_memory.h"
 #include "video_core/rasterizer_interface.h"
 #include "video_core/renderer_base.h"
@@ -1015,6 +1016,8 @@ public:
         const bool dk_dyn = Core::g_nx2_dk_dyn_applied.load(std::memory_order_relaxed);
         const u64 application = system.GetApplicationProcessProgramID();
         m_pace_one = Nx2DkDynPace::PaceOne(dk_dyn, application, std::getenv("EDEN_NX2_PACE_ONE"));
+        m_mkw_dyn = Core::g_nx2_mkw_dyn_applied.load(std::memory_order_relaxed) &&
+                    application == Loader::Nx2MkwDynamicFps::ProgramId;
         m_dk_dyn_applied = Nx2DkDynPace::ReportVrr(dk_dyn, application);
         if (Nx2DkDynPace::ReportVrr(dk_dyn, application)) {
             if (GetReplies() == nullptr) {
@@ -1191,6 +1194,13 @@ private:
                 }
             }
             PaceToVblank(1, 0);
+        } else if (m_mkw_dyn) {
+            if (!m_mkw_dyn_logged) {
+                m_mkw_dyn_logged = true;
+                LOG_INFO(Service, "nx2:vi2 Mario Kart World dynamic FPS (EDEN_NX2_MKW_DYN): "
+                                  "presents paced to every vblank");
+            }
+            PaceToVblank(1, PresentRate(w));
         } else {
             PaceToVblank(PresentInterval(w), PresentRate(w));
         }
@@ -2088,6 +2098,9 @@ private:
     bool m_dk_dyn_applied{};
     bool m_pace_one_logged{};
     bool m_vrr_reported{};
+    // EDEN_NX2_MKW_DYN applied to Mario Kart World: present every vblank.
+    bool m_mkw_dyn{};
+    bool m_mkw_dyn_logged{};
 
     // EDEN_NX2_VI2_REPLY_FILE / EDEN_NX2_VI2_REPLY (off by default): replies from a table that may
     // change while the game runs (nx2_vi2_reply.h), shared by every vi2 session. Null when off.

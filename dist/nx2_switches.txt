@@ -245,6 +245,17 @@
 # worse on our machine).
 #EDEN_NX2_DK_DYN_MIN_FPS=40
 
+# --- Mario Kart World dynamic frame rate (game-specific; core/loader/nx2_mkw_dynamic_fps.h) ---
+# MKW_DYN=1: while Mario Kart World's main module loads, patch its frame rate mode in memory
+# (Eglantine/Lichii's dynamic mode). Presents then run every vblank. The Tuning tab sets this
+# for that game only. Off, no module is touched.
+#EDEN_NX2_MKW_DYN=1
+
+# CMDPAGE_DRAIN=1: a GPU-written command list always waits for the whole split queue. Unset, a
+# list waits only until the last host sync when no memory-writing engine was queued after it
+# (video_core/dma_pusher.cpp, GpuSplit::WaitForSync).
+#EDEN_NX2_CMDPAGE_DRAIN=1
+
 # --- read traps (core/memory/read_traps.h; ported from the ZendNevs fork) ---
 # On by default with use_reactive_flushing=false (Switch 2 titles, fastmem, not NCE): a buffer
 # page the GPU writes is read-protected until the guest CPU's first read, which flushes it and

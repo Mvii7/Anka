@@ -237,8 +237,23 @@ void GpuSplit::PublishRing() {
 
 bool GpuSplit::Drain() {
     FlushPending();
+    return WaitUntil(write_position);
+}
+
+bool GpuSplit::WaitForSync() {
+    if (!active) {
+        return false;
+    }
+    return WaitUntil(last_sync_position);
+}
+
+bool GpuSplit::WaitUntil(u64 target) {
+    FlushPending();
+    if (target > write_position) {
+        target = write_position;
+    }
     consumed_cache = consumed.load(std::memory_order_acquire);
-    if (consumed_cache == write_position) {
+    if (consumed_cache >= target) {
         return false;
     }
     Publish();
@@ -246,7 +261,7 @@ bool GpuSplit::Drain() {
     Nx2Profile::Scope scope{Nx2Profile::Zone::SplitDrain};
     for (u32 spins = 0;; ++spins) {
         consumed_cache = consumed.load(std::memory_order_acquire);
-        if (consumed_cache == write_position) {
+        if (consumed_cache >= target) {
             publish_every = 8;
             return true;
         }

@@ -181,6 +181,23 @@ public:
     void Publish();
     /// Waits until the back executed everything sent so far. Returns whether it had to wait.
     bool Drain();
+    /// A host wait (GP sync bit, semaphore or syncpoint acquire, WaitForIdle): later GPU-written
+    /// command lists can wait for the back up to here instead of draining the whole queue.
+    void NoteSync() {
+        FlushPending();
+        last_sync_position = write_position;
+    }
+    /// A method of an engine that writes guest memory (compute, DMA, inline). Over-marking falls
+    /// back to a full drain; under-marking would read a command list before the GPU wrote it.
+    void NoteMemoryWriter() {
+        FlushPending();
+        last_writer_position = write_position;
+    }
+    [[nodiscard]] bool MemoryWriterAfterSync() const {
+        return last_writer_position > last_sync_position;
+    }
+    /// Waits until the back has executed through the last NoteSync. Returns whether it waited.
+    bool WaitForSync();
 
     /// Whether the back ran everything published (so while the split is off). Any thread.
     [[nodiscard]] bool BackCaughtUp() const {
@@ -281,6 +298,7 @@ private:
     }
     void WritePending();
     void WaitForSpace(size_t words);
+    bool WaitUntil(u64 target);
     void SelectEngine(Tegra::Engines::EngineInterface* engine) {
         if (engine != front_engine) [[unlikely]] {
             SwitchEngine(engine);
@@ -313,6 +331,8 @@ private:
 
     // Front side.
     u64 write_position{};
+    u64 last_sync_position{};
+    u64 last_writer_position{};
     u64 published_local{};
     u64 consumed_cache{};
     u64 session{};

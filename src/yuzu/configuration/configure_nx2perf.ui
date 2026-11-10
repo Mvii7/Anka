@@ -352,6 +352,38 @@
     </widget>
    </item>
    <item>
+    <widget class="QGroupBox" name="mkw">
+     <property name="title">
+      <string>Mario Kart World only (off in other games)</string>
+     </property>
+     <layout class="QVBoxLayout" name="mkw_layout">
+      <item>
+       <widget class="QCheckBox" name="mkw_dyn">
+        <property name="text">
+         <string>Dynamic frame rate</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="mkw_dyn_text">
+        <property name="text">
+         <string>The game picks its rate instead of holding 60; patched in memory, no file is changed, and presents run every vblank (MKW_DYN).</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+        <property name="indent">
+         <number>22</number>
+        </property>
+        <property name="buddy">
+         <cstring>mkw_dyn</cstring>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
     <widget class="QLabel" name="status">
      <property name="text">
       <string/>

@@ -76,6 +76,23 @@ TEST_CASE("Ampere HSETP2 with a register B lowers to Maxwell HSETP2_R", "[video_
             Hsetp2{7, 7, 2, 0, 44, 44, 3, 0, 0, 2, 2, 0, 0, 0, 0, 2, 0});
 }
 
+TEST_CASE("Ampere HSETP2 constant buffer form loads B then compares", "[video_core][ampere]") {
+    // HSETP2 with c[bank][offset] in B: the load, then HSETP2_reg from the scratch register.
+    Instruction insn{{0x634u | (4u << 24), (0x100u << 6) | (1u << 28), 0, 0}};
+    const std::array<Instruction, 2> code{insn, EXIT};
+    const auto lowered = LowerToMaxwell(code);
+    REQUIRE(static_cast<bool>(lowered));
+    REQUIRE(lowered.instructions.size() == 3);
+    REQUIRE(MaxwellOpcode(lowered.instructions[0]) == "MOV_cbuf");
+    REQUIRE(MaxwellOpcode(lowered.instructions[1]) == "HSETP2_reg");
+    const Hsetp2 fields = Fields(lowered.instructions[1]);
+    REQUIRE(fields.reg_a == 4);
+    REQUIRE(fields.reg_b == 250);
+    REQUIRE(fields.swizzle_b == 1);
+    Instruction misaligned{{0x634u, 2u << 6, 0, 0}};
+    REQUIRE_FALSE(static_cast<bool>(LowerToMaxwell(std::array<Instruction, 2>{misaligned, EXIT})));
+}
+
 TEST_CASE("Ampere HSETP2 register form keeps every modifier", "[video_core][ampere]") {
     // @!P4 HSETP2.GTU.H_AND.FTZ.OR P3, P5, -|R10|.H1_H1, -|R11|.H0_H0, !P2
     const Instruction insn{{0x0a00c234, 0xe000000b, 0x0557cfa0, 0}};

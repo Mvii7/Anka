@@ -43,6 +43,8 @@ struct LoweredNativeCode {
     u32 texture_bound = ~0U;
     /// The lowering emulates an HMMA (Shader::Ampere::LoweredProgram::matrix_multiply).
     bool matrix_multiply{};
+    /// FNV-1a of the captured native instructions (Shader::Ampere::NativeProgramKey).
+    u64 native_program_key{};
 };
 
 class GenericEnvironment : public Shader::Environment {

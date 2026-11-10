@@ -2137,6 +2137,21 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code) {
                  (u64{insn.Bits(74, 2)} << 47) | (u64{insn.Bits(71, 1)} << 49));
             break;
         }
+        case 0x634: { // HSETP2 with constant buffer B (Mario Kart World roads and grass).
+            if (insn.Bits(64, 5) || insn.Bits(69, 2) == 3 || insn.Bits(91, 1))
+                return fail(index, "native half comparison mode");
+            const u32 loaded = materialize(2, 255, 250, false, false);
+            if (loaded == 255) return fail(index, operand_error);
+            emit(0x5d20000000000000ULL | predicate | insn.Bits(84, 3) | (u64{insn.Bits(81, 3)} << 3) |
+                 (u64{insn.Bits(80, 1)} << 6) | (u64{insn.Bits(24, 8)} << 8) | (u64{loaded} << 20) |
+                 (u64{insn.Bits(60, 2)} << 28) | (u64{insn.Bits(62, 1)} << 30) |
+                 (u64{insn.Bits(63, 1)} << 31) | (u64{insn.Bits(76, 4)} << 35) |
+                 (u64{insn.Bits(87, 3)} << 39) | (u64{insn.Bits(90, 1)} << 42) |
+                 (u64{insn.Bits(72, 1)} << 43) | (u64{insn.Bits(73, 1)} << 44) |
+                 (u64{insn.Bits(69, 2)} << 45) | (u64{insn.Bits(74, 2)} << 47) |
+                 (u64{insn.Bits(71, 1)} << 49));
+            break;
+        }
         case 0x20b: case 0x80b: case 0xa0b: // FSETP
         case 0x20c: case 0x80c: case 0xa0c: case 0xc0c: { // ISETP
             const bool floating = (opcode & 0x1ff) == 0xb;
