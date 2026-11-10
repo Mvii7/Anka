@@ -1128,6 +1128,18 @@ void BufferCache<P>::BindHostVertexBuffers() {
         auto& flags = maxwell3d->dirty.flags;
         u32 enabled_mask = enabled_vertex_buffers_mask;
         const bool vertex_skip = VertexSkipEnabled();
+        // Donkey Kong Bananza destroys terrain with an indexed indirect draw. The stream size
+        // register is often still the previous piece (87 vertices, a couple of KiB) while the
+        // index list addresses the new piece (200+). Robust access returns zeros, the triangles
+        // collapse, and bloom turns that into the black shape with a white halo. The new
+        // vertices are in the same allocation, past that short size. Bind through the end of it
+        // for these draws. EDEN_NX2_INDIRECT_VBO=0 keeps the registered size.
+        static const bool extend_indirect_enabled = [] {
+            const char* value = std::getenv("EDEN_NX2_INDIRECT_VBO");
+            return value == nullptr || value[0] != '0';
+        }();
+        const bool extend_indirect = extend_indirect_enabled && current_draw_indirect != nullptr &&
+                                     current_draw_indirect->is_indexed;
         if (Nx2Profile::Enabled()) {
             NoteVertexStreams(enabled_mask);
         }
@@ -1150,6 +1162,21 @@ void BufferCache<P>::BindHostVertexBuffers() {
         while (enabled_mask != 0) {
             const u32 index = std::countr_zero(enabled_mask);
             enabled_mask &= (enabled_mask - 1);
+            if (extend_indirect) {
+                // The registers did not change, so this draw would keep the previous piece's
+                // short bind. Force one when the allocation continues past that size.
+                const Binding& prelim = v_buffer[index];
+                if (prelim.buffer_id != NULL_BUFFER_ID && prelim.size != 0) {
+                    const Buffer& prelim_buffer = slot_buffers[prelim.buffer_id];
+                    const u32 prelim_offset = prelim_buffer.Offset(prelim.device_addr);
+                    const u64 prelim_bytes = prelim_buffer.SizeBytes();
+                    if (prelim_bytes > prelim_offset &&
+                        static_cast<u32>(std::min<u64>(prelim_bytes - prelim_offset, 64_MiB)) >
+                            prelim.size) {
+                        flags[Dirty::VertexBuffer0 + index] = true;
+                    }
+                }
+            }
             // index is a bit of the u32 enabled_vertex_buffers_mask: below v_buffer's 32.
             // EDEN_NX2_LIGHT_SYNC_SKIP: a plain light draw's clean stream binds what the draw
             // before bound, synchronized and touched (this frame, no memory written since but
@@ -1207,13 +1234,23 @@ void BufferCache<P>::BindHostVertexBuffers() {
             flags[Dirty::VertexBuffer0 + index] = false;
             const u32 stride = maxwell3d->regs.vertex_streams[index].stride;
             const u32 offset = buffer.Offset(binding.device_addr);
-            buffer.MarkUsage(offset, binding.size);
+            u32 bind_size = binding.size;
+            if (extend_indirect) {
+                const u64 bytes = buffer.SizeBytes();
+                if (bytes > offset) {
+                    const u32 room = static_cast<u32>(std::min<u64>(bytes - offset, 64_MiB));
+                    if (room > bind_size) {
+                        bind_size = room;
+                    }
+                }
+            }
+            buffer.MarkUsage(offset, bind_size);
             if constexpr (!IS_OPENGL) {
                 // Each changed stream on its own (~40 bytes recorded) instead of in a batch
                 // carrying four 32-entry arrays (~1.3 KiB a record: a full command chunk,
                 // DispatchWork and a worker wake-up every ~24 draws). Same bindings.
                 if (vertex_skip) {
-                    BindHostVertexBuffer(index, buffer, offset, binding.size, stride);
+                    BindHostVertexBuffer(index, buffer, offset, bind_size, stride);
                     continue;
                 }
             }
@@ -1225,7 +1262,7 @@ void BufferCache<P>::BindHostVertexBuffers() {
             }
             bindings.buffers.push_back(&buffer);
             bindings.offsets.push_back(offset);
-            bindings.sizes.push_back(binding.size);
+            bindings.sizes.push_back(bind_size);
             bindings.strides.push_back(stride);
             last_index = index;
         }
