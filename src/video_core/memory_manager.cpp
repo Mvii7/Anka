@@ -549,6 +549,23 @@ void MemoryManager::ReadBlock(GPUVAddr gpu_src_addr, void* dest_buffer, std::siz
     ReadBlockImpl(gpu_src_addr, dest_buffer, size, which, false);
 }
 
+void MemoryManager::ReadWordsUnsafe(GPUVAddr gpu_src_addr, u32* dest, std::size_t count) const {
+    const std::size_t size = count * sizeof(u32);
+    const auto shim = native_syncpoint_shim.load(std::memory_order_acquire);
+    const GPUVAddr shim_end = shim + GPUVAddr{NumShimSyncpoints} * sizeof(u32);
+    // A range that starts before the shim overlaps it when it reaches the shim. Adding the
+    // size onto the address would wrap.
+    const bool overlaps_shim = shim && count != 0 && gpu_src_addr < shim_end &&
+                               (gpu_src_addr >= shim || size > shim - gpu_src_addr);
+    if (overlaps_shim) {
+        for (std::size_t i = 0; i < count; ++i) {
+            dest[i] = Read<u32>(gpu_src_addr + i * sizeof(u32));
+        }
+        return;
+    }
+    ReadBlockUnsafe(gpu_src_addr, dest, size);
+}
+
 void MemoryManager::ReadBlockUnsafe(GPUVAddr gpu_src_addr, void* dest_buffer, const std::size_t size) const {
     // Small reads within one 4 KiB page (texture and sampler descriptors, several per draw): one
     // translation and a copy, as Read<T> does, instead of the page walk (~3% of the GPU thread
