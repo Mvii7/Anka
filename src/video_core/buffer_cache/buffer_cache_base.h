@@ -810,6 +810,10 @@ private:
     /// stream's last synchronization in BindHostVertexBuffers (0, never matching, before the
     /// first). Its range held no CPU-modified or untracked page as of then.
     std::array<u64, 32> vertex_synced_epoch{};
+    /// Indexed indirect draws: the stream end last resolved from the 0x1F00 limit. A later
+    /// resolve that stored only the native count clears the match so the next indirect draw
+    /// resolves the limit again.
+    std::array<u64, 32> indirect_vertex_end{};
     /// EDEN_NX2_GPU_PROFILE: what the last BindHostVertexBuffers bound (NoteVertexStreams),
     /// counted by CommitVertexStreamNote.
     struct VertexStreamNote {

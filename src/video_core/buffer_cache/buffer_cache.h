@@ -1128,18 +1128,6 @@ void BufferCache<P>::BindHostVertexBuffers() {
         auto& flags = maxwell3d->dirty.flags;
         u32 enabled_mask = enabled_vertex_buffers_mask;
         const bool vertex_skip = VertexSkipEnabled();
-        // Donkey Kong Bananza destroys terrain with an indexed indirect draw. The stream size
-        // register is often still the previous piece (87 vertices, a couple of KiB) while the
-        // index list addresses the new piece (200+). Robust access returns zeros, the triangles
-        // collapse, and bloom turns that into the black shape with a white halo. The new
-        // vertices are in the same allocation, past that short size. Bind through the end of it
-        // for these draws. EDEN_NX2_INDIRECT_VBO=0 keeps the registered size.
-        static const bool extend_indirect_enabled = [] {
-            const char* value = std::getenv("EDEN_NX2_INDIRECT_VBO");
-            return value == nullptr || value[0] != '0';
-        }();
-        const bool extend_indirect = extend_indirect_enabled && current_draw_indirect != nullptr &&
-                                     current_draw_indirect->is_indexed;
         if (Nx2Profile::Enabled()) {
             NoteVertexStreams(enabled_mask);
         }
@@ -1162,21 +1150,6 @@ void BufferCache<P>::BindHostVertexBuffers() {
         while (enabled_mask != 0) {
             const u32 index = std::countr_zero(enabled_mask);
             enabled_mask &= (enabled_mask - 1);
-            if (extend_indirect) {
-                // The registers did not change, so this draw would keep the previous piece's
-                // short bind. Force one when the allocation continues past that size.
-                const Binding& prelim = v_buffer[index];
-                if (prelim.buffer_id != NULL_BUFFER_ID && prelim.size != 0) {
-                    const Buffer& prelim_buffer = slot_buffers[prelim.buffer_id];
-                    const u32 prelim_offset = prelim_buffer.Offset(prelim.device_addr);
-                    const u64 prelim_bytes = prelim_buffer.SizeBytes();
-                    if (prelim_bytes > prelim_offset &&
-                        static_cast<u32>(std::min<u64>(prelim_bytes - prelim_offset, 64_MiB)) >
-                            prelim.size) {
-                        flags[Dirty::VertexBuffer0 + index] = true;
-                    }
-                }
-            }
             // index is a bit of the u32 enabled_vertex_buffers_mask: below v_buffer's 32.
             // EDEN_NX2_LIGHT_SYNC_SKIP: a plain light draw's clean stream binds what the draw
             // before bound, synchronized and touched (this frame, no memory written since but
@@ -1234,23 +1207,13 @@ void BufferCache<P>::BindHostVertexBuffers() {
             flags[Dirty::VertexBuffer0 + index] = false;
             const u32 stride = maxwell3d->regs.vertex_streams[index].stride;
             const u32 offset = buffer.Offset(binding.device_addr);
-            u32 bind_size = binding.size;
-            if (extend_indirect) {
-                const u64 bytes = buffer.SizeBytes();
-                if (bytes > offset) {
-                    const u32 room = static_cast<u32>(std::min<u64>(bytes - offset, 64_MiB));
-                    if (room > bind_size) {
-                        bind_size = room;
-                    }
-                }
-            }
-            buffer.MarkUsage(offset, bind_size);
+            buffer.MarkUsage(offset, binding.size);
             if constexpr (!IS_OPENGL) {
                 // Each changed stream on its own (~40 bytes recorded) instead of in a batch
                 // carrying four 32-entry arrays (~1.3 KiB a record: a full command chunk,
                 // DispatchWork and a worker wake-up every ~24 draws). Same bindings.
                 if (vertex_skip) {
-                    BindHostVertexBuffer(index, buffer, offset, bind_size, stride);
+                    BindHostVertexBuffer(index, buffer, offset, binding.size, stride);
                     continue;
                 }
             }
@@ -1262,7 +1225,7 @@ void BufferCache<P>::BindHostVertexBuffers() {
             }
             bindings.buffers.push_back(&buffer);
             bindings.offsets.push_back(offset);
-            bindings.sizes.push_back(bind_size);
+            bindings.sizes.push_back(binding.size);
             bindings.strides.push_back(stride);
             last_index = index;
         }
@@ -1918,9 +1881,96 @@ void BufferCache<P>::UpdateIndexBuffer() {
     }
 }
 
+// EDEN_NX2_INDIRECT_VBO=0: an indexed indirect draw binds the native byte count at 0x600 only.
+inline bool IndirectVertexLimitEnabled() {
+    static const bool enabled = [] {
+        const char* value = std::getenv("EDEN_NX2_INDIRECT_VBO");
+        return value == nullptr || value[0] != '0';
+    }();
+    return enabled;
+}
+
+// The further of the native byte count (0x600) and the stream limit (0x1F00), capped at 64 MiB.
+// Other forks bind the limit. The native count on a destroyed-terrain draw is often still the
+// previous piece.
+inline GPUVAddr IndirectVertexEnd(GPUVAddr begin, u64 native_size, GPUVAddr limit_address,
+                                  bool widen) {
+    const GPUVAddr native_end = begin + native_size;
+    if (!widen) {
+        return native_end;
+    }
+    const GPUVAddr limit_end = limit_address + 1;
+    if (limit_end <= native_end) {
+        return native_end;
+    }
+    constexpr u64 cap = 64_MiB;
+    return begin + (std::min)(limit_end - begin, cap);
+}
+
 template <class P>
 void BufferCache<P>::UpdateVertexBuffers() {
     auto& flags = maxwell3d->dirty.flags;
+    // The limit is a different register from the native count, so a draw can need the wider
+    // range while VertexBuffers is clean. Resolve it here, before the bind, so FindBuffer and
+    // the upload cover the same bytes the bind names.
+    const bool widen_limit = IndirectVertexLimitEnabled() && current_draw_indirect != nullptr &&
+                             current_draw_indirect->is_indexed &&
+                             maxwell3d->GetNativeMacroEngine().native_turing;
+    if (widen_limit) {
+        const auto& regs = maxwell3d->regs;
+        for (u32 mask = enabled_vertex_buffers_mask; mask != 0; mask &= mask - 1) {
+            const u32 index = static_cast<u32>(std::countr_zero(mask));
+            const auto& array = regs.vertex_streams[index];
+            if (array.enable == 0) {
+                continue;
+            }
+            const GPUVAddr begin = array.Address();
+            const u64 native_size = regs.NativeVertexStreamSize(index);
+            const GPUVAddr native_end = begin + native_size;
+            const GPUVAddr limit_addr = regs.vertex_stream_limits[index].Address();
+            const GPUVAddr want = IndirectVertexEnd(begin, native_size, limit_addr, true);
+            if (want == native_end) {
+                if (index == 0) {
+                    struct Seen {
+                        u64 begin;
+                        u64 native_size;
+                        u64 limit;
+                    };
+                    static std::array<Seen, 16> seen{};
+                    static u32 count = 0;
+                    const Seen key{begin, native_size, limit_addr};
+                    const bool known =
+                        std::find_if(seen.begin(), seen.begin() + count, [&](const Seen& item) {
+                            return item.begin == key.begin && item.native_size == key.native_size &&
+                                   item.limit == key.limit;
+                        }) != seen.begin() + count;
+                    if (!known && count < seen.size()) {
+                        seen[count++] = key;
+                        s32 base_vertex = 0;
+                        const GPUVAddr record = current_draw_indirect->indirect_start_address;
+                        const bool have_base = gpu_memory->GpuToCpuAddress(record + 12).has_value();
+                        if (have_base) {
+                            gpu_memory->ReadBlockUnsafe(record + 12, &base_vertex,
+                                                        sizeof(base_vertex));
+                        }
+                        LOG_WARNING(HW_GPU,
+                                    "Indirect vertex limit stays at the native count: stream0 "
+                                    "{:#x} native {} limit {:#x} record {:#x} base {}{}",
+                                    begin, native_size, limit_addr, record, base_vertex,
+                                    have_base ? "" : " (record unmapped)");
+                    }
+                }
+                indirect_vertex_end[index] = 0;
+                continue;
+            }
+            if (indirect_vertex_end[index] == want) {
+                continue;
+            }
+            flags[Dirty::VertexBuffer0 + index] = true;
+            flags[Dirty::VertexBuffers] = true;
+            indirect_vertex_end[index] = want;
+        }
+    }
     if (!maxwell3d->dirty.flags[Dirty::VertexBuffers]) {
         return;
     }
@@ -1992,7 +2042,14 @@ void BufferCache<P>::UpdateVertexBuffer(u32 index) {
     if (native && array.enable != 0 && native_size > (std::numeric_limits<u32>::max)()) {
         throw std::runtime_error("Native vertex stream exceeds supported 32-bit buffer size");
     }
-    const GPUVAddr gpu_addr_end = native ? gpu_addr_begin + native_size : limit.Address() + 1;
+    const bool widen_limit = native && IndirectVertexLimitEnabled() &&
+                             current_draw_indirect != nullptr && current_draw_indirect->is_indexed;
+    const GPUVAddr gpu_addr_end =
+        native ? IndirectVertexEnd(gpu_addr_begin, native_size, limit.Address(), widen_limit)
+               : limit.Address() + 1;
+    if (!widen_limit) {
+        indirect_vertex_end[index] = 0;
+    }
     // EDEN_NX2_VERTEX_SKIP: a disabled or empty stream binds nothing whatever its address
     // translates to, and a stream range seen before reuses its translation and buffer while the
     // GPU page table and that buffer are unchanged (VertexBufferMemo). ~5,000 draws a frame
