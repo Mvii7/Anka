@@ -265,13 +265,13 @@ bool DmaPusher::Step() {
         }
         if (command_resume_offset == 0) {
             // Method data continues into the next entry when that entry is the rest of the same
-            // pushbuffer, or a short macro / compute-inline parameter tail (title 4 ends a main
-            // entry after a macro's first word and puts the other five in their own entry;
+            // pushbuffer, or the exact remainder of a macro / compute-inline upload (title 4 ends
+            // a main entry after a macro's first word and puts the other five in their own entry;
             // Bananza's terrain draws do the same with the GPU-written indirect record).
-            // Any other entry is a command buffer NVN called while the method was open. Feeding
-            // it to the open method consumes its first words as data, and the vertex-stream
-            // writes at the start of that buffer never run: the draw keeps the previous mesh's
-            // vertex buffer under this mesh's indices (Bananza's black shape with a white halo).
+            // Any other entry is a command buffer NVN called while the method was open. A buffer
+            // shorter than the open method used to be taken for that tail: its words, the
+            // vertex-stream writes among them, were consumed as data and the draw kept the
+            // previous mesh's vertex buffer (Bananza's black shape with a white halo).
             // EDEN_NX2_ALWAYS_CONTINUE=1 feeds every entry to the open method.
             // EDEN_NX2_PARK_SPLIT_METHODS=1 parks parameter tails too.
             static const bool always_continue = std::getenv("EDEN_NX2_ALWAYS_CONTINUE") != nullptr;
@@ -457,10 +457,11 @@ bool DmaPusher::IsOpenParameterTail(const CommandListHeader& header) const {
     if (dma_state.method_count == 0 || header.addr == split_method_end) {
         return false;
     }
-    // Longer than the method still wants, or longer than the parameter flushes: a command
-    // buffer, not the tail. Its words would otherwise be split between the open method and the
-    // parser, and the vertex-stream methods in the first part would not run.
-    if (header.size == 0 || header.size > dma_state.method_count || header.size > 64) {
+    // The tail is the outstanding words themselves (title 4 and Bananza: five). A shorter
+    // entry is a command buffer called while the method is open; a longer one would be split
+    // between the open method and the parser. Either way the vertex-stream methods in it would
+    // not run. Longer than the parameter flushes is a command buffer too.
+    if (header.size == 0 || header.size != dma_state.method_count || header.size > 64) {
         return false;
     }
     const auto* const engine_state = subchannels[dma_state.subchannel];

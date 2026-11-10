@@ -225,9 +225,9 @@ public:
         GPUVAddr resume_address; ///< Where the entry that continues the method starts
     };
     void ResolveSplitMethod(GPUVAddr entry_address);
-    /// A non-contiguous entry that is only the rest of an open macro or compute upload
-    /// (title 4 and Bananza's 5-word indirect records). Anything else is a called command
-    /// buffer: ResolveSplitMethod runs it with a clean method state.
+    /// A non-contiguous entry that is exactly the outstanding words of an open macro or
+    /// compute upload (title 4 and Bananza's 5-word indirect records). Anything else is a
+    /// called command buffer: ResolveSplitMethod runs it with a clean method state.
     [[nodiscard]] bool IsOpenParameterTail(const CommandListHeader& header) const;
     static constexpr size_t MaxParkedMethods = 16;
 
