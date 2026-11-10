@@ -1115,6 +1115,9 @@ void BufferCache<P>::MarkVertexStreamsUsed() {
     Nx2Profile::Add(Nx2Profile::Counter::StreamMarksStamped, stamped);
 }
 
+// Defined below. MSVC looks this up when the template is parsed, so the name has to exist here.
+inline bool IndirectVertexLimitEnabled();
+
 template <class P>
 void BufferCache<P>::BindHostVertexBuffers() {
 
