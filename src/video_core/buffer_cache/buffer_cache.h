@@ -1891,20 +1891,22 @@ inline bool IndirectVertexLimitEnabled() {
 }
 
 // The further of the native byte count (0x600) and the stream limit (0x1F00), capped at 64 MiB.
-// Other forks bind the limit. The native count on a destroyed-terrain draw is often still the
-// previous piece.
+// Bananza leaves the limit at 0. A zero limit underflows in the other forks and they bind the
+// rest of the mapping; here the count is often still the previous piece, so cover 256 KiB past
+// it (the continuous mapping clamps that) and upload those bytes with the bind.
 inline GPUVAddr IndirectVertexEnd(GPUVAddr begin, u64 native_size, GPUVAddr limit_address,
                                   bool widen) {
     const GPUVAddr native_end = begin + native_size;
-    if (!widen) {
+    if (!widen || native_size == 0) {
         return native_end;
     }
     const GPUVAddr limit_end = limit_address + 1;
-    if (limit_end <= native_end) {
-        return native_end;
-    }
     constexpr u64 cap = 64_MiB;
-    return begin + (std::min)(limit_end - begin, cap);
+    if (limit_end > native_end) {
+        return begin + (std::min)(limit_end - begin, cap);
+    }
+    constexpr u64 shortfall = 256_KiB;
+    return begin + (std::min)(native_size + shortfall, cap);
 }
 
 template <class P>
@@ -1930,36 +1932,6 @@ void BufferCache<P>::UpdateVertexBuffers() {
             const GPUVAddr limit_addr = regs.vertex_stream_limits[index].Address();
             const GPUVAddr want = IndirectVertexEnd(begin, native_size, limit_addr, true);
             if (want == native_end) {
-                if (index == 0) {
-                    struct Seen {
-                        u64 begin;
-                        u64 native_size;
-                        u64 limit;
-                    };
-                    static std::array<Seen, 16> seen{};
-                    static u32 count = 0;
-                    const Seen key{begin, native_size, limit_addr};
-                    const bool known =
-                        std::find_if(seen.begin(), seen.begin() + count, [&](const Seen& item) {
-                            return item.begin == key.begin && item.native_size == key.native_size &&
-                                   item.limit == key.limit;
-                        }) != seen.begin() + count;
-                    if (!known && count < seen.size()) {
-                        seen[count++] = key;
-                        s32 base_vertex = 0;
-                        const GPUVAddr record = current_draw_indirect->indirect_start_address;
-                        const bool have_base = gpu_memory->GpuToCpuAddress(record + 12).has_value();
-                        if (have_base) {
-                            gpu_memory->ReadBlockUnsafe(record + 12, &base_vertex,
-                                                        sizeof(base_vertex));
-                        }
-                        LOG_WARNING(HW_GPU,
-                                    "Indirect vertex limit stays at the native count: stream0 "
-                                    "{:#x} native {} limit {:#x} record {:#x} base {}{}",
-                                    begin, native_size, limit_addr, record, base_vertex,
-                                    have_base ? "" : " (record unmapped)");
-                    }
-                }
                 indirect_vertex_end[index] = 0;
                 continue;
             }
@@ -2129,7 +2101,33 @@ void BufferCache<P>::UpdateVertexBuffer(u32 index) {
         UpdateVertexBufferSlot(index, NULL_BINDING);
         return;
     }
-    if (!gpu_memory->IsWithinGPUAddressRange(gpu_addr_end) || size >= 64_MiB) {
+    // The padded indirect range has to stop at the first unmapped page. IsWithinGPUAddressRange
+    // only checks the address space, so a 256 KiB end can still cross a hole.
+    if (widen_limit && gpu_addr_end > gpu_addr_begin + native_size) {
+        const u32 continuous =
+            static_cast<u32>(gpu_memory->MaxContinuousRange(gpu_addr_begin, size));
+        if (index == 0 && continuous <= native_size) {
+            struct Seen {
+                u64 begin;
+                u64 native_size;
+            };
+            static std::array<Seen, 16> seen{};
+            static u32 count = 0;
+            const Seen key{gpu_addr_begin, native_size};
+            const bool known =
+                std::find_if(seen.begin(), seen.begin() + count, [&](const Seen& item) {
+                    return item.begin == key.begin && item.native_size == key.native_size;
+                }) != seen.begin() + count;
+            if (!known && count < seen.size()) {
+                seen[count++] = key;
+                LOG_WARNING(HW_GPU,
+                            "Indirect vertex pad stops at the native count: stream0 {:#x} "
+                            "native {} continuous {}",
+                            gpu_addr_begin, native_size, continuous);
+            }
+        }
+        size = continuous;
+    } else if (!gpu_memory->IsWithinGPUAddressRange(gpu_addr_end) || size >= 64_MiB) {
         size = static_cast<u32>(gpu_memory->MaxContinuousRange(gpu_addr_begin, size));
     }
     const BufferId buffer_id = FindBuffer(*device_addr, size, false);
