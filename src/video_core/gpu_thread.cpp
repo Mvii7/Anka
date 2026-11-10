@@ -19,6 +19,7 @@
 #include "video_core/gpu_thread.h"
 #include "video_core/gpu_split.h"
 #include "video_core/nx2_busy_clock.h"
+#include "video_core/nx2_stages.h"
 #include "video_core/nx2_front_diag_hooks.h"
 #include "video_core/nx2_profile.h"
 #include "video_core/host1x/host1x.h"
@@ -53,6 +54,7 @@ void ThreadManager::StartThread(VideoCore::RendererBase& renderer, Core::Fronten
         Common::SetCurrentThreadName("GPU");
         Common::SetCurrentThreadPriority(Common::ThreadPriority::Critical);
         system.RegisterHostThread();
+        VideoCommon::Nx2Stages::SetBufferRecordRole(1);
 
         auto current_context = context.Acquire();
         CommandDataContainer next;

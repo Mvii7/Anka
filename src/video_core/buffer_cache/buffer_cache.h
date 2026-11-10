@@ -21,6 +21,7 @@
 #include "video_core/host1x/gpu_device_memory_manager.h"
 #include "video_core/nx2.h"
 #include "video_core/nx2_profile.h"
+#include "video_core/nx2_stages.h"
 #include "video_core/texture_cache/util.h"
 
 namespace VideoCommon {
@@ -181,34 +182,39 @@ void BufferCache<P>::UnmapGPUMemory(size_t as_id, GPUVAddr gpu_addr, size_t size
 }
 
 template <class P>
-void BufferCache<P>::WriteMemory(DAddr device_addr, u64 size) {
-    // Bananza's terrain meshes are written by compute. A pre-draw invalidation of that range
-    // would upload the guest copy, which is still the previous bytes, over the mesh. The floor
-    // is then missing and the triangles collapse to the origin. Leave the GPU-written bytes.
-    // A write that only overlaps part of the range still uploads the rest.
-    if (IsRegionGpuModified(device_addr, size) &&
-        Tegra::g_nx2_program_id.load(std::memory_order_relaxed) == 0x040074A01BF12000ULL) {
-        boost::container::small_vector<std::pair<DAddr, DAddr>, 8> gpu_spans;
-        gpu_modified_ranges.ForEachInRange(device_addr, size, [&](DAddr start, DAddr range_end) {
-            gpu_spans.emplace_back(start, range_end);
-        });
-        std::sort(gpu_spans.begin(), gpu_spans.end());
-        DAddr cursor = device_addr;
-        const DAddr end = device_addr + size;
-        for (const auto& [start, range_end] : gpu_spans) {
-            if (cursor < start) {
-                memory_tracker.MarkRegionAsCpuModified(cursor, start - cursor);
-            }
-            cursor = (std::max)(cursor, range_end);
-        }
-        if (cursor < end) {
-            memory_tracker.MarkRegionAsCpuModified(cursor, end - cursor);
-        }
-        return;
-    }
+void BufferCache<P>::WriteMemory(DAddr device_addr, u64 size, bool keep_page_gpu_data) {
+    // EDEN_NX2_INLINE_PAGE_WRITES: unset follows Ampere (inline); =0 the old page upload; =1
+    // inline on every title.
+    static const int forced = [] {
+        const char* value = std::getenv("EDEN_NX2_INLINE_PAGE_WRITES");
+        return value == nullptr ? -1 : (value[0] == '0' ? 0 : 1);
+    }();
     if (IsRegionGpuModified(device_addr, size)) {
         ClearDownload(device_addr, size);
         gpu_modified_ranges.Subtract(device_addr, size);
+    }
+    // The tracker marks whole pages CPU-modified. The page's next upload then sends the stale
+    // guest copy over GPU-written bytes that share it: a compute dispatch fills a mesh or a draw
+    // record, and a small CPU write on that page replaces both. The draws read the leftover
+    // bytes. Copy only the CPU's bytes in, so the page stays GPU-owned. Same as Lichii. An unmap
+    // passes keep_page_gpu_data false. A CPU thread does not record, so it keeps the old upload.
+    if (keep_page_gpu_data && forced != 0 && Nx2Stages::OwnsBufferRecords()) {
+        const DAddr page_begin = Common::AlignDown(device_addr, DEVICE_PAGESIZE);
+        const DAddr page_end = Common::AlignUp(device_addr + size, DEVICE_PAGESIZE);
+        if (page_end > page_begin &&
+            gpu_modified_ranges.Intersects(page_begin, page_end - page_begin)) {
+            const bool inline_writes =
+                forced == 1 || Tegra::g_nx2_ampere.load(std::memory_order_relaxed);
+            if (inline_writes && IsRegionRegistered(device_addr, size)) {
+                tmp_buffer.resize_destructive(size);
+                device_memory.ReadBlockUnsafe(device_addr, tmp_buffer.data(), size);
+                InlineMemoryImplementation(device_addr, size, tmp_buffer);
+                return;
+            }
+            // No buffer to copy into (or not Ampere): bring the GPU's bytes back to guest
+            // first, so the page upload that follows does not replace them.
+            DownloadMemory(page_begin, page_end - page_begin);
+        }
     }
     memory_tracker.MarkRegionAsCpuModified(device_addr, size);
 }
@@ -229,7 +235,12 @@ void BufferCache<P>::WriteMemoryRanges(std::span<const std::pair<DAddr, std::siz
             lowest = (std::min)(lowest, addr);
             highest = (std::max)(highest, static_cast<DAddr>(addr + size));
         }
-        if (!IsRegionGpuModified(lowest, static_cast<size_t>(highest - lowest))) {
+        // The pages, not only the bytes: a short write shares its page with GPU-written data
+        // that the span itself does not cover, and WriteMemory then keeps that data.
+        const DAddr page_low = Common::AlignDown(lowest, DEVICE_PAGESIZE);
+        const DAddr page_high = Common::AlignUp(highest, DEVICE_PAGESIZE);
+        if (page_high > page_low &&
+            !IsRegionGpuModified(page_low, static_cast<size_t>(page_high - page_low))) {
             for (const auto& [addr, size] : ranges) {
                 memory_tracker.MarkRegionAsCpuModified(addr, size);
             }

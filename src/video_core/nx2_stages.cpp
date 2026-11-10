@@ -689,6 +689,25 @@ Stage RecordOwner() {
     return static_cast<Stage>(g_owner.load(std::memory_order_acquire));
 }
 
+namespace {
+thread_local u8 t_buffer_record_role = 0;
+}
+
+bool OwnsBufferRecords() {
+    if (Active()) {
+        return OnStage(RecordOwner()) || InJoin();
+    }
+    if (t_buffer_record_role == 2) {
+        return true;
+    }
+    // The GPU thread records only while the back thread does not.
+    return t_buffer_record_role == 1 && !GpuSplit::Get().Active();
+}
+
+void SetBufferRecordRole(u8 role) {
+    t_buffer_record_role = role;
+}
+
 void SetStageHooks(void (*begin)(void*), void (*end)(void*), void* context) {
     g_hook_begin = begin;
     g_hook_end = end;

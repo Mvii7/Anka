@@ -308,6 +308,13 @@ void ReportStageHazard(const char* what);
 /// K1 B, K2 C; A inside its join; B inside a JoinFromB / JoinFromBLocked `op`.
 Stage RecordOwner();
 
+/// Whether this thread may record a buffer upload. The record owner (and A inside a join) while
+/// the stages run; the back thread while the split runs without them; the GPU thread otherwise.
+/// A CPU thread writing guest memory is not one of these.
+bool OwnsBufferRecords();
+/// 1: the GPU thread. 2: the unstaged back thread. The stages do not consult this.
+void SetBufferRecordRole(u8 role);
+
 /// The record side's begin and end of the stages (the Vulkan rasterizer: its buffer runtime's
 /// BeginStages and record owner hook, EndStages; T7): with cut c, Start calls `begin` before B
 /// and C start and Stop calls `end` after they stopped; nothing runs behind either. One pair, set

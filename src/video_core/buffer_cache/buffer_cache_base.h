@@ -363,7 +363,9 @@ public:
 
     void UnmapGPUMemory(size_t as_id, GPUVAddr gpu_addr, size_t size);
 
-    void WriteMemory(DAddr device_addr, u64 size);
+    /// `keep_page_gpu_data`: a write that shares its pages with GPU-written bytes copies only the
+    /// written bytes in (false for an unmap, which keeps the old upload of the pages).
+    void WriteMemory(DAddr device_addr, u64 size, bool keep_page_gpu_data = true);
 
     /// WriteMemory for each range, in order (the pre-draw invalidation).
     void WriteMemoryRanges(std::span<const std::pair<DAddr, std::size_t>> ranges);

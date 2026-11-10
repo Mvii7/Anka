@@ -442,6 +442,7 @@ void GpuSplit::BackLoop(std::stop_token stop_token) {
     Common::SetCurrentThreadName("GPUBack");
     Common::SetCurrentThreadPriority(Common::ThreadPriority::Critical);
     Common::SetCurrentThreadToPerformanceCores();
+    Nx2Stages::SetBufferRecordRole(2);
     // EDEN_NX2_BACK_CPU: a physical core of its own (nx2_back_cpu.h).
     Nx2BackCpu::StartBack();
     system->RegisterHostThread();
