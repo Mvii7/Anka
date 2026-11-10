@@ -1593,14 +1593,22 @@ void RasterizerVulkan::DrawIndirect() {
         VideoCommon::Nx2Profile::Add(VideoCommon::Nx2Profile::Counter::IndirectBarriers, 1);
         scheduler.RequestOutsideRenderPassOperationContext();
         scheduler.Record([](vk::CommandBuffer cmdbuf) {
+            // The same writes fill the vertex and index buffers. Ordering only the indirect
+            // record leaves the draw fetching the previous mesh: Bananza's black debris with a
+            // white halo. Vertex-shader loads of that buffer (storage, not attributes) too.
             static constexpr VkMemoryBarrier barrier{
                 .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
                 .pNext = nullptr,
                 .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
-                .dstAccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT,
+                .dstAccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT |
+                                 VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT |
+                                 VK_ACCESS_SHADER_READ_BIT,
             };
             cmdbuf.PipelineBarrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-                                   VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, barrier);
+                                   VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
+                                       VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
+                                       VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+                                   0, barrier);
         });
     }
     buffer_cache.SetDrawIndirect(&params);
@@ -4750,14 +4758,22 @@ void RasterizerVulkan::PrepareDrawB(bool is_indexed, bool indirect, bool shape_o
         RecordTarget& target = buffer_cache_runtime.Target();
         target.RequestOutsideRenderPassOperationContext();
         target.Record([](vk::CommandBuffer cmdbuf) {
+            // The same writes fill the vertex and index buffers. Ordering only the indirect
+            // record leaves the draw fetching the previous mesh: Bananza's black debris with a
+            // white halo. Vertex-shader loads of that buffer (storage, not attributes) too.
             static constexpr VkMemoryBarrier barrier{
                 .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
                 .pNext = nullptr,
                 .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
-                .dstAccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT,
+                .dstAccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT |
+                                 VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT |
+                                 VK_ACCESS_SHADER_READ_BIT,
             };
             cmdbuf.PipelineBarrier(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-                                   VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, 0, barrier);
+                                   VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
+                                       VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
+                                       VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+                                   0, barrier);
         });
     };
     // DrawIndirect's draw_func reads these after the setup.
