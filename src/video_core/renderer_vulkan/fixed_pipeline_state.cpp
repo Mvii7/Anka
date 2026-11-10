@@ -105,8 +105,8 @@ void FixedPipelineState::Refresh(Tegra::Engines::Maxwell3D& maxwell3d, DynamicFe
     const Maxwell& regs = maxwell3d.regs;
     const auto topology_ = maxwell3d.draw_manager.draw_state.topology;
 
-    driver_id = features.driver_id;
-    driver_version = features.driver_version;
+    driver_id = 0;
+    driver_version = 0;
 
     raw1 = 0;
     extended_dynamic_state.Assign(features.has_extended_dynamic_state ? 1 : 0);

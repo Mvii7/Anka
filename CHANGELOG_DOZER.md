@@ -8,6 +8,11 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- Shader cache: a graphics pipeline key no longer includes the Vulkan driver id or version, so a
+  driver update still uses the pipelines in `vulkan.bin`. Older caches are read as they are; those
+  two words are cleared when a record is loaded. If the driver rejects `vulkan_pipelines.bin` or
+  the device static pipeline cache, that file is dropped and a new driver cache is started. The
+  guest cache is kept.
 - Rumble: HID command 214 (the Switch 2 titles' vibration, sent every frame) is forwarded to the
   controller through the existing vibration path; it was accepted and dropped. From the Selevet
   fork (`49e2ed7`); not tried with a controller yet.
