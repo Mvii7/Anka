@@ -814,6 +814,10 @@ private:
     /// resolve that stored only the native count clears the match so the next indirect draw
     /// resolves the limit again.
     std::array<u64, 32> indirect_vertex_end{};
+    /// Indexed indirect draws: the host range last bound for a stream whose declared count is
+    /// shorter than the page already in the buffer. No upload, the bytes are the ones there.
+    std::array<u32, 32> indirect_bind_size{};
+    std::array<u64, 32> indirect_bind_addr{};
     /// EDEN_NX2_GPU_PROFILE: what the last BindHostVertexBuffers bound (NoteVertexStreams),
     /// counted by CommitVertexStreamNote.
     struct VertexStreamNote {
