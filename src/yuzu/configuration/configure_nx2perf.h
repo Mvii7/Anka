@@ -19,7 +19,7 @@ namespace Ui {
 class ConfigureNx2Perf;
 }
 
-// The Anka tab: a preset (the launchers' three setups, or Custom) and Anka's settings
+// The Tuning tab: a preset (the launchers' setups, or Custom) and Dozer's settings
 // (core/nx2_perf_settings.h), one box each; a box changed by hand makes the preset Custom. A box
 // whose variables were all set outside the program (yuzu/nx2perf_session.h) is greyed out: theirs
 // is used.

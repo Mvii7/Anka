@@ -25,6 +25,7 @@ ConfigureNx2Perf::ConfigureNx2Perf(QWidget* parent)
 
     using S = Perf::Switches;
     rows = {
+        {ui->read_traps, &S::read_traps, {"EDEN_NX2_READ_TRAPS"}},
         {ui->split_gpu_thread, &S::split_gpu_thread, {"EDEN_NX2_BACK_STAGES", "EDEN_NX2_BACK_CUTS"}},
         {ui->acquire_peek, &S::acquire_peek, {"EDEN_NX2_ACQUIRE_PEEK"}},
         {ui->jit_same, &S::jit_same, {"EDEN_NX2_JIT_SAME"}},
@@ -40,9 +41,13 @@ ConfigureNx2Perf::ConfigureNx2Perf(QWidget* parent)
     SetConfiguration();
     MarkSetOutside();
 
-    // The preset's item order is Perf::Preset's (configure_nx2perf.ui).
-    connect(ui->preset, &QComboBox::activated, this,
-            [this](int index) { ChoosePreset(static_cast<Perf::Preset>(index)); });
+    // The combo's order is Perf::PresetOrder (configure_nx2perf.ui), not the stored numbers.
+    connect(ui->preset, &QComboBox::activated, this, [this](int index) {
+        if (index < 0 || static_cast<std::size_t>(index) >= Perf::PresetOrder.size()) {
+            return;
+        }
+        ChoosePreset(Perf::PresetOrder[static_cast<std::size_t>(index)]);
+    });
     for (const Row& row : rows) {
         connect(row.box, &QCheckBox::toggled, this, [this] { BoxChanged(); });
     }
@@ -111,19 +116,23 @@ void ConfigureNx2Perf::Show(const Perf::Switches& switches) {
 void ConfigureNx2Perf::ShowPreset() {
     {
         const QSignalBlocker blocker{ui->preset};
-        ui->preset->setCurrentIndex(static_cast<int>(preset));
+        ui->preset->setCurrentIndex(Perf::IndexOf(preset));
     }
     switch (preset) {
     case Perf::Preset::Recommended:
-        ui->preset_text->setText(tr("All settings on, Reactive Flushing off (Graphics, Advanced): "
-                                    "the setup this was measured with (GPU Mode Fast, the default). Like "
-                                    "start-recommended.bat."));
+        ui->preset_text->setText(tr("All settings on, including read traps, Reactive Flushing off "
+                                    "(Graphics, Advanced): the setup this was measured with (GPU Mode "
+                                    "Fast, the default). Like start-recommended.bat."));
+        break;
+    case Perf::Preset::Fast:
+        ui->preset_text->setText(tr("The recommended settings with read traps off, Reactive Flushing "
+                                    "off (Graphics, Advanced). Like start-fast.bat."));
         break;
     case Perf::Preset::Reactive:
         ui->preset_text->setText(
-            tr("All settings on, Reactive Flushing and barrier feedback loops on, RX_RT_FIT=3. "
-               "Experimental: on our PC faster in open areas, slower at the opening. Like "
-               "start-reactive-experimental.bat."));
+            tr("The recommended settings with read traps off, Reactive Flushing and barrier "
+               "feedback loops on, RX_RT_FIT=3. Experimental: on our PC faster in open areas, "
+               "slower at the opening. Like start-reactive-experimental.bat."));
         break;
     case Perf::Preset::Safe:
         ui->preset_text->setText(tr("All settings below off, and the GPU shortcuts that are on by "

@@ -104,7 +104,7 @@ ConfigureDialog::ConfigureDialog(QWidget* parent, HotkeyRegistry& registry_,
     connect(ui_tab.get(), &ConfigureUi::LanguageChanged, this, &ConfigureDialog::OnLanguageChanged);
     connect(general_tab.get(), &ConfigureGeneral::ExternalContentDirsChanged, this,
             &ConfigureDialog::ExternalContentDirsChanged);
-    // Anka's presets: Recommended turns Reactive Flushing off, Recommended + Reactive Flushing on
+    // Tuning presets: Recommended and Fast turn Reactive Flushing off, Experimental turns it on
     // (with barrier feedback loops).
     nx2perf_tab->SetReactiveFlushing([this](bool on, bool barrier_on) {
         return graphics_advanced_tab->SetReactiveFlushing(on, barrier_on);

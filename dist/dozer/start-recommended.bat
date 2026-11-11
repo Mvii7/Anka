@@ -65,6 +65,8 @@ set EDEN_NX2_FG_DIAG=
 set EDEN_NX2_RX_RT_FIT=
 set EDEN_NX2_FLUSH_FIRST_READ=
 set EDEN_NX2_READ_LATCH_AGE=
+rem Read traps stay on when this is unset. start-fast.bat sets it to 0.
+set EDEN_NX2_READ_TRAPS=
 set EDEN_NX2_RX_ONE_SUBMIT=
 set EDEN_NX2_RX_COALESCE=
 set EDEN_NX2_RX_PITCH_FORCED=
