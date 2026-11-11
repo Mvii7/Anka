@@ -12,10 +12,11 @@ and `=0` brings back the 2.0.0 code path.
   flushed, from whatever the vertex-buffer registers held. Each instance is drawn once. Array
   textures are unswizzled with the image's layer stride, and a readback uses the row alignment
   instead of 1, so a padded layer is not read as the next one.
-- The debris reset copies each zeroed record into the host buffer the indirect draw reads,
-  in command-stream order, after the dispatch that left the previous mesh there. Marking the
-  guest bytes was not that copy: the macro read the guest count and the shape left with the
-  debris, and the host draw kept the mesh.
+- The debris reset does not create a host buffer for a record. Creating one zeros the page,
+  and the terrain vertices share that page, so the ground disappears and one triangle is left
+  as the black sail with the white bloom. A copy is made only when a buffer already holds
+  GPU-written data, as in Lichii. The glow shader already returns zero for a colour it did not
+  write; this run was a fresh shader cache and the sail was still there, so that was not it.
 - An open GPU method keeps the next command entry. Parking that entry (`PARK_SPLIT_METHODS`,
   previously the default) left Bananza's draw on the previous mesh, the black shape with the
   white halo. `EDEN_NX2_PARK_SPLIT_METHODS=1` parks again.

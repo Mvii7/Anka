@@ -632,27 +632,25 @@ void RasterizerVulkan::PrepareDraw(bool is_indexed, bool indirect, Func&& draw_f
                 reset_launch ? CollectResetRecords(*maxwell3d, *gpu_memory) : std::nullopt;
             if (reset_list) {
                 Profile::Add(Profile::Counter::ResetFixLists, 1);
-                buffer_cache.force_registered_upload = true;
-                SCOPE_EXIT {
-                    buffer_cache.force_registered_upload = false;
-                };
                 u32 written = 0;
+                u32 copied = 0;
                 for (const u64 pointer : reset_list->pointers) {
                     if (pointer == 0 ||
                         !gpu_memory->IsFullyMappedRange(pointer, 5 * sizeof(u32))) {
                         continue;
                     }
-                    StoreResetRecord(pointer);
+                    copied += StoreResetRecord(pointer) ? 1 : 0;
                     ++written;
                 }
-                if (written != 0) {
+                if (copied != 0) {
                     buffer_cache.NoteIndirectBufferWrite();
                 }
                 thread_local u32 reset_logs{};
                 if (reset_logs < 5) {
                     ++reset_logs;
-                    LOG_INFO(HW_GPU, "Indirect draw reset: list {:#x}, {} records ({} written)",
-                             reset_list->begin, reset_list->requested, written);
+                    LOG_INFO(HW_GPU,
+                             "Indirect draw reset: list {:#x}, {} records ({} written, {} copied)",
+                             reset_list->begin, reset_list->requested, written, copied);
                 }
                 submitted = true;
                 return;
@@ -2653,24 +2651,30 @@ bool InlineDeferEnabled() {
 }
 } // Anonymous namespace
 
-void RasterizerVulkan::StoreResetRecord(GPUVAddr address) {
+bool RasterizerVulkan::StoreResetRecord(GPUVAddr address) {
     static constexpr std::array<u32, 5> record{0, 1, 0, 0, 0};
     const std::span<const u8> bytes{reinterpret_cast<const u8*>(record.data()), sizeof(record)};
     const std::optional<DAddr> cpu_addr = gpu_memory->GpuToCpuAddress(address);
     if (!cpu_addr) {
         gpu_memory->WriteBlock(address, bytes.data(), bytes.size());
-        return;
+        return false;
     }
     gpu_memory->WriteBlockUnsafe(address, bytes.data(), bytes.size(), true);
-    // The macro reads these guest bytes. The indirect draw reads the host buffer, which
-    // still held the previous mesh: marking the guest range was not a copy into that buffer.
-    buffer_cache.WriteIntoBuffer(*cpu_addr, bytes.size(), bytes);
     query_cache.InvalidateRegion(*cpu_addr, bytes.size());
+    // Lichii copies only when the buffer already holds GPU-written data. Making a buffer
+    // for the record zeros that page, and the terrain vertices share it: the ground goes
+    // and one triangle is left as the black sail.
+    const bool uploaded = buffer_cache.InlineMemory(*cpu_addr, bytes.size(), bytes);
+    if (!uploaded) {
+        buffer_cache.PreserveGuestWrite(*cpu_addr, bytes.size());
+        return false;
+    }
     {
         std::scoped_lock lock{texture_cache.mutex};
         texture_cache.WriteMemory(*cpu_addr, bytes.size());
     }
     pipeline_cache.InvalidateRegion(*cpu_addr, bytes.size());
+    return true;
 }
 
 void RasterizerVulkan::AccelerateInlineToMemory(GPUVAddr address, size_t copy_size,
@@ -5118,13 +5122,18 @@ void RasterizerVulkan::InlineRunsB(std::span<const std::pair<GPUVAddr, u32>> run
             continue;
         }
         gpu_memory->WriteBlockUnsafe(address, bytes.data(), size, true);
-        buffer_cache.WriteIntoBuffer(*cpu_addr, size, bytes);
-        ++uploads;
+        const bool uploaded = buffer_cache.InlineMemory(*cpu_addr, size, bytes);
+        if (!uploaded) {
+            buffer_cache.PreserveGuestWrite(*cpu_addr, size);
+        } else {
+            ++uploads;
+            pipeline_cache.InvalidateRegion(*cpu_addr, size);
+        }
         stage_c_ranges.push_back(*cpu_addr);
-        stage_c_ranges.push_back(u64{size} | StageRangeQuery | StageRangeTexture);
-        pipeline_cache.InvalidateRegion(*cpu_addr, size);
+        stage_c_ranges.push_back(u64{size} | StageRangeQuery |
+                                 (uploaded ? StageRangeTexture : 0));
     }
-    if (!runs.empty()) {
+    if (uploads != 0) {
         buffer_cache.NoteIndirectBufferWrite();
     }
     Profile::Add(Profile::Counter::ResetUploads, uploads);
