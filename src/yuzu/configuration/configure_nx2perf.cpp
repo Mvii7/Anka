@@ -120,19 +120,19 @@ void ConfigureNx2Perf::ShowPreset() {
     }
     switch (preset) {
     case Perf::Preset::Recommended:
-        ui->preset_text->setText(tr("All settings on, including read traps, Reactive Flushing off "
-                                    "(Graphics, Advanced): the setup this was measured with (GPU Mode "
-                                    "Fast, the default). Like start-recommended.bat."));
+        ui->preset_text->setText(tr("The recommended settings. Foliage is rendered at a performance "
+                                    "cost. Reactive Flushing off (Graphics, Advanced). Like "
+                                    "start-recommended.bat."));
         break;
     case Perf::Preset::Fast:
-        ui->preset_text->setText(tr("The recommended settings with read traps off, Reactive Flushing "
-                                    "off (Graphics, Advanced). Like start-fast.bat."));
+        ui->preset_text->setText(tr("The fastest settings, with read traps and Reactive Flushing "
+                                    "off. Foliage is not rendered for a performance gain. Like "
+                                    "start-fast.bat."));
         break;
     case Perf::Preset::Reactive:
         ui->preset_text->setText(
-            tr("The recommended settings with read traps off, Reactive Flushing and barrier "
-               "feedback loops on, RX_RT_FIT=3. Experimental: on our PC faster in open areas, "
-               "slower at the opening. Like start-reactive-experimental.bat."));
+            tr("The recommended settings with Reactive Flushing instead of read traps (barrier "
+               "feedback loops on, RX_RT_FIT=3). Like start-reactive-experimental.bat."));
         break;
     case Perf::Preset::Safe:
         ui->preset_text->setText(tr("All settings below off, and the GPU shortcuts that are on by "

@@ -1,6 +1,6 @@
 @echo off
 setlocal DisableDelayedExpansion
-rem Dozer - FAST: the recommended settings with read traps off (EDEN_NX2_READ_TRAPS=0).
+rem Dozer - FAST: the fastest settings, read traps and reactive flushing off. Foliage is not rendered.
 rem Dozer launcher for dozer-cli.exe (Dozer's program without menus).
 rem Put this file next to dozer-cli.exe.
 rem Start: put your game (.nsp .xci .nsz .xcz .nup) in the Games folder next to this file and double-click

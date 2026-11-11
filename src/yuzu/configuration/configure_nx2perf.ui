@@ -173,7 +173,7 @@
       <item>
        <widget class="QLabel" name="read_traps_text">
         <property name="text">
-         <string>A buffer page the GPU writes stays protected until the game's first read, which flushes it (READ_TRAPS). Off sets EDEN_NX2_READ_TRAPS=0. Does nothing while Reactive Flushing is on.</string>
+         <string>A buffer page the GPU writes stays protected until the game's first read, which flushes it (READ_TRAPS). Foliage is rendered with this on, and is not rendered when this and Reactive Flushing are off. Off sets EDEN_NX2_READ_TRAPS=0.</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>

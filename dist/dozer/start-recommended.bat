@@ -1,6 +1,6 @@
 @echo off
 setlocal DisableDelayedExpansion
-rem Dozer - RECOMMENDED: the settings measured best on our PC (Donkey Kong Bananza).
+rem Dozer - RECOMMENDED: the recommended settings. Foliage is rendered at a performance cost.
 rem Dozer launcher for dozer-cli.exe (Dozer's program without menus).
 rem Put this file next to dozer-cli.exe.
 rem Start: put your game (.nsp .xci .nsz .xcz .nup) in the Games folder next to this file and double-click

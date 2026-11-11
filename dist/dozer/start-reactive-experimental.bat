@@ -1,6 +1,6 @@
 @echo off
 setlocal DisableDelayedExpansion
-rem Dozer - EXPERIMENTAL: recommended + reactive flushing + RX_RT_FIT=3, read traps off.
+rem Dozer - EXPERIMENTAL: the recommended settings with Reactive Flushing instead of read traps.
 rem Dozer launcher for dozer-cli.exe (Dozer's program without menus).
 rem Put this file next to dozer-cli.exe.
 rem Start: put your game (.nsp .xci .nsz .xcz .nup) in the Games folder next to this file and double-click

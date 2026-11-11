@@ -86,7 +86,7 @@ Settings: **Emulation > Configure... > Tuning**. On the first start the preset i
 its `qt-config.ini` (Graphics > Advanced).
 
 GPU Mode (GPU accuracy) starts at **Fast** (Low), as in newer Eden versions (2.0.0 started at
-Accurate, High, on desktop); our measurements used Fast. If a game shows image errors, set
+Accurate, High, on desktop). If a game shows image errors, set
 Graphics > Advanced > GPU Mode to Accurate for that game (its Properties) or globally.
 
 ### The Tuning tab
@@ -96,14 +96,11 @@ under it.
 
 | Preset | What it sets | Same as |
 |---|---|---|
-| **Recommended** (the first start's choice) | all nine settings below on, including read traps, *Enable Reactive Flushing* off (Graphics > Advanced): the recommended setup (with GPU Mode Fast, the default). Dozer's first start also turns Reactive Flushing off in `qt-config.ini` by itself; choosing Recommended later turns it off too | `start-recommended.bat` |
-| **Fast** | the recommended settings with read traps off (`EDEN_NX2_READ_TRAPS=0`) and Reactive Flushing off | `start-fast.bat` |
-| **Experimental** | the recommended settings with read traps off, Reactive Flushing on, barrier feedback loops on (Graphics > Advanced; Reactive Flushing needs it) and `EDEN_NX2_RX_RT_FIT=3`. Slower at the game's opening and faster in open areas in Anka's author's tests. ("Reactive flushing") | `start-reactive-experimental.bat` |
+| **Recommended** (the first start's choice) | all nine settings below on, *Enable Reactive Flushing* off (Graphics > Advanced). Foliage is rendered at a performance cost. Dozer's first start also turns Reactive Flushing off in `qt-config.ini` by itself; choosing Recommended later turns it off too | `start-recommended.bat` |
+| **Fast** | the fastest settings with read traps and Reactive Flushing off (`EDEN_NX2_READ_TRAPS=0`). Foliage is not rendered for a performance gain | `start-fast.bat` |
+| **Experimental** | the recommended settings with Reactive Flushing instead of read traps: barrier feedback loops on (Graphics > Advanced; Reactive Flushing needs it) and `EDEN_NX2_RX_RT_FIT=3` | `start-reactive-experimental.bat` |
 | **Safe** | all nine off, Frame generation off, and the GPU shortcuts Dozer keeps on by default off too (`EDEN_NX2_LIGHT_DRAW=0` and the rest of `start-safe.bat`'s list), in every game. Other graphics settings such as Reactive Flushing stay as they are; Dozer's fixes and its changes without a switch stay in | `start-safe.bat` |
 | **Custom** | chosen by itself when you change a box by hand | - |
-
-Recommended is made for Donkey Kong Bananza only. If another game shows image or speed
-problems, try Safe first and report it with the game's name.
 
 **Frame generation.** The tab also has a **Frame generation** box with three choices:
 
@@ -123,7 +120,7 @@ Below the preset are the nine settings, in two groups:
 
 | Setting | Switches it sets (`EDEN_NX2_...`) | Group |
 |---|---|---|
-| Read traps | on: left unset (the default, on); off: `READ_TRAPS=0`. Does nothing while Reactive Flushing is on. Recommended ticks it; Fast and Experimental leave it unticked. Unticking it while Recommended is selected changes the preset to Custom | All games |
+| Read traps | on: left unset (the default, on). Foliage is rendered at a performance cost. Off: `READ_TRAPS=0`. With Reactive Flushing off as well, foliage is not rendered. Does nothing while Reactive Flushing is on. Recommended ticks it; Fast and Experimental leave it unticked. Unticking it while Recommended is selected changes the preset to Custom | All games |
 | Split GPU thread | `BACK_STAGES=1`, `BACK_CUTS=a` | All games |
 | Acquire peek | `ACQUIRE_PEEK=1` | All games |
 | Same-value filter in the macro JIT | `JIT_SAME=1` | All games |
@@ -191,9 +188,9 @@ The game starts in full screen; dozer-cli has no menu. **Quit with Alt+F4.**
 
 | Launcher | When to use it |
 |---|---|
-| `start-recommended.bat` | **Recommended.** The recommended settings (Donkey Kong Bananza), read traps on. |
-| `start-fast.bat` | **Fast.** The recommended settings with read traps off (`EDEN_NX2_READ_TRAPS=0`). |
-| `start-reactive-experimental.bat` | **Experimental.** The recommended settings with read traps off and reactive flushing on: slower at the game's opening and faster in open areas in Anka's author's tests. If you see image errors, go back to the recommended one. |
+| `start-recommended.bat` | **Recommended.** The recommended settings. Foliage is rendered at a performance cost. |
+| `start-fast.bat` | **Fast.** The fastest settings with read traps and reactive flushing off. Foliage is not rendered for a performance gain. |
+| `start-reactive-experimental.bat` | **Experimental.** The recommended settings with Reactive Flushing instead of read traps. |
 | `start-safe.bat` | The GPU shortcuts Dozer keeps on by default off, read traps off, the opt-in switches that change play cleared; Dozer's fixes and its changes without a switch stay in: for troubleshooting and for games other than Bananza. |
 
 A launcher starts, in this order: a game file dragged onto it, the `GAME=` line, or the game in
@@ -216,7 +213,7 @@ A launcher stops with a message when its `CONFIG=` file does not exist (dozer-cl
 make a new one with default settings), and keeps its window open when the emulator exits with an
 error. Take the launchers from the release zip: they need Windows line endings (CRLF).
 
-- **`start-recommended.bat`** - the settings we play with (Donkey Kong Bananza):
+- **`start-recommended.bat`** - the recommended settings. Foliage is rendered at a performance cost:
   the GPU thread's back as stages (`BACK_STAGES=1`, `BACK_CUTS=a`), `ACQUIRE_PEEK=1`,
   `JIT_SAME=1`, `FRONT_MACRO_LEAN=1`; Bananza's own 60/30/20 fps choice followed at the right
   speed (`PRESENT_INTERVAL_WORD=12:16:4`, `MODE_PACE=2`, `PACE_SPIN_US=1500`); the dynamic
@@ -227,8 +224,9 @@ error. Take the launchers from the release zip: they need Windows line endings (
   is meant for reactive flushing **off**: it turns it off in an `sdl2-config.ini` it makes,
   and only prints a note when an existing one has it on ("Reactive flushing"). Read traps stay
   on: the launcher clears `EDEN_NX2_READ_TRAPS`, and unset means on.
-- **`start-fast.bat`** - the recommended settings with read traps off (`EDEN_NX2_READ_TRAPS=0`).
-  The same switches as `start-recommended.bat`, including Bananza's dynamic frame rate and frame
+- **`start-fast.bat`** - the fastest settings, with read traps and reactive flushing off
+  (`EDEN_NX2_READ_TRAPS=0`). Foliage is not rendered for a performance gain. The same other
+  switches as `start-recommended.bat`, including Bananza's dynamic frame rate and frame
   pacing, and the same handling of reactive flushing (off in an `sdl2-config.ini` it makes, a
   note when an existing one has it on).
 - **`start-safe.bat`** - for troubleshooting and for games other than Bananza: Dozer's shortcut
@@ -237,8 +235,8 @@ error. Take the launchers from the release zip: they need Windows line endings (
   your system environment). Use it to see whether a problem comes from these switches. Dozer's
   fixes and its changes without a switch (the accuracy fixes and upstream picks in the
   changelog) stay in. Read traps are off (`EDEN_NX2_READ_TRAPS=0`).
-- **`start-reactive-experimental.bat`** - EXPERIMENTAL: the recommended settings with read traps
-  off (`EDEN_NX2_READ_TRAPS=0`) and reactive flushing on, plus `RX_RT_FIT=3` (one
+- **`start-reactive-experimental.bat`** - EXPERIMENTAL: the recommended settings with Reactive
+  Flushing instead of read traps (`EDEN_NX2_READ_TRAPS=0`, reactive flushing on), plus `RX_RT_FIT=3` (one
   image for Bananza's opening render target instead of a copy per draw). In Anka's author's
   tests it trades the opening for open areas: slower at the game's opening, faster in open areas,
   against the same build with reactive flushing off. Not checked yet: together with frame generation, and the
@@ -261,7 +259,7 @@ without a launcher; the menu program sets the recommended ones from its Tuning t
 
 | Switch | Default | What it does |
 |---|---|---|
-| `READ_TRAPS=0` | **on** (unset) | read traps: a buffer page the GPU writes stays protected until the game's first read. `=0` turns them off. With reactive flushing on they do nothing. Recommended leaves this unset; Fast, Experimental and Safe set `0` |
+| `READ_TRAPS=0` | **on** (unset) | read traps: a buffer page the GPU writes stays protected until the game's first read. Foliage is rendered at a performance cost. `=0` turns them off; with reactive flushing off as well, foliage is not rendered. With reactive flushing on they do nothing. Recommended leaves this unset; Fast, Experimental and Safe set `0` |
 | `BACK_STAGES=1`, `BACK_CUTS=a` | off | the split GPU thread's back runs as a pipeline of stages |
 | `ACQUIRE_PEEK=1` | off | a GPU semaphore wait already met goes on without draining the back |
 | `JIT_SAME=1`, `FRONT_MACRO_LEAN=1` | off | the front's macro JIT drops writes that change nothing |
@@ -359,8 +357,9 @@ writes before fragment shader reads, by region), so the render pass goes on. Bot
 In Anka's author's tests `RX_RT_FIT=3` was clearly better than `=1` at the opening and the same in the
 open area. Against reactive flushing off it is a trade that depends on the scene. That is why there
 are three setups for play, as launchers and as presets of the Tuning tab: recommended (reactive
-flushing off, read traps on), fast (the same with read traps off) and experimental (reactive
-flushing on, with `RX_RT_FIT=3`, read traps off). **Experimental:** reactive flushing was **never measured together with
+flushing off, read traps on; foliage is rendered at a performance cost), fast (read traps and
+reactive flushing off; foliage is not rendered for a performance gain) and experimental (Reactive
+Flushing instead of read traps, with `RX_RT_FIT=3`). **Experimental:** reactive flushing was **never measured together with
 frame generation**, and the image with `RX_RT_FIT=3` has not been checked by eye yet (its barrier
 inside the render pass covers a fragment reading the pixel it renders, which is what the Vulkan
 spec defines for feedback loops). If you see wrong images with it, set `RX_RT_FIT=1` in the
