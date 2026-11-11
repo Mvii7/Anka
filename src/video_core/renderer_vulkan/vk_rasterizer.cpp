@@ -802,6 +802,9 @@ void RasterizerVulkan::PrepareDraw(bool is_indexed, bool indirect, Func&& draw_f
         Profile::Scope scope{Profile::Zone::DrawRecord};
         draw_func();
     }
+    if (pipeline->WritesMemory()) {
+        buffer_cache.NoteIndirectSource();
+    }
     if (Profile::Enabled()) {
         buffer_cache.CommitVertexStreamNote();
     }
@@ -1331,6 +1334,9 @@ bool RasterizerVulkan::TryLightDraw(bool is_indexed, bool indirect, bool invalid
         {
             Profile::Scope draw_scope{Profile::Zone::DrawRecord};
             draw_func();
+        }
+        if (pipeline.WritesMemory()) {
+            buffer_cache.NoteIndirectSource();
         }
         Profile::Add(Profile::Counter::LightUniformDraws, 1);
         if (indirect) {
@@ -2012,6 +2018,8 @@ void RasterizerVulkan::DispatchCompute() {
             }
             cmdbuf.DispatchIndirect(indirect_buffer, indirect_offset);
         });
+        // Global stores are not storage-buffer writes, so MarkWrittenBuffer never runs.
+        buffer_cache.NoteIndirectSource();
         return;
     }
     const std::array<u32, 3> dim{qmd.grid_dim_x, qmd.grid_dim_y, qmd.grid_dim_z};
@@ -2034,6 +2042,8 @@ void RasterizerVulkan::DispatchCompute() {
         }
         cmdbuf.Dispatch(dim[0], dim[1], dim[2]);
     });
+    // Global stores are not storage-buffer writes, so MarkWrittenBuffer never runs.
+    buffer_cache.NoteIndirectSource();
 
     // Log compute dispatch
     if (GPU::Logging::IsActive() &&
@@ -4971,6 +4981,9 @@ void RasterizerVulkan::PrepareDrawB(bool is_indexed, bool indirect, bool shape_o
                 }
             }
             SendStageDraw();
+            if (pipeline.WritesMemory()) {
+                buffer_cache.NoteIndirectSource();
+            }
             if (try_plain) {
                 Profile::Add(Profile::Counter::LightDraws, 1);
                 if (indirect) {
@@ -5065,6 +5078,9 @@ void RasterizerVulkan::PrepareDrawB(bool is_indexed, bool indirect, bool shape_o
             Profile::Scope scope{Profile::Zone::DrawRecord};
             RecordStageDraw(params);
         });
+        if (pipeline->WritesMemory()) {
+            buffer_cache.NoteIndirectSource();
+        }
         return;
     }
     u64 seq;
@@ -5112,6 +5128,9 @@ void RasterizerVulkan::PrepareDrawB(bool is_indexed, bool indirect, bool shape_o
         }
     }
     SendStageDraw();
+    if (pipeline->WritesMemory()) {
+        buffer_cache.NoteIndirectSource();
+    }
 }
 
 bool RasterizerVulkan::StageResetProgram(Tegra::Engines::Maxwell3D& mb, bool is_indexed) {
