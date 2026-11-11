@@ -367,6 +367,60 @@ void NoteDmaWrite(GPUVAddr address, u64 size) {
     }
 }
 } // namespace Diagnostics
+
+struct ResetList {
+    u64 begin{};
+    u32 requested{};
+    std::vector<u64> pointers;
+};
+
+void LogResetLeft(std::string_view reason) {
+    static u32 reported{};
+    if (reported < 8) {
+        ++reported;
+        LOG_WARNING(HW_GPU, "Indirect draw reset left to the shader: {}", reason);
+    }
+}
+
+// The descriptor at c0[0x110] is the pointer list and its byte length. Download GPU writes before
+// following it. A draw that does not fit the descriptor is refused whole: zeroing past the list
+// hits other records, and the debris draw keeps the previous mesh.
+std::optional<ResetList> CollectResetRecords(Tegra::Engines::Maxwell3D& engine,
+                                             Tegra::MemoryManager& memory) {
+    const auto& draw = engine.draw_manager.draw_state;
+    const auto& cbuf = engine.state.shader_stages[0].const_buffers[0];
+    if (!cbuf.enabled || cbuf.size < 0x120 ||
+        !memory.IsFullyMappedRange(cbuf.address + 0x110, 16)) {
+        LogResetLeft("descriptor unavailable");
+        return std::nullopt;
+    }
+    std::array<u64, 2> descriptor{};
+    memory.ReadBlock(cbuf.address + 0x110, descriptor.data(), sizeof(descriptor),
+                     VideoCommon::CacheType::BufferCache);
+    const auto range = VideoCommon::IndirectResetRange(descriptor[0], static_cast<u32>(descriptor[1]),
+                                                       draw.vertex_buffer.first,
+                                                       draw.vertex_buffer.count);
+    if (!range || !memory.IsFullyMappedRange(range->begin, range->size)) {
+        LogResetLeft("list outside its descriptor");
+        return std::nullopt;
+    }
+    ResetList list{
+        .begin = range->begin,
+        .requested = draw.vertex_buffer.count,
+    };
+    list.pointers.resize(draw.vertex_buffer.count);
+    memory.ReadBlock(range->begin, list.pointers.data(), range->size,
+                     VideoCommon::CacheType::BufferCache);
+    constexpr u32 RecordSize = 5 * sizeof(u32);
+    for (const u64 pointer : list.pointers) {
+        if (pointer != 0 && pointer < range->begin + range->size &&
+            range->begin < pointer + RecordSize) {
+            LogResetLeft("record overlaps the pointer list");
+            return std::nullopt;
+        }
+    }
+    return list;
+}
 } // Anonymous namespace
 
 RasterizerVulkan::RasterizerVulkan(Core::Frontend::EmuWindow& emu_window_, Tegra::GPU& gpu_,
@@ -1405,60 +1459,6 @@ void TraceWindowTarget(const Tegra::Engines::Maxwell3D& maxwell3d, Tegra::Memory
             std::fclose(file);
         }
     }
-}
-
-struct ResetList {
-    u64 begin{};
-    u32 requested{};
-    std::vector<u64> pointers;
-};
-
-void LogResetLeft(std::string_view reason) {
-    static u32 reported{};
-    if (reported < 8) {
-        ++reported;
-        LOG_WARNING(HW_GPU, "Indirect draw reset left to the shader: {}", reason);
-    }
-}
-
-// The descriptor at c0[0x110] is the pointer list and its byte length. Download GPU writes before
-// following it. A draw that does not fit the descriptor is refused whole: zeroing past the list
-// hits other records, and the debris draw keeps the previous mesh.
-std::optional<ResetList> CollectResetRecords(Tegra::Engines::Maxwell3D& engine,
-                                             Tegra::MemoryManager& memory) {
-    const auto& draw = engine.draw_manager.draw_state;
-    const auto& cbuf = engine.state.shader_stages[0].const_buffers[0];
-    if (!cbuf.enabled || cbuf.size < 0x120 ||
-        !memory.IsFullyMappedRange(cbuf.address + 0x110, 16)) {
-        LogResetLeft("descriptor unavailable");
-        return std::nullopt;
-    }
-    std::array<u64, 2> descriptor{};
-    memory.ReadBlock(cbuf.address + 0x110, descriptor.data(), sizeof(descriptor),
-                     VideoCommon::CacheType::BufferCache);
-    const auto range = VideoCommon::IndirectResetRange(descriptor[0], static_cast<u32>(descriptor[1]),
-                                                       draw.vertex_buffer.first,
-                                                       draw.vertex_buffer.count);
-    if (!range || !memory.IsFullyMappedRange(range->begin, range->size)) {
-        LogResetLeft("list outside its descriptor");
-        return std::nullopt;
-    }
-    ResetList list{
-        .begin = range->begin,
-        .requested = draw.vertex_buffer.count,
-    };
-    list.pointers.resize(draw.vertex_buffer.count);
-    memory.ReadBlock(range->begin, list.pointers.data(), range->size,
-                     VideoCommon::CacheType::BufferCache);
-    constexpr u32 RecordSize = 5 * sizeof(u32);
-    for (const u64 pointer : list.pointers) {
-        if (pointer != 0 && pointer < range->begin + range->size &&
-            range->begin < pointer + RecordSize) {
-            LogResetLeft("record overlaps the pointer list");
-            return std::nullopt;
-        }
-    }
-    return list;
 }
 } // Anonymous namespace
 
