@@ -22,10 +22,9 @@ and `=0` brings back the 2.0.0 code path.
   glow is not this shader. Shader caches from that build stay (pipeline cache version 1020).
 - A register a shader reads before writing it is zero, as on the hardware
   (`EDEN_NX2_UNDEF_ZERO=0` restores `OpUndef`). That was not this mesh.
-- Fix: Bananza's destroyed-terrain hole. The colour pass was drawing the debris reset's zero
-  triangle count from the indirect buffer, so that piece of floor was never drawn. The macro
-  reads the culling pass's count back and draws that (`HLE_INDIRECT` off; `=1` is the old GPU
-  read).
+- The host GPU reads Bananza's indexed indirect records again (`HLE_INDIRECT`, on). `=0`
+  flushes the record and the macro draws the culled count. Leaving it off was a trial for the
+  floor hole, not the default.
 - Consecutive NVN indexed indirect draws merge into one host multi-draw again (`INDIRECT_BATCH`,
   on). The terrain damage that had it off by default was not this merge. `=0` is one host draw
   per call.

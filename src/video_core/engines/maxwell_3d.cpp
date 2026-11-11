@@ -1494,15 +1494,13 @@ bool FrontVerifyEnabled() {
     return verify;
 }
 
-// Donkey Kong Bananza's terrain colour pass draws each piece from a 5-word record. The debris
-// reset stores {0, 1, 0, 0, 0} into that record, and the culling pass then writes the triangle
-// count. vkCmdDrawIndexedIndirect reads the buffer the reset zeroed, so the piece is never
-// drawn: a hole in the floor. The macro path flushes the record (DmaPusher) and draws the culled
-// count. EDEN_NX2_HLE_INDIRECT=1 reads the buffer on the GPU instead.
+// Donkey Kong Bananza's terrain colour pass draws each piece from a 5-word record. The host GPU
+// reads that record (vkCmdDrawIndexedIndirect). EDEN_NX2_HLE_INDIRECT=0 flushes it and the macro
+// draws the culled count instead.
 bool HleIndirectEnabled() {
     static const bool enabled = [] {
         const char* value = std::getenv("EDEN_NX2_HLE_INDIRECT");
-        return value != nullptr && value[0] == '1';
+        return value == nullptr || value[0] != '0';
     }();
     return enabled;
 }
@@ -2133,7 +2131,7 @@ void Maxwell3D::FrontRunMacro(Core::System& system, VideoCommon::GpuSplit& split
                 if (++check->matches == FrontState::IndirectCheck::Needed) {
                     LOG_INFO(HW_GPU,
                              "Macro at {:#x} is NVN's indexed indirect draw: the GPU reads the "
-                             "records it gets from GPU memory (EDEN_NX2_HLE_INDIRECT=1)",
+                             "records it gets from GPU memory (EDEN_NX2_HLE_INDIRECT=0 draws the flushed count)",
                              start);
                 }
             } else {
