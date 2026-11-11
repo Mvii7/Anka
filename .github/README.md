@@ -36,9 +36,9 @@ launcher) and double-click a launcher:
 
 | Launcher | When to use it |
 |---|---|
-| `start-recommended.bat` | **Recommended.** The fastest settings we measured (Donkey Kong Bananza), read traps on. |
-| `start-fast.bat` | **Fast.** The recommended settings with read traps off (`EDEN_NX2_READ_TRAPS=0`). |
-| `start-reactive-experimental.bat` | **Experimental.** Read traps off and Reactive Flushing on: on our PC about 7% slower at the game's opening and about 15% faster in open areas. If you see image errors, go back to the recommended one. |
+| `start-recommended.bat` | **Recommended.** The recommended settings. Foliage is rendered at a performance cost. |
+| `start-fast.bat` | **Fast.** The fastest settings with read traps and reactive flushing off. Foliage is not rendered for a performance gain. |
+| `start-reactive-experimental.bat` | **Experimental.** The recommended settings with Reactive Flushing instead of Read traps. |
 | `start-safe.bat` | **For troubleshooting and for games other than Bananza.** The GPU shortcuts Dozer keeps on by default turned off (`EDEN_NX2_LIGHT_DRAW=0` and the rest of its list), read traps off, and the optional settings that change play cleared. Dozer's fixes and its changes without a switch stay in. |
 
 On the first start a launcher makes dozer-cli's settings file (`user\config\sdl2-config.ini`) as
@@ -51,12 +51,10 @@ does this). The game starts in full screen: **quit with Alt+F4**.
 In `dozer.exe`: **Emulation > Configure... > Tuning**. The **Preset** box at the top has five
 choices:
 
-- **Recommended** (the first start's choice): all nine settings on, including read traps,
-  Reactive Flushing off (Graphics > Advanced). The setup we measured (with GPU Mode Fast, the
-  default); the same as `start-recommended.bat`. On Dozer's first start it also turns Reactive
+- **Recommended** (the first start's choice): all nine settings on,
+  Reactive Flushing off (Graphics > Advanced); the same as `start-recommended.bat`. On Dozer's first start it also turns Reactive
   Flushing off in `qt-config.ini` by itself; choosing Recommended later turns it off as well.
-- **Fast**: the recommended settings with read traps off (`EDEN_NX2_READ_TRAPS=0`) and Reactive
-  Flushing off. The same as `start-fast.bat`.
+- **Fast**: the fastest settings with Read Traps and Reactive Flushing off. The same as `start-fast.bat`.
 - **Experimental**: the recommended settings with read traps off, Reactive Flushing on, barrier
   feedback loops on (Graphics > Advanced; Reactive Flushing needs it) and `EDEN_NX2_RX_RT_FIT=3`.
   The same as `start-reactive-experimental.bat`.
@@ -67,11 +65,8 @@ choices:
 - **Custom**: chosen by itself when you change a box by hand. Unticking read traps while
   Recommended is selected does this.
 
-Recommended was measured in Donkey Kong Bananza only. If another game shows image or speed
-problems, try Safe first and report it with the game's name.
-
 GPU Mode (GPU accuracy) starts at **Fast** (Low), as in newer Eden versions (2.0.0 started at
-Accurate, High, on desktop); our measurements used Fast. If a game shows image errors, set
+Accurate, High, on desktop). If a game shows image errors, set
 Graphics > Advanced > GPU Mode to Accurate for that game (its Properties) or globally.
 
 Below the presets, seven settings apply to **all games** (Read traps is the first) and two to **Donkey Kong Bananza only**
