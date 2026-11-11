@@ -220,6 +220,16 @@ void BufferCache<P>::WriteMemory(DAddr device_addr, u64 size, bool keep_page_gpu
 }
 
 template <class P>
+void BufferCache<P>::PreserveGuestWrite(DAddr device_addr, u64 size) {
+    if (size == 0) {
+        return;
+    }
+    ClearDownload(device_addr, size);
+    gpu_modified_ranges.Subtract(device_addr, size);
+    memory_tracker.MarkRegionAsCpuModified(device_addr, size);
+}
+
+template <class P>
 void BufferCache<P>::WriteMemoryRanges(std::span<const std::pair<DAddr, std::size_t>> ranges) {
     // EDEN_NX2_INVAL_HULL=0: one GPU-modified lookup per range, as WriteMemory does.
     static const bool use_hull = [] {

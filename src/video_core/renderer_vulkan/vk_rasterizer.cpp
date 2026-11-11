@@ -2842,14 +2842,13 @@ void RasterizerVulkan::AccelerateInlineRuns(std::span<const std::pair<GPUVAddr, 
     // batch (BufferCache::InlineMemoryBatched): consecutive ones into one buffer are recorded as
     // one copy, from one staging buffer, between two barriers. The batch is recorded before this
     // returns, so before anything that may read the buffer: the steps it waits through write
-    // guest memory, keep the caches' books (query, texture and shader invalidations, the
-    // deferred ranges) and record only uploads of guest memory over the same bytes; the buffer
+    // guest memory, keep the caches' books (query, texture and shader invalidations) and
+    // record only uploads of guest memory over the same bytes; the buffer
     // cache stays locked throughout (no other thread's download or bind comes in between), and
     // a run outside device memory (the memory manager's slow path) goes after what is batched.
     // One light epoch step stands for every run's (only its change is compared).
     namespace Profile = VideoCommon::Nx2Profile;
     NoteLightWork();
-    const bool defer = InlineDeferEnabled();
     CheckBufferLockOffB("RasterizerVulkan::AccelerateInlineRuns");
     std::scoped_lock buffer_lock{buffer_cache.mutex};
     BufferCache::InlineBatch batch;
@@ -2878,20 +2877,14 @@ void RasterizerVulkan::AccelerateInlineRuns(std::span<const std::pair<GPUVAddr, 
             ++uploads;
             // Copies recorded on the way (the batch emptied or the unbatched way taken).
             commands += batch.copies.size() <= batched ? 1 : 0;
-        } else if (!defer) {
-            // EDEN_NX2_INLINE_DEFER=0: the CPU-modified mark makes a later synchronization in
-            // this call upload the pages, recorded ahead of the batch: what is batched goes
-            // first, so a batched copy can't land over bytes written after it.
-            commands += buffer_cache.FlushInlineBatch(batch) ? 1 : 0;
-            buffer_cache.WriteMemory(*cpu_addr, size);
         }
         query_cache.InvalidateRegion(*cpu_addr, size);
-        if (!uploaded && defer) {
-            gpu_memory->AccumulateInvalidation(address, size);
-            if (Profile::Enabled()) {
-                Diagnostics::NoteDeferredInline(*cpu_addr, size);
-            }
-            continue;
+        if (!uploaded) {
+            // No buffer holds the record, so the copy above did not run. Leaving the
+            // invalidation until FlushCaching downloads the page and writes the previous
+            // mesh over the zeroed count (WriteMemory keeps GPU-written pages). The draw
+            // that reads the record then keeps that mesh after the debris is gone.
+            buffer_cache.PreserveGuestWrite(*cpu_addr, size);
         }
         {
             std::scoped_lock lock{texture_cache.mutex};
@@ -5267,7 +5260,6 @@ void RasterizerVulkan::InlineRunsB(std::span<const std::pair<GPUVAddr, u32>> run
     // the buffer cache (its copies into B's list) and the shaders here, the query and texture
     // invalidations to C (stage_c_ranges, sent before the packet's records).
     namespace Profile = VideoCommon::Nx2Profile;
-    const bool defer = InlineDeferEnabled();
     buffer_cache.force_registered_upload = true;
     SCOPE_EXIT {
         buffer_cache.force_registered_upload = false;
@@ -5307,17 +5299,11 @@ void RasterizerVulkan::InlineRunsB(std::span<const std::pair<GPUVAddr, u32>> run
             commands += uploaded ? 1 : 0;
         }
         uploads += uploaded ? 1 : 0;
-        if (!uploaded && !defer) {
-            commands += buffer_cache.FlushInlineBatch(batch) ? 1 : 0;
-            buffer_cache.WriteMemory(*cpu_addr, size);
+        if (!uploaded) {
+            buffer_cache.PreserveGuestWrite(*cpu_addr, size);
         }
-        const bool deferred = !uploaded && defer;
         stage_c_ranges.push_back(*cpu_addr);
-        stage_c_ranges.push_back(u64{size} | StageRangeQuery | (deferred ? 0 : StageRangeTexture));
-        if (deferred) {
-            gpu_memory->AccumulateInvalidation(address, size);
-            continue;
-        }
+        stage_c_ranges.push_back(u64{size} | StageRangeQuery | StageRangeTexture);
         pipeline_cache.InvalidateRegion(*cpu_addr, size);
     }
     commands += buffer_cache.FlushInlineBatch(batch) ? 1 : 0;

@@ -367,6 +367,12 @@ public:
     /// written bytes in (false for an unmap, which keeps the old upload of the pages).
     void WriteMemory(DAddr device_addr, u64 size, bool keep_page_gpu_data = true);
 
+    /// Guest memory at this range is the copy the next upload sends. Nothing downloads the
+    /// page over it. The debris reset uses this when no buffer holds the record yet: the
+    /// deferred invalidation downloaded the page and put the previous mesh back over the
+    /// zeroed count, and the indirect draw kept that mesh after the debris was gone.
+    void PreserveGuestWrite(DAddr device_addr, u64 size);
+
     /// WriteMemory for each range, in order (the pre-draw invalidation).
     void WriteMemoryRanges(std::span<const std::pair<DAddr, std::size_t>> ranges);
 
