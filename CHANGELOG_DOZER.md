@@ -17,7 +17,10 @@ and `=0` brings back the 2.0.0 code path.
   cache, the first reset copied 0 of 786 records, and the yellow streak was already there.
 - The half-float matrix multiply clamps its f32 sum to the finite f16 range before rounding.
   Past 65504 the conversion was infinity. Bananza's lighting rejects that, so the piece is
-  black and the bloom of the infinity is the yellow streak. The pipeline cache is 1021.
+  black and the bloom of the infinity is the yellow streak.
+- A float compare against a uniform (FSETP with a uniform source) lowers, as in Lichii. That
+  form was rejected, so the effect shader that tests the sparkle value did not run and the
+  piece drew black. The pipeline cache is 1022.
 - An open GPU method keeps the next command entry. Parking that entry (`PARK_SPLIT_METHODS`,
   previously the default) left Bananza's draw on the previous mesh, the black shape with the
   white halo. `EDEN_NX2_PARK_SPLIT_METHODS=1` parks again.
