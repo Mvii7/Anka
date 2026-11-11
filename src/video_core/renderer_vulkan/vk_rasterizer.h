@@ -158,6 +158,12 @@ public:
     Tegra::Engines::AccelerateDMAInterface& AccessAccelerateDMA() override;
     void AccelerateInlineToMemory(GPUVAddr address, size_t copy_size,
                                   std::span<const u8> memory) override;
+
+    /// One debris-reset record, Lichii build 31's store: the 20 bytes {0, 1, 0, 0, 0} copied
+    /// into a buffer that already holds them, or left in guest memory for the next upload
+    /// when none does. The caller holds the buffer cache lock. `force_registered_upload`
+    /// copies a buffer that holds the record even when its page is not marked GPU-modified.
+    void StoreResetRecord(GPUVAddr address);
     void LoadDiskResources(u64 title_id, std::stop_token stop_loading,
                            const VideoCore::DiskResourceLoadCallback& callback) override;
 

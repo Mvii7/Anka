@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <array>
+#include <limits>
 #include <atomic>
 #include <bit>
 #include <memory>
@@ -35,7 +36,6 @@
 #include "video_core/nx2_reactive_flush.h"
 #include "video_core/gpu_logging/gpu_logging.h"
 #include "video_core/control/channel_state.h"
-#include "video_core/indirect_reset.h"
 #include "video_core/native_query_trace.h"
 #include "video_core/engines/maxwell_3d.h"
 #include "video_core/engines/kepler_compute.h"
@@ -382,44 +382,44 @@ void LogResetLeft(std::string_view reason) {
     }
 }
 
-// The descriptor at c0[0x110] is the pointer list and its byte length. Download GPU writes before
-// following it. A draw that does not fit the descriptor is refused whole: zeroing past the list
-// hits other records, and the debris draw keeps the previous mesh.
+// Lichii build 31: the pointers are the draw's own count at c0[0x110], and a GPU-written list
+// is downloaded before it is followed. The descriptor's byte length is not a limit there.
+// Refusing a longer draw left those records to the shader, which loses the stores, so a
+// destroyed piece kept the previous mesh.
 std::optional<ResetList> CollectResetRecords(Tegra::Engines::Maxwell3D& engine,
                                              Tegra::MemoryManager& memory) {
     const auto& draw = engine.draw_manager.draw_state;
     const auto& cbuf = engine.state.shader_stages[0].const_buffers[0];
-    if (!cbuf.enabled || cbuf.size < 0x120 ||
-        !memory.IsFullyMappedRange(cbuf.address + 0x110, 16)) {
+    constexpr u32 max_entries = 1U << 20;
+    const u32 count = (std::min)(draw.vertex_buffer.count, max_entries);
+    if (!cbuf.enabled || count == 0 ||
+        !memory.IsFullyMappedRange(cbuf.address + 0x110, sizeof(u64))) {
         LogResetLeft("descriptor unavailable");
         return std::nullopt;
     }
-    std::array<u64, 2> descriptor{};
-    memory.ReadBlock(cbuf.address + 0x110, descriptor.data(), sizeof(descriptor),
-                     VideoCommon::CacheType::BufferCache);
-    const auto range = VideoCommon::IndirectResetRange(descriptor[0], static_cast<u32>(descriptor[1]),
-                                                       draw.vertex_buffer.first,
-                                                       draw.vertex_buffer.count);
-    if (!range || !memory.IsFullyMappedRange(range->begin, range->size)) {
-        LogResetLeft("list outside its descriptor");
+    const u64 list = memory.Read<u64>(cbuf.address + 0x110);
+    if (list == 0 || draw.vertex_buffer.first > max_entries ||
+        list > (std::numeric_limits<u64>::max)() - u64{draw.vertex_buffer.first} * sizeof(u64)) {
+        LogResetLeft("list unavailable");
         return std::nullopt;
     }
-    ResetList list{
-        .begin = range->begin,
-        .requested = draw.vertex_buffer.count,
-    };
-    list.pointers.resize(draw.vertex_buffer.count);
-    memory.ReadBlock(range->begin, list.pointers.data(), range->size,
-                     VideoCommon::CacheType::BufferCache);
-    constexpr u32 RecordSize = 5 * sizeof(u32);
-    for (const u64 pointer : list.pointers) {
-        if (pointer != 0 && pointer < range->begin + range->size &&
-            range->begin < pointer + RecordSize) {
-            LogResetLeft("record overlaps the pointer list");
-            return std::nullopt;
-        }
+    const u64 begin = list + u64{draw.vertex_buffer.first} * sizeof(u64);
+    const size_t size = size_t{count} * sizeof(u64);
+    if (begin > (std::numeric_limits<u64>::max)() - size ||
+        !memory.IsFullyMappedRange(begin, size)) {
+        LogResetLeft("list unmapped");
+        return std::nullopt;
     }
-    return list;
+    if (memory.IsMemoryDirty(begin, size, VideoCommon::CacheType::BufferCache)) {
+        memory.FlushRegion(begin, size, VideoCommon::CacheType::BufferCache);
+    }
+    ResetList records{
+        .begin = begin,
+        .requested = count,
+    };
+    records.pointers.resize(count);
+    memory.ReadBlockUnsafe(begin, records.pointers.data(), size);
+    return records;
 }
 } // Anonymous namespace
 
@@ -561,11 +561,11 @@ void RasterizerVulkan::PrepareDraw(bool is_indexed, bool indirect, Func&& draw_f
     }
     std::scoped_lock lock{buffer_cache.mutex, texture_cache.mutex};
     // Donkey Kong Bananza's terrain: a GPU program run over points resets each rock/dirt piece's
-    // 5-word indirect draw record ({triangles 0, copies 1, 0, 0, 0}) through the pointers in a list
-    // (c0[0x110], byte length at c0[0x118]). Stores through addresses loaded from memory can't be
-    // mapped onto a storage buffer, so the recompiler loses them and a destroyed piece keeps the
-    // previous mesh. Do the stores here when the draw fits that list. EDEN_NX2_RESETFIX=0 leaves
-    // it to the GPU.
+    // 5-word indirect draw record ({triangles 0, copies 1, 0, 0, 0}) through the pointers in a
+    // list (c0[0x110]). Stores through addresses loaded from memory can't be mapped onto a
+    // storage buffer, so the recompiler loses them and a destroyed piece keeps the previous
+    // mesh. Do the stores here, one record at a time, as Lichii build 31 does.
+    // EDEN_NX2_RESETFIX=0 leaves it to the GPU.
     static const bool reset_fix = [] {
         const char* value = std::getenv("EDEN_NX2_RESETFIX");
         return value == nullptr || value[0] != '0';
@@ -632,152 +632,27 @@ void RasterizerVulkan::PrepareDraw(bool is_indexed, bool indirect, Func&& draw_f
                 reset_launch ? CollectResetRecords(*maxwell3d, *gpu_memory) : std::nullopt;
             if (reset_list) {
                 Profile::Add(Profile::Counter::ResetFixLists, 1);
-                const GPUVAddr list_begin = reset_list->begin;
-                const u32 count = reset_list->requested;
-                const std::vector<u64>& pointers = reset_list->pointers;
-                // Records the list points at one after another within a 4 KiB page are reset
-                // with one inline write (the caches see the same bytes, in the same order).
-                // EDEN_NX2_RESET_RUNS=0: one write per record.
-                static const bool runs_enabled = [] {
-                    const char* value = std::getenv("EDEN_NX2_RESET_RUNS");
-                    return value == nullptr || value[0] != '0';
-                }();
-                // EDEN_NX2_RESET_SORT: the records are reset in address order, so records next to
-                // each other in memory make runs in whatever order the list names them. Every
-                // record gets the same 20 bytes and a pointer is skipped for its own address
-                // only, so when no two records share a byte (checked once sorted; otherwise the
-                // order of the list is kept) memory ends up the same, and each cache sees an
-                // invalidation of the same bytes. =0 keeps the order of the list.
-                static const bool sort_enabled = [] {
-                    const char* value = std::getenv("EDEN_NX2_RESET_SORT");
-                    return value == nullptr || value[0] != '0';
-                }();
-                static constexpr u32 RecordSize = 5 * sizeof(u32);
-                static constexpr u32 MaxRun = 4096 / RecordSize;
-                static const auto run_words = [] {
-                    std::array<u32, 5 * MaxRun> words{};
-                    for (u32 i = 0; i < MaxRun; ++i) {
-                        words[i * 5 + 1] = 1;
-                    }
-                    return words;
-                }();
-                // The records written (writing them changes no GPU mapping).
-                std::vector<u64> records;
-                records.reserve(pointers.size());
-                for (const u64 pointer : pointers) {
-                    if (pointer != 0 && gpu_memory->IsFullyMappedRange(pointer, RecordSize)) {
-                        records.push_back(pointer);
-                    }
-                }
-                bool sorted = false;
-                // Diagnostic: records sharing bytes (the list's order is kept then, and the
-                // inline writes overlap), at another offset or one record named twice.
-                bool overlapping = false;
-                bool repeated = false;
-                const auto find_overlaps = [&](const std::vector<u64>& ascending) {
-                    for (size_t i = 1; i < ascending.size(); ++i) {
-                        const u64 distance = ascending[i] - ascending[i - 1];
-                        repeated |= distance == 0;
-                        overlapping |= distance != 0 && distance < RecordSize;
-                    }
-                };
-                const bool in_order = std::is_sorted(records.begin(), records.end());
-                if (runs_enabled && sort_enabled && !in_order) {
-                    std::vector<u64> ordered(records);
-                    std::sort(ordered.begin(), ordered.end());
-                    const bool disjoint =
-                        std::adjacent_find(ordered.begin(), ordered.end(), [](u64 lower, u64 upper) {
-                            return upper - lower < RecordSize;
-                        }) == ordered.end();
-                    if (disjoint) {
-                        records = std::move(ordered);
-                        sorted = true;
-                    } else {
-                        find_overlaps(ordered);
-                    }
-                } else if (in_order) {
-                    find_overlaps(records);
-                }
-                {
-                    thread_local u64 lists{};
-                    thread_local u64 overlapping_lists{};
-                    thread_local u64 repeating_lists{};
-                    ++lists;
-                    overlapping_lists += overlapping ? 1 : 0;
-                    repeating_lists += repeated ? 1 : 0;
-                    const u64 shared = overlapping_lists + repeating_lists;
-                    if ((overlapping || repeated) && (shared & (shared - 1)) == 0) {
-                        LOG_INFO(HW_GPU,
-                                 "Indirect draw reset list {:#x}: records share bytes ({} lists "
-                                 "with records overlapping at another offset, {} naming one "
-                                 "record twice, of {})",
-                                 list_begin, overlapping_lists, repeating_lists, lists);
-                    }
-                }
-                // EDEN_NX2_RESET_BATCH: the runs written together (AccelerateInlineRuns), the
-                // uploads into GPU-written buffer data recorded as one copy per buffer instead of
-                // a staging buffer, two barriers and a copy each. Not with accurate GPU fences,
-                // where finding a buffer may wait for the host GPU. =0 writes each run on its own.
-                static const bool batch_enabled = [] {
-                    const char* value = std::getenv("EDEN_NX2_RESET_BATCH");
-                    return value == nullptr || value[0] != '0';
-                }();
-                const bool batch = batch_enabled && !Settings::IsGPUFenceBehaviorAccurate();
-                std::vector<std::pair<GPUVAddr, u32>> batch_runs;
-                if (batch) {
-                    batch_runs.reserve(records.size());
-                }
-                // The indirect draw reads the buffer, not the guest words. Upload a buffer that
-                // already holds the record even when the page is not marked GPU-modified, and
-                // make that draw wait for the copy and for the vertex data written with it.
                 buffer_cache.force_registered_upload = true;
                 SCOPE_EXIT {
                     buffer_cache.force_registered_upload = false;
                 };
-                GPUVAddr run_start = 0;
-                u32 run_records = 0;
-                u32 writes = 0;
-                const auto write_run = [&] {
-                    if (run_records == 0) {
-                        return;
-                    }
-                    const size_t run_bytes = size_t{run_records} * RecordSize;
-                    if (batch) {
-                        batch_runs.emplace_back(run_start, static_cast<u32>(run_bytes));
-                    } else {
-                        AccelerateInlineToMemory(
-                            run_start, run_bytes,
-                            {reinterpret_cast<const u8*>(run_words.data()), run_bytes});
-                    }
-                    run_records = 0;
-                    ++writes;
-                };
-                for (const u64 pointer : records) {
-                    if (runs_enabled && run_records != 0 && run_records < MaxRun &&
-                        pointer == run_start + u64{run_records} * RecordSize &&
-                        (run_start >> 12) == ((pointer + RecordSize - 1) >> 12)) {
-                        ++run_records;
+                u32 written = 0;
+                for (const u64 pointer : reset_list->pointers) {
+                    if (pointer == 0 ||
+                        !gpu_memory->IsFullyMappedRange(pointer, 5 * sizeof(u32))) {
                         continue;
                     }
-                    write_run();
-                    run_start = pointer;
-                    run_records = 1;
+                    StoreResetRecord(pointer);
+                    ++written;
                 }
-                write_run();
-                if (!batch_runs.empty()) {
-                    AccelerateInlineRuns(batch_runs, {reinterpret_cast<const u8*>(run_words.data()),
-                                                      sizeof(run_words)});
-                }
-                if (!records.empty()) {
+                if (written != 0) {
                     buffer_cache.NoteIndirectBufferWrite();
                 }
                 thread_local u32 reset_logs{};
                 if (reset_logs < 5) {
                     ++reset_logs;
-                    LOG_INFO(HW_GPU,
-                             "Indirect draw reset: list {:#x}, {} records ({} written in {} "
-                             "inline writes{})",
-                             list_begin, count, records.size(), writes, sorted ? ", sorted" : "");
+                    LOG_INFO(HW_GPU, "Indirect draw reset: list {:#x}, {} records ({} written)",
+                             reset_list->begin, reset_list->requested, written);
                 }
                 submitted = true;
                 return;
@@ -2777,6 +2652,30 @@ bool InlineDeferEnabled() {
     return defer;
 }
 } // Anonymous namespace
+
+void RasterizerVulkan::StoreResetRecord(GPUVAddr address) {
+    static constexpr std::array<u32, 5> record{0, 1, 0, 0, 0};
+    const std::span<const u8> bytes{reinterpret_cast<const u8*>(record.data()), sizeof(record)};
+    const std::optional<DAddr> cpu_addr = gpu_memory->GpuToCpuAddress(address);
+    if (!cpu_addr) {
+        gpu_memory->WriteBlock(address, bytes.data(), bytes.size());
+        return;
+    }
+    gpu_memory->WriteBlockUnsafe(address, bytes.data(), bytes.size(), true);
+    const bool uploaded = buffer_cache.InlineMemory(*cpu_addr, bytes.size(), bytes);
+    query_cache.InvalidateRegion(*cpu_addr, bytes.size());
+    if (!uploaded) {
+        // No buffer holds the record. Lichii's WriteMemory marks the guest bytes and does
+        // not download the page. Dozer's deferred invalidation does, and that download puts
+        // the previous mesh back over the zeroed count.
+        buffer_cache.PreserveGuestWrite(*cpu_addr, bytes.size());
+    }
+    {
+        std::scoped_lock lock{texture_cache.mutex};
+        texture_cache.WriteMemory(*cpu_addr, bytes.size());
+    }
+    pipeline_cache.InvalidateRegion(*cpu_addr, bytes.size());
+}
 
 void RasterizerVulkan::AccelerateInlineToMemory(GPUVAddr address, size_t copy_size,
                                                 std::span<const u8> memory) {
@@ -5160,9 +5059,8 @@ bool RasterizerVulkan::StageResetProgram(Tegra::Engines::Maxwell3D& mb, bool is_
 }
 
 bool RasterizerVulkan::StageResetStores(Tegra::Engines::Maxwell3D& mb, u32 instance_count) {
-    // PrepareDraw's RESETFIX stores (its runs, sorted when the records share no byte), B's half:
-    // the list downloaded in a join, the inline writes in a packet (InlineRunsB). A list that
-    // does not fit its descriptor is left to the shader.
+    // PrepareDraw's RESETFIX stores, B's half: the list downloaded in a join, then one store
+    // per pointer (Lichii build 31), inside a packet (InlineRunsB).
     namespace Profile = VideoCommon::Nx2Profile;
     const auto& reset_draw = mb.draw_manager.draw_state;
     if (instance_count != 1 || reset_draw.topology != Maxwell::PrimitiveTopology::Points) {
@@ -5178,60 +5076,14 @@ bool RasterizerVulkan::StageResetStores(Tegra::Engines::Maxwell3D& mb, u32 insta
     const GPUVAddr list_begin = reset_list->begin;
     const u32 count = reset_list->requested;
     const std::vector<u64>& pointers = reset_list->pointers;
-    static const bool runs_enabled = [] {
-        const char* value = std::getenv("EDEN_NX2_RESET_RUNS");
-        return value == nullptr || value[0] != '0';
-    }();
-    static const bool sort_enabled = [] {
-        const char* value = std::getenv("EDEN_NX2_RESET_SORT");
-        return value == nullptr || value[0] != '0';
-    }();
     static constexpr u32 RecordSize = 5 * sizeof(u32);
-    static constexpr u32 MaxRun = 4096 / RecordSize;
-    static const auto run_words = [] {
-        std::array<u32, 5 * MaxRun> words{};
-        for (u32 i = 0; i < MaxRun; ++i) {
-            words[i * 5 + 1] = 1;
-        }
-        return words;
-    }();
-    std::vector<u64> records;
-    records.reserve(pointers.size());
+    static constexpr std::array<u32, 5> record_words{0, 1, 0, 0, 0};
+    std::vector<std::pair<GPUVAddr, u32>> runs;
+    runs.reserve(pointers.size());
     for (const u64 pointer : pointers) {
         if (pointer != 0 && gpu_memory->IsFullyMappedRange(pointer, RecordSize)) {
-            records.push_back(pointer);
+            runs.emplace_back(pointer, RecordSize);
         }
-    }
-    if (runs_enabled && sort_enabled && !std::is_sorted(records.begin(), records.end())) {
-        std::vector<u64> ordered(records);
-        std::sort(ordered.begin(), ordered.end());
-        const bool disjoint =
-            std::adjacent_find(ordered.begin(), ordered.end(), [](u64 lower, u64 upper) {
-                return upper - lower < RecordSize;
-            }) == ordered.end();
-        if (disjoint) {
-            records = std::move(ordered);
-        }
-    }
-    std::vector<std::pair<GPUVAddr, u32>> runs;
-    runs.reserve(records.size());
-    GPUVAddr run_start = 0;
-    u32 run_records = 0;
-    for (const u64 pointer : records) {
-        if (runs_enabled && run_records != 0 && run_records < MaxRun &&
-            pointer == run_start + u64{run_records} * RecordSize &&
-            (run_start >> 12) == ((pointer + RecordSize - 1) >> 12)) {
-            ++run_records;
-            continue;
-        }
-        if (run_records != 0) {
-            runs.emplace_back(run_start, run_records * RecordSize);
-        }
-        run_start = pointer;
-        run_records = 1;
-    }
-    if (run_records != 0) {
-        runs.emplace_back(run_start, run_records * RecordSize);
     }
     NoteLightWork();
     if (stage_query_writes.Any(VideoCommon::Nx2Stages::GpuPages().RanSeq()) ||
@@ -5242,14 +5094,14 @@ bool RasterizerVulkan::StageResetStores(Tegra::Engines::Maxwell3D& mb, u32 insta
         }
     }
     StageBufferWork([&] {
-        InlineRunsB(runs, {reinterpret_cast<const u8*>(run_words.data()), sizeof(run_words)});
+        InlineRunsB(runs, {reinterpret_cast<const u8*>(record_words.data()), sizeof(record_words)});
     });
     FlushStageCWork();
     thread_local u32 reset_logs{};
     if (reset_logs < 5) {
         ++reset_logs;
-        LOG_INFO(HW_GPU, "Indirect draw reset (B): list {:#x}, {} records ({} written in {} runs)",
-                 list_begin, count, records.size(), runs.size());
+        LOG_INFO(HW_GPU, "Indirect draw reset (B): list {:#x}, {} records ({} written)",
+                 list_begin, count, runs.size());
     }
     return true;
 }
