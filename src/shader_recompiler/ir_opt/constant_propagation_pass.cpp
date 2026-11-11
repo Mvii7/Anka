@@ -10,7 +10,6 @@
 #include <type_traits>
 #include <bit>
 #include <numeric>
-#include "common/logging.h"
 #include "shader_recompiler/environment.h"
 #include "shader_recompiler/exception.h"
 #include "shader_recompiler/frontend/ir/ir_emitter.h"
@@ -911,12 +910,8 @@ void FoldConstBuffer(Environment& env, IR::Block& block, IR::Inst& inst) {
     if (!replacement) {
         return;
     }
-    // Draw parameters only exist in vertex shaders.
-    if (env.ShaderStage() != Stage::VertexA && env.ShaderStage() != Stage::VertexB) {
-        LOG_WARNING(Shader, "Stage {} reads draw parameter copy at cbuf {} {:#x}: left as it is",
-                    static_cast<u32>(env.ShaderStage()), bank_value, offset_value);
-        return;
-    }
+    // The same slots are read from the geometry stage. Lichii folds them there too: the
+    // indirect record's base vertex, not the zero the macro leaves in the constant buffer.
     const auto new_attribute = [replacement]() {
         switch (*replacement) {
         case ReplaceConstant::BaseInstance:

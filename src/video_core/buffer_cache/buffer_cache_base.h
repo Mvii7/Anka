@@ -391,6 +391,10 @@ public:
 
     bool InlineMemory(DAddr dest_address, size_t copy_size, std::span<const u8> inlined_buffer);
 
+    /// Copy into the buffer that already contains the range. Never creates one: a new buffer
+    /// is cleared, and a debris record shares its page with the terrain vertices.
+    bool InlineExisting(DAddr dest_address, size_t copy_size, std::span<const u8> inlined_buffer);
+
     /// EDEN_NX2_RESET_BATCH: uploads gathered by InlineMemoryBatched and not recorded yet, all
     /// into one buffer, each after the previous one's end.
     struct InlineBatch {

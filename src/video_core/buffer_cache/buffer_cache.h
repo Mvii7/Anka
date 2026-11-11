@@ -2850,6 +2850,43 @@ void BufferCache<P>::MappedUploadMemory([[maybe_unused]] Buffer& buffer,
 }
 
 template <class P>
+bool BufferCache<P>::InlineExisting(DAddr dest_address, size_t copy_size,
+                                    std::span<const u8> inlined_buffer) {
+    if (copy_size == 0 || copy_size > std::numeric_limits<u32>::max() || dest_address == 0 ||
+        inlined_buffer.size() < copy_size) {
+        return false;
+    }
+    const BufferId buffer_id = page_table[dest_address >> CACHING_PAGEBITS];
+    if (!buffer_id) {
+        return false;
+    }
+    Buffer& buffer = slot_buffers[buffer_id];
+    if (!buffer.IsInBounds(dest_address, copy_size)) {
+        return false;
+    }
+    // The guest words are already the new record. Uploading the page here would send the rest
+    // of it too, and that rest is the previous mesh. Copy only this record.
+    ClearDownload(dest_address, copy_size);
+    gpu_modified_ranges.Subtract(dest_address, copy_size);
+    const u32 offset = buffer.Offset(dest_address);
+    if constexpr (USE_MEMORY_MAPS_FOR_UPLOADS) {
+        auto upload_staging = runtime.UploadStagingBuffer(copy_size);
+        const std::array copies{BufferCopy{
+            .src_offset = upload_staging.offset,
+            .dst_offset = offset,
+            .size = copy_size,
+        }};
+        std::memcpy(upload_staging.mapped_span.data(), inlined_buffer.data(), copy_size);
+        runtime.CopyBuffer(buffer, upload_staging.buffer, copies, true, false);
+    } else {
+        buffer.ImmediateUpload(offset, inlined_buffer.first(copy_size));
+    }
+    buffer.MarkUsage(offset, copy_size);
+    written_since_indirect = true;
+    return true;
+}
+
+template <class P>
 bool BufferCache<P>::InlineMemory(DAddr dest_address, size_t copy_size,
                                   std::span<const u8> inlined_buffer) {
     const bool is_dirty = IsRegionRegistered(dest_address, copy_size);

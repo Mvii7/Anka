@@ -2661,10 +2661,11 @@ bool RasterizerVulkan::StoreResetRecord(GPUVAddr address) {
     }
     gpu_memory->WriteBlockUnsafe(address, bytes.data(), bytes.size(), true);
     query_cache.InvalidateRegion(*cpu_addr, bytes.size());
-    // Lichii copies only when the buffer already holds GPU-written data. Making a buffer
-    // for the record zeros that page, and the terrain vertices share it: the ground goes
-    // and one triangle is left as the black sail.
-    const bool uploaded = buffer_cache.InlineMemory(*cpu_addr, bytes.size(), bytes);
+    // The host buffer already has this record from the last upload. A page that was filled
+    // by a copy is not GPU-modified, so InlineMemory left it and the draw kept the previous
+    // mesh. Copy these words into the buffer that already contains them. Never make one:
+    // a new buffer is cleared, and the terrain vertices share the page.
+    const bool uploaded = buffer_cache.InlineExisting(*cpu_addr, bytes.size(), bytes);
     if (!uploaded) {
         buffer_cache.PreserveGuestWrite(*cpu_addr, bytes.size());
         return false;
@@ -5122,7 +5123,7 @@ void RasterizerVulkan::InlineRunsB(std::span<const std::pair<GPUVAddr, u32>> run
             continue;
         }
         gpu_memory->WriteBlockUnsafe(address, bytes.data(), size, true);
-        const bool uploaded = buffer_cache.InlineMemory(*cpu_addr, size, bytes);
+        const bool uploaded = buffer_cache.InlineExisting(*cpu_addr, size, bytes);
         if (!uploaded) {
             buffer_cache.PreserveGuestWrite(*cpu_addr, size);
         } else {

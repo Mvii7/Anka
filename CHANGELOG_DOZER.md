@@ -12,15 +12,17 @@ and `=0` brings back the 2.0.0 code path.
   flushed, from whatever the vertex-buffer registers held. Each instance is drawn once. Array
   textures are unswizzled with the image's layer stride, and a readback uses the row alignment
   instead of 1, so a padded layer is not read as the next one.
-- The debris reset does not create a host buffer for a record. Creating one zeros the page
-  the terrain vertices share. On `2e7b8ae71f` the ground stayed and the glitch did not: a fresh
-  cache, the first reset copied 0 of 786 records, and the yellow streak was already there.
+- The debris reset copies its 20 words into the host buffer that already contains the record,
+  including one that was filled by an upload and is not marked GPU-modified. On `b33d5577a4`
+  the first reset wrote 1525 records and copied none, so the indirect draw still read the
+  previous mesh. A buffer is still not created for a record: creating one zeros the page the
+  terrain vertices share.
+- A draw's base vertex and base instance are folded in every stage, as in Lichii. The geometry
+  shader was left reading the constant buffer, which the indirect draw leaves at zero. The
+  pipeline cache is 1023.
 - The half-float matrix multiply clamps its f32 sum to the finite f16 range before rounding.
-  Past 65504 the conversion was infinity. Bananza's lighting rejects that, so the piece is
-  black and the bloom of the infinity is the yellow streak.
-- A float compare against a uniform (FSETP with a uniform source) lowers, as in Lichii. That
-  form was rejected, so the effect shader that tests the sparkle value did not run and the
-  piece drew black. The pipeline cache is 1022.
+  `b33d5577a4` included this and the uniform float compare, on a fresh cache, and the black
+  shape was still there. Neither of those is the fix.
 - An open GPU method keeps the next command entry. Parking that entry (`PARK_SPLIT_METHODS`,
   previously the default) left Bananza's draw on the previous mesh, the black shape with the
   white halo. `EDEN_NX2_PARK_SPLIT_METHODS=1` parks again.
