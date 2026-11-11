@@ -33,6 +33,7 @@ add_executable(tests
     video_core/memory_tracker.cpp
     video_core/native_qmd.cpp
     video_core/ampere_returns.cpp
+    video_core/ampere_geometry_exit.cpp
     video_core/nx2_present.cpp
     video_core/ampere_branch_flag.cpp
     video_core/ampere_hsetp2.cpp

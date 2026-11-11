@@ -14,6 +14,7 @@
 #include <string_view>
 #include <vector>
 #include "common/common_types.h"
+#include "shader_recompiler/frontend/ampere/geometry_exit.h"
 
 namespace Shader::Ampere {
 
@@ -63,7 +64,7 @@ inline u64 BranchOffsetField(const Instruction& insn) {
 // Lower only operations whose semantics are representable by the existing
 // Maxwell frontend. These are new instructions, not reinterpretations of the
 // native bytes. Scheduling/control words are added by the environment adapter.
-inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code) {
+inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geometry_stage = false) {
     LoweredProgram result;
     struct Relocation { u32 output_index; s64 target; };
     std::vector<Relocation> relocations;
@@ -111,9 +112,21 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code) {
         return result;
     };
     if (code.empty() || code.size() > 65536) return fail(0, "invalid native program size");
+    std::optional<GeometryExitEnvelope> geometry_exit;
+    if (code.front().Bits(0, 12) == 0x34e) {
+        // A geometry program's exits are branches to a handler that writes the output vertex.
+        // Leaving at the exit itself draws that vertex unfinished.
+        if (!geometry_stage) return fail(0, "native program counter load outside geometry stage");
+        geometry_exit = AnalyzeGeometryExit(code);
+        if (!*geometry_exit)
+            return fail(0, geometry_exit->error);
+    }
     for (u32 index = 0; index < code.size(); ++index) {
         auto insn = code[index];
         result.source_instruction_offsets.push_back(static_cast<u32>(result.instructions.size()));
+        if (geometry_exit && (index < GeometryExitSetupInstructions ||
+                              index * sizeof(Instruction) == geometry_exit->handler + sizeof(Instruction)))
+            continue;
         u32 opcode = insn.Bits(0, 12);
         if (insn.Bits(12, 4) == 15) continue; // @!PT: never executes (compiler padding)
         std::optional<u32> active_link;
@@ -1832,7 +1845,11 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code) {
         }
         case 0x324: case 0x924: { // OUT (geometry emit/cut), register or immediate stream
             const u32 type = insn.Bits(78, 2);
-            if (!type || insn.words[2] & ~0xc000U) return fail(index, "native geometry output mode");
+            // Type 0 writes the output vertex and neither emits nor cuts: the exit handler's
+            // finalization. Any other type-0 form is not that instruction.
+            if (type == 0 && (!geometry_stage || opcode != 0x324 || dest != 255 || insn.words[1] != 255))
+                return fail(index, "native geometry finalization mode");
+            if (insn.words[2] & ~0xc000U) return fail(index, "native geometry output mode");
             // Maxwell: output handle at 8, stream at 20, emit at 39, cut at 40.
             const u64 handle = u64{insn.Bits(24, 8)} << 8;
             const u64 flags = u64{type} << 39;
@@ -2481,6 +2498,13 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code) {
             break;
         }
         case 0x94d: { // EXIT
+            if (geometry_exit && index * sizeof(Instruction) < geometry_exit->handler) {
+                relocations.push_back(
+                    {static_cast<u32>(result.instructions.size()),
+                     static_cast<s64>(geometry_exit->handler / sizeof(Instruction))});
+                emit(0xe24000000000000fULL | predicate);
+                break;
+            }
             if (insn.Bits(84, 2)) {
                 return fail(index, "native conditional/special EXIT");
             }
