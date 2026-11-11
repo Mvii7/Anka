@@ -8,6 +8,10 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- Fix: Bananza's debris halo. The glow pass returns before writing its colour on some pixels.
+  That register was left undefined, and the bloom turned it into the glow around the black
+  piece. It is zero, as on the hardware (`EDEN_NX2_UNDEF_ZERO=0` restores the old value).
+  Shader caches rebuild (pipeline cache version 1019).
 - Fix: Bananza's destroyed-terrain hole. The colour pass was drawing the debris reset's zero
   triangle count from the indirect buffer, so that piece of floor was never drawn. The macro
   reads the culling pass's count back and draws that (`HLE_INDIRECT` off; `=1` is the old GPU
