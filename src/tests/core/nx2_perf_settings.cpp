@@ -41,7 +41,7 @@ const std::set<std::string_view> BananzaOnly{
     "EDEN_NX2_PACE_SPIN_US",
 };
 
-// An ini group as the config sees it: the eight on / off keys and "preset".
+// An ini group as the config sees it: the on / off keys and "preset".
 struct Ini {
     std::map<std::string, bool> values;
     std::optional<int> preset;
@@ -95,7 +95,8 @@ TEST_CASE("Nx2PerfSettings: every setting reads back what was written", "[core]"
         REQUIRE(ini.Read() == switches);
         REQUIRE(ini.values.at(std::string{key.name}) == false);
     }
-    for (const Preset preset : {Preset::Recommended, Preset::Reactive, Preset::Safe}) {
+    for (const Preset preset :
+         {Preset::Recommended, Preset::Fast, Preset::Reactive, Preset::Safe}) {
         Ini ini;
         ini.Write(FromPreset(preset, Recommended()));
         REQUIRE(ini.Read() == FromPreset(preset, Recommended()));
@@ -103,13 +104,17 @@ TEST_CASE("Nx2PerfSettings: every setting reads back what was written", "[core]"
 }
 
 TEST_CASE("Nx2PerfSettings: presets set the launchers' boxes", "[core]") {
-    for (const Preset preset : {Preset::Recommended, Preset::Reactive}) {
+    for (const Preset preset : {Preset::Recommended, Preset::Fast, Preset::Reactive}) {
         const Switches switches = FromPreset(preset, AllOff());
         REQUIRE(switches.preset == preset);
         for (const Key& key : Keys) {
-            REQUIRE(switches.*key.field);
+            const bool on = key.name != "read_traps" || preset == Preset::Recommended;
+            REQUIRE(switches.*key.field == on);
         }
     }
+    REQUIRE(FromPreset(Preset::Recommended, AllOff()).read_traps);
+    REQUIRE(!FromPreset(Preset::Fast, AllOff()).read_traps);
+    REQUIRE(!FromPreset(Preset::Reactive, AllOff()).read_traps);
     const Switches safe = FromPreset(Preset::Safe, Recommended());
     REQUIRE(safe == AllOff());
     for (const Key& key : Keys) {
@@ -119,8 +124,10 @@ TEST_CASE("Nx2PerfSettings: presets set the launchers' boxes", "[core]") {
     Switches mine = Recommended();
     mine.osd = false;
     REQUIRE(FromPreset(Preset::Custom, mine) == Custom(mine));
-    // Reactive Flushing: Recommended off, Reactive on, Safe and Custom leave it.
+    // Reactive Flushing: Recommended and Fast off, Experimental (Reactive) on, Safe and Custom
+    // leave it.
     REQUIRE(ReactiveFlushing(Preset::Recommended) == false);
+    REQUIRE(ReactiveFlushing(Preset::Fast) == false);
     REQUIRE(ReactiveFlushing(Preset::Reactive) == true);
     REQUIRE(!ReactiveFlushing(Preset::Safe).has_value());
     REQUIRE(!ReactiveFlushing(Preset::Custom).has_value());
@@ -132,7 +139,8 @@ TEST_CASE("Nx2PerfSettings: presets set the launchers' boxes", "[core]") {
 }
 
 TEST_CASE("Nx2PerfSettings: a box changed by hand makes it Custom", "[core]") {
-    for (const Preset preset : {Preset::Recommended, Preset::Reactive, Preset::Safe}) {
+    for (const Preset preset :
+         {Preset::Recommended, Preset::Fast, Preset::Reactive, Preset::Safe}) {
         for (const Key& key : Keys) {
             Switches switches = FromPreset(preset, Recommended());
             REQUIRE(AfterBoxChange(switches).preset == preset);
@@ -153,23 +161,43 @@ TEST_CASE("Nx2PerfSettings: a box changed by hand makes it Custom", "[core]") {
     Ini bad;
     bad.preset = 9;
     REQUIRE(bad.Read().preset == Preset::Custom);
+    // A file from before read_traps: the key is missing, the preset stays, and Fast / Experimental
+    // / Safe keep read traps off.
+    for (const Preset preset :
+         {Preset::Recommended, Preset::Fast, Preset::Reactive, Preset::Safe}) {
+        Ini old;
+        old.Write(FromPreset(preset, Recommended()));
+        old.values.erase("read_traps");
+        REQUIRE(old.Read() == FromPreset(preset, Recommended()));
+    }
+    Ini stored_fast;
+    stored_fast.preset = static_cast<int>(Preset::Fast);
+    REQUIRE(stored_fast.Read() == FromPreset(Preset::Fast, Recommended()));
+    REQUIRE(IndexOf(Preset::Fast) == 1);
+    REQUIRE(PresetOrder[static_cast<std::size_t>(IndexOf(Preset::Reactive))] == Preset::Reactive);
 }
 
 TEST_CASE("Nx2PerfSettings: presets set the launchers' variables", "[core]") {
-    // Reactive: Recommended's and RX_RT_FIT=3 (start-reactive-experimental.bat).
-    auto reactive = RecommendedBananza;
+    // Fast: Recommended's, and read traps off (start-fast.bat).
+    auto fast = RecommendedBananza;
+    fast.push_back({"EDEN_NX2_READ_TRAPS", "0"});
+    REQUIRE(Wanted(FromPreset(Preset::Fast, Recommended()), true) == fast);
+    // Experimental: Fast's and RX_RT_FIT=3 (start-reactive-experimental.bat).
+    auto reactive = fast;
     reactive.push_back({"EDEN_NX2_RX_RT_FIT", "3"});
     REQUIRE(Wanted(FromPreset(Preset::Reactive, Recommended()), true) == reactive);
-    // Safe: none of the eight, every per-draw shortcut =0 (start-safe.bat), in any game.
+    // Safe: none of the boxes, read traps off, every per-draw shortcut =0 (start-safe.bat).
     for (const bool bananza : {true, false}) {
         const auto safe = Wanted(AllOff(), bananza);
-        REQUIRE(safe.size() == SafeOff.size());
+        REQUIRE(safe.size() == SafeOff.size() + 1);
+        REQUIRE(safe.front() == Var{"EDEN_NX2_READ_TRAPS", "0"});
         for (std::size_t i = 0; i < SafeOff.size(); ++i) {
-            REQUIRE(safe[i] == Var{SafeOff[i], "0"});
+            REQUIRE(safe[i + 1] == Var{SafeOff[i], "0"});
         }
     }
-    // Custom with everything off sets nothing; Custom with the boxes on: only the boxes'.
-    REQUIRE(Wanted(Custom(AllOff()), true).empty());
+    // Custom with everything off sets read traps off only; Custom with the boxes on: only the
+    // boxes' (read traps on sets nothing for that switch).
+    REQUIRE(Wanted(Custom(AllOff()), true) == std::vector<Var>{{"EDEN_NX2_READ_TRAPS", "0"}});
     REQUIRE(Wanted(Custom(Recommended()), true) == RecommendedBananza);
 }
 
@@ -198,7 +226,8 @@ TEST_CASE("Nx2PerfSettings: Bananza by the patch's own program id", "[core]") {
 }
 
 TEST_CASE("Nx2PerfSettings: the Bananza settings never reach another game", "[core]") {
-    for (const Preset preset : {Preset::Recommended, Preset::Reactive, Preset::Safe}) {
+    for (const Preset preset :
+         {Preset::Recommended, Preset::Fast, Preset::Reactive, Preset::Safe}) {
         for (const Var& var : Wanted(FromPreset(preset, Recommended()), false)) {
             REQUIRE(BananzaOnly.count(var.name) == 0);
         }
@@ -252,7 +281,8 @@ TEST_CASE("Nx2PerfSettings: a variable set outside the program wins", "[core]") 
 
 TEST_CASE("Nx2PerfSettings: every name is one a preset can set", "[core]") {
     std::set<std::string_view> wanted;
-    for (const Preset preset : {Preset::Recommended, Preset::Reactive, Preset::Safe}) {
+    for (const Preset preset :
+         {Preset::Recommended, Preset::Fast, Preset::Reactive, Preset::Safe}) {
         for (const Var& var : Wanted(FromPreset(preset, Recommended()), true)) {
             wanted.insert(var.name);
         }
@@ -288,6 +318,7 @@ TEST_CASE("Nx2PerfSettings: saving settings needs a restart only after a game se
     REQUIRE(!NeedsRestart(applied, plan_now(Recommended())));
     REQUIRE(!NeedsRestart(applied, plan_now(Custom(Recommended())))); // same boxes, same variables
     REQUIRE(NeedsRestart(applied, plan_now(AllOff())));
+    REQUIRE(NeedsRestart(applied, plan_now(FromPreset(Preset::Fast, Recommended()))));
     REQUIRE(NeedsRestart(applied, plan_now(FromPreset(Preset::Reactive, Recommended()))));
     Switches no_osd = Recommended();
     no_osd.osd = false;
@@ -328,6 +359,7 @@ TEST_CASE("Nx2PerfSettings: the frame generation choice and the Graphics setting
     // Presets leave it, Safe turns it off.
     REQUIRE(FrameGenFor(Preset::Safe) == FrameGen::Off);
     REQUIRE(!FrameGenFor(Preset::Recommended).has_value());
+    REQUIRE(!FrameGenFor(Preset::Fast).has_value());
     REQUIRE(!FrameGenFor(Preset::Reactive).has_value());
     REQUIRE(!FrameGenFor(Preset::Custom).has_value());
 }

@@ -1,6 +1,6 @@
 @echo off
 setlocal DisableDelayedExpansion
-rem Dozer - RECOMMENDED: the settings measured best on our PC (Donkey Kong Bananza).
+rem Dozer - RECOMMENDED: the recommended settings. Foliage is rendered at a performance cost.
 rem Dozer launcher for dozer-cli.exe (Dozer's program without menus).
 rem Put this file next to dozer-cli.exe.
 rem Start: put your game (.nsp .xci .nsz .xcz .nup) in the Games folder next to this file and double-click
@@ -65,6 +65,8 @@ set EDEN_NX2_FG_DIAG=
 set EDEN_NX2_RX_RT_FIT=
 set EDEN_NX2_FLUSH_FIRST_READ=
 set EDEN_NX2_READ_LATCH_AGE=
+rem Read traps stay on when this is unset. start-fast.bat sets it to 0.
+set EDEN_NX2_READ_TRAPS=
 set EDEN_NX2_RX_ONE_SUBMIT=
 set EDEN_NX2_RX_COALESCE=
 set EDEN_NX2_RX_PITCH_FORCED=

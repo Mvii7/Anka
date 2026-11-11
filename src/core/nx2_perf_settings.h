@@ -19,20 +19,40 @@
 //
 // Every switch is read once per process, most of them into a function's static the first time
 // a game reaches it (EDEN_NX2_BACK_STAGES, ACQUIRE_PEEK, PRESENT_INTERVAL_WORD, MODE_PACE,
-// PACE_SPIN_US, DK_DYN, OSD); JIT_SAME, FRONT_MACRO_LEAN and FG_TIMED are read again at each boot.
+// PACE_SPIN_US, DK_DYN, OSD, READ_TRAPS); JIT_SAME, FRONT_MACRO_LEAN and FG_TIMED are read again
+// at each boot.
 // So the variables are set once, at the first boot, and a later boot that would need others (a
 // changed setting, or Bananza after another game and back) restarts the program for that game.
 namespace Core::Nx2PerfSettings {
 
-/// The launchers' three setups, and Custom: a box changed by hand.
+/// The launchers' setups, and Custom: a box changed by hand. The stored numbers stay as they
+/// were (Fast is 4) so an existing qt-config.ini keeps its preset. The tab calls Reactive
+/// "Experimental".
 enum class Preset : u8 {
-    Recommended = 0, ///< start-recommended.bat: all on, Reactive Flushing off
-    Reactive = 1,    ///< start-reactive-experimental.bat: all on, Reactive Flushing on, RX_RT_FIT=3
-    Safe = 2,        ///< start-safe.bat: all off, and the shortcuts Anka keeps on set to 0
+    Recommended = 0, ///< start-recommended.bat: all on, read traps on, Reactive Flushing off
+    Reactive = 1,    ///< start-reactive-experimental.bat: read traps off, Reactive Flushing on, RX_RT_FIT=3
+    Safe = 2,        ///< start-safe.bat: all off, and the shortcuts Dozer keeps on set to 0
     Custom = 3,      ///< the boxes as set, nothing else
+    Fast = 4,        ///< start-fast.bat: Recommended with read traps off
 };
 
+/// Combo order in the Tuning tab. Not the stored numbers.
+inline constexpr std::array<Preset, 5> PresetOrder{
+    Preset::Recommended, Preset::Fast, Preset::Reactive, Preset::Safe, Preset::Custom,
+};
+
+/// The combo index of a preset (Custom when it is not one of these).
+constexpr int IndexOf(Preset preset) {
+    for (int i = 0; i < static_cast<int>(PresetOrder.size()); ++i) {
+        if (PresetOrder[static_cast<std::size_t>(i)] == preset) {
+            return i;
+        }
+    }
+    return static_cast<int>(PresetOrder.size()) - 1;
+}
+
 struct Switches {
+    bool read_traps = true;        ///< on leaves EDEN_NX2_READ_TRAPS unset; off sets it to 0
     bool split_gpu_thread = true;  ///< EDEN_NX2_BACK_STAGES=1 + EDEN_NX2_BACK_CUTS=a
     bool acquire_peek = true;      ///< EDEN_NX2_ACQUIRE_PEEK=1
     bool jit_same = true;          ///< EDEN_NX2_JIT_SAME=1
@@ -53,7 +73,18 @@ constexpr Switches Recommended() {
 
 /// start-safe.bat's setup: none of the switches, and the per-draw shortcuts off.
 constexpr Switches AllOff() {
-    return Switches{false, false, false, false, false, false, false, false, Preset::Safe};
+    return Switches{
+        .read_traps = false,
+        .split_gpu_thread = false,
+        .acquire_peek = false,
+        .jit_same = false,
+        .front_macro_lean = false,
+        .fg_timed = false,
+        .osd = false,
+        .dk_dyn = false,
+        .dk_pacing = false,
+        .preset = Preset::Safe,
+    };
 }
 
 /// The keys of the [Anka] group, one per setting (the preset has its own, "preset").
@@ -61,7 +92,8 @@ struct Key {
     std::string_view name;
     bool Switches::*field;
 };
-inline constexpr std::array<Key, 8> Keys{{
+inline constexpr std::array<Key, 9> Keys{{
+    {"read_traps", &Switches::read_traps},
     {"split_gpu_thread", &Switches::split_gpu_thread},
     {"acquire_peek", &Switches::acquire_peek},
     {"jit_same", &Switches::jit_same},
@@ -72,11 +104,31 @@ inline constexpr std::array<Key, 8> Keys{{
     {"bananza_frame_pacing", &Switches::dk_pacing},
 }};
 
+/// A stored preset number. Anything else is Custom (a file edited by hand).
+constexpr Preset PresetFromInt(int value) {
+    switch (value) {
+    case static_cast<int>(Preset::Recommended):
+    case static_cast<int>(Preset::Reactive):
+    case static_cast<int>(Preset::Safe):
+    case static_cast<int>(Preset::Custom):
+    case static_cast<int>(Preset::Fast):
+        return static_cast<Preset>(value);
+    default:
+        return Preset::Custom;
+    }
+}
+
 /// The boxes of a preset (Custom: `current` as it is), with the preset set.
+/// Fast and Experimental (Reactive) are Recommended's boxes with read traps off.
 constexpr Switches FromPreset(Preset preset, const Switches& current) {
-    Switches switches = preset == Preset::Safe ? AllOff() : Recommended();
     if (preset == Preset::Custom) {
-        switches = current;
+        Switches switches = current;
+        switches.preset = Preset::Custom;
+        return switches;
+    }
+    Switches switches = preset == Preset::Safe ? AllOff() : Recommended();
+    if (preset == Preset::Fast || preset == Preset::Reactive) {
+        switches.read_traps = false;
     }
     switches.preset = preset;
     return switches;
@@ -180,6 +232,7 @@ constexpr std::optional<bool> BarrierFeedbackLoops(Preset preset) {
 constexpr std::optional<bool> ReactiveFlushing(Preset preset) {
     switch (preset) {
     case Preset::Recommended:
+    case Preset::Fast:
         return false;
     case Preset::Reactive:
         return true;
@@ -193,14 +246,19 @@ constexpr std::optional<bool> ReactiveFlushing(Preset preset) {
 /// not their preset's (the file edited by hand) make it Custom.
 template <typename Read, typename ReadPreset>
 Switches Load(Read&& read, ReadPreset&& read_preset) {
+    const Preset preset =
+        PresetFromInt(read_preset("preset", static_cast<int>(Preset::Recommended)));
+    // read_traps was added after the other boxes. A file without the key keeps the preset's
+    // own value (Recommended on, Fast / Experimental / Safe off, Custom on) instead of being
+    // read as Custom.
+    const bool read_traps_fallback = FromPreset(preset, Recommended()).read_traps;
     Switches switches{};
     for (const Key& key : Keys) {
-        switches.*key.field = read(key.name, Recommended().*key.field);
+        const bool fallback =
+            key.name == "read_traps" ? read_traps_fallback : Recommended().*key.field;
+        switches.*key.field = read(key.name, fallback);
     }
-    const int preset = read_preset("preset", static_cast<int>(Preset::Recommended));
-    switches.preset = preset >= 0 && preset <= static_cast<int>(Preset::Custom)
-                          ? static_cast<Preset>(preset)
-                          : Preset::Custom;
+    switches.preset = preset;
     return AfterBoxChange(switches);
 }
 
@@ -255,13 +313,14 @@ inline constexpr std::array<std::string_view, 61> SafeOff{
 };
 
 /// The variables a setting or preset can set, besides SafeOff, in the order they are set.
-inline constexpr std::array<std::string_view, 12> Names{
+inline constexpr std::array<std::string_view, 13> Names{
     "EDEN_NX2_BACK_STAGES",   "EDEN_NX2_BACK_CUTS",
     "EDEN_NX2_ACQUIRE_PEEK",  "EDEN_NX2_JIT_SAME",
     "EDEN_NX2_FRONT_MACRO_LEAN", "EDEN_NX2_FG_TIMED",
     "EDEN_NX2_OSD",           "EDEN_NX2_DK_DYN",
     "EDEN_NX2_PRESENT_INTERVAL_WORD", "EDEN_NX2_MODE_PACE",
-    "EDEN_NX2_PACE_SPIN_US",  "EDEN_NX2_RX_RT_FIT",
+    "EDEN_NX2_PACE_SPIN_US",  "EDEN_NX2_READ_TRAPS",
+    "EDEN_NX2_RX_RT_FIT",
 };
 
 /// Calls `f(name)` for every variable the settings can set (Names, then SafeOff).
@@ -305,6 +364,10 @@ inline std::vector<Var> Wanted(const Switches& switches, bool bananza) {
         vars.push_back({"EDEN_NX2_PRESENT_INTERVAL_WORD", "12:16:4"});
         vars.push_back({"EDEN_NX2_MODE_PACE", "2"});
         vars.push_back({"EDEN_NX2_PACE_SPIN_US", "1500"});
+    }
+    // On by default (unset). Off is the only value the program sets.
+    if (!switches.read_traps) {
+        vars.push_back({"EDEN_NX2_READ_TRAPS", "0"});
     }
     if (switches.preset == Preset::Reactive) {
         vars.push_back({"EDEN_NX2_RX_RT_FIT", "3"});

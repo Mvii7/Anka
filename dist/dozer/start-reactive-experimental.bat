@@ -1,6 +1,6 @@
 @echo off
 setlocal DisableDelayedExpansion
-rem Dozer - REACTIVE (EXPERIMENTAL): recommended + reactive flushing + RX_RT_FIT=3.
+rem Dozer - EXPERIMENTAL: the recommended settings with Reactive Flushing instead of read traps.
 rem Dozer launcher for dozer-cli.exe (Dozer's program without menus).
 rem Put this file next to dozer-cli.exe.
 rem Start: put your game (.nsp .xci .nsz .xcz .nup) in the Games folder next to this file and double-click
@@ -98,6 +98,8 @@ rem does something when frame generation is on in the config, README).
 set EDEN_NX2_FG_TIMED=1
 rem Game FPS, display FPS and speed in RivaTuner Statistics Server's overlay (OSD above).
 set EDEN_NX2_OSD=%OSD%
+rem Read traps off (with reactive flushing on they already do nothing).
+set EDEN_NX2_READ_TRAPS=0
 rem Reactive flushing: Bananza's opening renders into one image instead of a copy per draw
 rem (needs barrier_feedback_loops=true in the config); 3 keeps the render pass going with a
 rem barrier inside it, 1 ends it (slower). Do not add RX_MASKED_TARGETS (known defect) or

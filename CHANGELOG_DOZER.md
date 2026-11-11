@@ -22,6 +22,12 @@ and `=0` brings back the 2.0.0 code path.
 - The settings tab called *Anka* (Emulation > Configure...) is now called *Tuning*, and its
   dialogs no longer carry the name. The settings, presets and the `[Anka]` group of
   `qt-config.ini` are unchanged, so an existing configuration keeps working.
+- Tuning: a **Read traps** box at the top of All games (on leaves `EDEN_NX2_READ_TRAPS` unset,
+  off sets `0`). Foliage is rendered with it on, at a performance cost, and is not rendered when
+  it and Reactive Flushing are off. **Fast** is the fastest settings, with that box and Reactive
+  Flushing off (`start-fast.bat`). **Recommended + Reactive Flushing** is renamed **Experimental**:
+  Reactive Flushing instead of read traps. Recommended still ticks the box. Unticking it moves
+  the preset to Custom. A config saved before this box keeps its preset.
 
 ## Anka 1.0.1 (`anka-v1.0.1`)
 
