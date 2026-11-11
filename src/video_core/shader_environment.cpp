@@ -553,24 +553,9 @@ GraphicsEnvironment::GraphicsEnvironment(Tegra::Engines::Maxwell3D& maxwell3d_,
     gpu_memory->ReadBlock(program_base + start_address, &sph, sizeof(sph));
     initial_offset = sizeof(sph);
     texture_bound = maxwell3d->regs.bindless_texture_const_buffer_slot;
-    if (maxwell3d->GetNativeMacroEngine().native_turing) {
-        if (program != Maxwell::ShaderType::VertexB && program != Maxwell::ShaderType::Geometry &&
-            program != Maxwell::ShaderType::Pixel) {
-            throw Shader::RuntimeError("Unsupported native graphics shader stage {}", static_cast<u32>(program));
-        }
-        if (std::getenv("EDEN_NATIVE_DRAW_DIAGNOSTICS")) {
-            const u32 native_stage = program == Maxwell::ShaderType::Pixel ? 4 : 0;
-            const auto& table = maxwell3d->state.shader_stages[native_stage].const_buffers[1];
-            if (table.enabled && table.size && table.size <= Tegra::Engines::Maxwell3D::Regs::MaxConstBufferSize) {
-                std::vector<u8> bytes(table.size);
-                gpu_memory->ReadBlock(table.address, bytes.data(), bytes.size());
-                std::ofstream dump(fmt::format("native-graphics-cbuf-{}-1.bin", static_cast<u32>(program)), std::ios::binary);
-                dump.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
-            }
-        }
-        InitializeNativeCode(std::move(lowered_native_));
-    }
     gp_passthrough_mask = maxwell3d->regs.post_vtg_shader_attrib_skip_mask;
+    // Set before InitializeNativeCode: lowering a geometry program reads stage, and a program
+    // that starts with the exit prologue is rejected when that read still sees the default.
     switch (program) {
     case Maxwell::ShaderType::VertexA:
         stage = Shader::Stage::VertexA;
@@ -599,6 +584,23 @@ GraphicsEnvironment::GraphicsEnvironment(Tegra::Engines::Maxwell3D& maxwell3d_,
     default:
         ASSERT_MSG(false, "Invalid program={}", program);
         break;
+    }
+    if (maxwell3d->GetNativeMacroEngine().native_turing) {
+        if (program != Maxwell::ShaderType::VertexB && program != Maxwell::ShaderType::Geometry &&
+            program != Maxwell::ShaderType::Pixel) {
+            throw Shader::RuntimeError("Unsupported native graphics shader stage {}", static_cast<u32>(program));
+        }
+        if (std::getenv("EDEN_NATIVE_DRAW_DIAGNOSTICS")) {
+            const u32 native_stage = program == Maxwell::ShaderType::Pixel ? 4 : 0;
+            const auto& table = maxwell3d->state.shader_stages[native_stage].const_buffers[1];
+            if (table.enabled && table.size && table.size <= Tegra::Engines::Maxwell3D::Regs::MaxConstBufferSize) {
+                std::vector<u8> bytes(table.size);
+                gpu_memory->ReadBlock(table.address, bytes.data(), bytes.size());
+                std::ofstream dump(fmt::format("native-graphics-cbuf-{}-1.bin", static_cast<u32>(program)), std::ios::binary);
+                dump.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+            }
+        }
+        InitializeNativeCode(std::move(lowered_native_));
     }
     const u64 local_size{sph.LocalMemorySize()};
     ASSERT(local_size <= (std::numeric_limits<u32>::max)());
