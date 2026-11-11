@@ -8,6 +8,9 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- A typeless surface store with a partial channel mask is rejected, as in Lichii build 31.
+  PokeDinner 1.0.0 wrote zeros in the other channels, and that triangle is the black mesh
+  with the bloom along its edge. The pipeline cache is 1019.
 - Consecutive NVN indexed indirect draws merge into one host multi-draw again (`INDIRECT_BATCH`,
   on). The terrain damage that had it off by default was not this merge. `=0` is one host draw
   per call.
