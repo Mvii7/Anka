@@ -271,13 +271,12 @@ bool DmaPusher::Step() {
             // pushbuffer, or the exact remainder of a macro / compute-inline upload (title 4 ends
             // a main entry after a macro's first word and puts the other five in their own entry;
             // Bananza's terrain draws do the same with the GPU-written indirect record).
-            // Any other entry is a command buffer NVN called while the method was open. A buffer
-            // shorter than the open method used to be taken for that tail: its words, the
-            // vertex-stream writes among them, were consumed as data and the draw kept the
-            // previous mesh's vertex buffer (Bananza's black shape with a white halo).
-            // EDEN_NX2_ALWAYS_CONTINUE=1 feeds every entry to the open method.
-            // EDEN_NX2_PARK_SPLIT_METHODS=1 parks parameter tails too.
-            static const bool always_continue = std::getenv("EDEN_NX2_ALWAYS_CONTINUE") != nullptr;
+            // Any other entry used to be parked and run as its own command buffer, on the theory
+            // that its words were vertex-stream methods and feeding them to the open method kept
+            // the previous mesh (Bananza's black shape with a white halo). Lichii build 31 does
+            // not park: the open method keeps the next entry. Parking did not remove the shape.
+            // EDEN_NX2_PARK_SPLIT_METHODS=1 parks again, except an entry that is exactly the
+            // words a macro or compute upload still wants.
             static const bool park_split_methods = std::getenv("EDEN_NX2_PARK_SPLIT_METHODS") != nullptr;
             if (g_nx2_ampere) {
                 if (static u32 split_logs{}; dma_state.method_count != 0 && split_logs < 64) {
@@ -295,7 +294,7 @@ bool DmaPusher::Step() {
                     LOG_DEBUG(HW_GPU, "  previous entry ends {:08x}; next entry starts {:08x}",
                               fmt::join(prev_words, " "), fmt::join(next_words, " "));
                 }
-                if (!always_continue && (park_split_methods || !IsOpenParameterTail(header))) {
+                if (park_split_methods && !IsOpenParameterTail(header)) {
                     ResolveSplitMethod(header.addr);
                 }
             }

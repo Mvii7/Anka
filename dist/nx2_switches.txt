@@ -20,11 +20,11 @@
 #EDEN_NX2_SPLIT=1
 #EDEN_NX2_MME_JIT=0
 #EDEN_NX2_PBFLUSH=0
-# ALWAYS_CONTINUE=1: an open method keeps consuming the next GPFIFO entry even when that entry
-# is a called command buffer (the previous behaviour). Default: only an entry that is exactly the
-# words a macro or compute upload still wants continues; the called buffer runs on its own, so
-# its vertex streams are written.
-#EDEN_NX2_ALWAYS_CONTINUE=1
+# PARK_SPLIT_METHODS=1: an open method stops at a GPFIFO entry that is not exactly the words
+# a macro or compute upload still wants, and that entry runs as its own command buffer.
+# Default is to keep feeding the open method (Lichii build 31). Parking left Bananza drawing
+# the previous mesh.
+#EDEN_NX2_PARK_SPLIT_METHODS=1
 #EDEN_NX2_RESETFIX=0
 #EDEN_NX2_FENCE_BATCH=1
 #EDEN_NX2_SKIP_SAME=0
