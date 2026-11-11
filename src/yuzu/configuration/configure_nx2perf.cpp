@@ -32,6 +32,7 @@ ConfigureNx2Perf::ConfigureNx2Perf(QWidget* parent)
         {ui->fg_timed, &S::fg_timed, {"EDEN_NX2_FG_TIMED"}},
         {ui->osd, &S::osd, {"EDEN_NX2_OSD"}},
         {ui->dk_dyn, &S::dk_dyn, {"EDEN_NX2_DK_DYN"}},
+        {ui->mkw_dyn, &S::mkw_dyn, {"EDEN_NX2_MKW_DYN"}},
         {ui->dk_pacing,
          &S::dk_pacing,
          {"EDEN_NX2_PRESENT_INTERVAL_WORD", "EDEN_NX2_MODE_PACE", "EDEN_NX2_PACE_SPIN_US"}},

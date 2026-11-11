@@ -346,6 +346,9 @@ public:
         return image_view_epoch;
     }
 
+    /// Queue a compute image for the next fence's download when it is the water collision map.
+    bool PublishComputeCollisionImage(u32 index);
+
     /// Create channel state.
     void CreateChannel(Tegra::Control::ChannelState& channel) final override;
 

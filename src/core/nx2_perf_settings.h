@@ -10,6 +10,7 @@
 
 #include "common/common_types.h"
 #include "core/loader/nx2_dk_dynamic_fps.h"
+#include "core/loader/nx2_mkw_dynamic_fps.h"
 
 // Anka's settings in the Qt program (anka.exe): the EDEN_NX2_* switches of the launchers
 // (dist/dozer/start-*.bat), as a preset and on / off settings kept in the [Anka] group of
@@ -19,7 +20,7 @@
 //
 // Every switch is read once per process, most of them into a function's static the first time
 // a game reaches it (EDEN_NX2_BACK_STAGES, ACQUIRE_PEEK, PRESENT_INTERVAL_WORD, MODE_PACE,
-// PACE_SPIN_US, DK_DYN, OSD); JIT_SAME, FRONT_MACRO_LEAN and FG_TIMED are read again at each boot.
+// PACE_SPIN_US, DK_DYN, MKW_DYN, OSD); JIT_SAME, FRONT_MACRO_LEAN and FG_TIMED are read again at each boot.
 // So the variables are set once, at the first boot, and a later boot that would need others (a
 // changed setting, or Bananza after another game and back) restarts the program for that game.
 namespace Core::Nx2PerfSettings {
@@ -41,6 +42,7 @@ struct Switches {
     bool osd = true;               ///< EDEN_NX2_OSD=1
     bool dk_dyn = true;            ///< EDEN_NX2_DK_DYN=1, Bananza only
     bool dk_pacing = true;         ///< PRESENT_INTERVAL_WORD + MODE_PACE + PACE_SPIN_US, Bananza only
+    bool mkw_dyn = true;           ///< EDEN_NX2_MKW_DYN=1, Mario Kart World only
     Preset preset = Preset::Recommended;
 
     bool operator==(const Switches&) const = default;
@@ -53,7 +55,7 @@ constexpr Switches Recommended() {
 
 /// start-safe.bat's setup: none of the switches, and the per-draw shortcuts off.
 constexpr Switches AllOff() {
-    return Switches{false, false, false, false, false, false, false, false, Preset::Safe};
+    return Switches{false, false, false, false, false, false, false, false, false, Preset::Safe};
 }
 
 /// The keys of the [Anka] group, one per setting (the preset has its own, "preset").
@@ -61,7 +63,7 @@ struct Key {
     std::string_view name;
     bool Switches::*field;
 };
-inline constexpr std::array<Key, 8> Keys{{
+inline constexpr std::array<Key, 9> Keys{{
     {"split_gpu_thread", &Switches::split_gpu_thread},
     {"acquire_peek", &Switches::acquire_peek},
     {"jit_same", &Switches::jit_same},
@@ -70,6 +72,7 @@ inline constexpr std::array<Key, 8> Keys{{
     {"osd", &Switches::osd},
     {"bananza_dynamic_fps", &Switches::dk_dyn},
     {"bananza_frame_pacing", &Switches::dk_pacing},
+    {"mkw_dynamic_fps", &Switches::mkw_dyn},
 }};
 
 /// The boxes of a preset (Custom: `current` as it is), with the preset set.
@@ -221,6 +224,11 @@ constexpr bool IsBananza(u64 program_id) {
     return program_id == Loader::Nx2DkDynamicFps::ProgramId;
 }
 
+/// Mario Kart World's own switch (Loader::Nx2MkwDynamicFps::ProgramId).
+constexpr bool IsMkw(u64 program_id) {
+    return program_id == Loader::Nx2MkwDynamicFps::ProgramId;
+}
+
 struct Var {
     std::string_view name;
     std::string_view value;
@@ -255,11 +263,12 @@ inline constexpr std::array<std::string_view, 61> SafeOff{
 };
 
 /// The variables a setting or preset can set, besides SafeOff, in the order they are set.
-inline constexpr std::array<std::string_view, 12> Names{
+inline constexpr std::array<std::string_view, 13> Names{
     "EDEN_NX2_BACK_STAGES",   "EDEN_NX2_BACK_CUTS",
     "EDEN_NX2_ACQUIRE_PEEK",  "EDEN_NX2_JIT_SAME",
     "EDEN_NX2_FRONT_MACRO_LEAN", "EDEN_NX2_FG_TIMED",
     "EDEN_NX2_OSD",           "EDEN_NX2_DK_DYN",
+    "EDEN_NX2_MKW_DYN",
     "EDEN_NX2_PRESENT_INTERVAL_WORD", "EDEN_NX2_MODE_PACE",
     "EDEN_NX2_PACE_SPIN_US",  "EDEN_NX2_RX_RT_FIT",
 };
@@ -277,7 +286,7 @@ void ForEachName(F&& f) {
 
 /// The variables the settings ask for when the game is (or is not) Bananza, the same values as
 /// the launcher of the preset. The Bananza ones never for another game.
-inline std::vector<Var> Wanted(const Switches& switches, bool bananza) {
+inline std::vector<Var> Wanted(const Switches& switches, bool bananza, bool mkw = false) {
     std::vector<Var> vars;
     if (switches.split_gpu_thread) {
         vars.push_back({"EDEN_NX2_BACK_STAGES", "1"});
@@ -306,6 +315,9 @@ inline std::vector<Var> Wanted(const Switches& switches, bool bananza) {
         vars.push_back({"EDEN_NX2_MODE_PACE", "2"});
         vars.push_back({"EDEN_NX2_PACE_SPIN_US", "1500"});
     }
+    if (mkw && switches.mkw_dyn) {
+        vars.push_back({"EDEN_NX2_MKW_DYN", "1"});
+    }
     if (switches.preset == Preset::Reactive) {
         vars.push_back({"EDEN_NX2_RX_RT_FIT", "3"});
     }
@@ -321,9 +333,10 @@ inline std::vector<Var> Wanted(const Switches& switches, bool bananza) {
 /// started (a launcher, the user, or nx2_switches.txt set them: theirs wins, set or not by us).
 /// `set_outside(name)` tells whether a name was there.
 template <typename SetOutside>
-std::vector<Var> Plan(const Switches& switches, bool bananza, SetOutside&& set_outside) {
+std::vector<Var> Plan(const Switches& switches, bool bananza, SetOutside&& set_outside,
+                   bool mkw = false) {
     std::vector<Var> plan;
-    for (const Var& var : Wanted(switches, bananza)) {
+    for (const Var& var : Wanted(switches, bananza, mkw)) {
         if (!set_outside(var.name)) {
             plan.push_back(var);
         }

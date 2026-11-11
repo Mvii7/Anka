@@ -26,6 +26,7 @@
 #include "core/hle/kernel/k_thread.h"
 #include "core/loader/nso.h"
 #include "core/loader/nx2_dk_dynamic_fps.h"
+#include "core/loader/nx2_mkw_dynamic_fps.h"
 #include "core/memory.h"
 
 #ifdef HAS_NCE
@@ -227,6 +228,25 @@ std::optional<VAddr> AppLoader_NSO::LoadModule(Kernel::KProcess& process, Core::
                             "EDEN_NX2_DK_DYN)",
                             dk_dyn->controller_matches, dk_dyn->sleep_matches,
                             dk_dyn->step_matches);
+            }
+        }
+        static const char* const mkw_dyn_switch = std::getenv("EDEN_NX2_MKW_DYN");
+        std::span<u8> text_bytes{};
+        if (text_start < image.size()) {
+            const size_t available = image.size() - text_start;
+            text_bytes = image.subspan(text_start, std::min(available, static_cast<size_t>(text.size)));
+        }
+        const auto mkw_dyn = Nx2MkwDynamicFps::ApplyIfEnabled(mkw_dyn_switch, process.GetProgramId(),
+                                                             name, text_bytes);
+        if (mkw_dyn) {
+            Core::g_nx2_mkw_dyn_applied.store(mkw_dyn->applied, std::memory_order_relaxed);
+            if (mkw_dyn->applied) {
+                LOG_INFO(Loader,
+                         "Mario Kart World: dynamic FPS on (main+{:#x}, main+{:#x}; EDEN_NX2_MKW_DYN)",
+                         text.location + mkw_dyn->mode * sizeof(u32),
+                         text.location + mkw_dyn->frame_time * sizeof(u32));
+            } else {
+                LOG_WARNING(Loader, "Mario Kart World: dynamic FPS not applied (EDEN_NX2_MKW_DYN)");
             }
         }
     }

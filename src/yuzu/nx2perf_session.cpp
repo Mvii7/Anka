@@ -46,6 +46,7 @@ bool g_pending_unasked = false; // the waiting settings changed since the restar
 struct Applied {
     std::vector<Perf::Var> plan;
     bool bananza;
+    bool mkw;
 };
 std::optional<Applied> g_applied; // set at the first boot
 
@@ -118,17 +119,19 @@ bool SetOutside(std::string_view name) {
 Boot Prepare(QWidget* parent, u64 program_id, const QString& game, bool fullscreen,
              bool applet) {
     const bool bananza = Perf::IsBananza(program_id);
-    auto plan = Perf::Plan(UISettings::values.nx2perf, bananza, SetOutside);
+    const bool mkw = Perf::IsMkw(program_id);
+    auto plan = Perf::Plan(UISettings::values.nx2perf, bananza, SetOutside, mkw);
     if (!g_applied) {
         for (const auto& var : plan) {
             SetVariable(var);
         }
-        LOG_INFO(Frontend, "Dozer settings for {:016X}{}: {}", program_id,
-                 bananza ? " (Donkey Kong Bananza)" : "", Describe(plan).toStdString());
+        const char* title = bananza ? " (Donkey Kong Bananza)" : mkw ? " (Mario Kart World)" : "";
+        LOG_INFO(Frontend, "Dozer settings for {:016X}{}: {}", program_id, title,
+                 Describe(plan).toStdString());
         for (const std::string_view name : g_set_outside) {
             LOG_INFO(Frontend, "Dozer: {} was set outside the program, left as it is", name);
         }
-        g_applied = Applied{std::move(plan), bananza};
+        g_applied = Applied{std::move(plan), bananza, mkw};
         return Boot::Go;
     }
     if (plan == g_applied->plan) {
@@ -147,6 +150,12 @@ Boot Prepare(QWidget* parent, u64 program_id, const QString& game, bool fullscre
     } else if (!bananza && g_applied->bananza) {
         why = QObject::tr("Donkey Kong Bananza's own settings are still on from Bananza; they "
                           "are only for Bananza.");
+    } else if (mkw && !g_applied->mkw) {
+        why = QObject::tr("Mario Kart World's own settings are off in this session, which "
+                          "started with another game.");
+    } else if (!mkw && g_applied->mkw) {
+        why = QObject::tr("Mario Kart World's own settings are still on from Mario Kart World; "
+                          "they are only for Mario Kart World.");
     } else {
         why = QObject::tr("The tuning settings changed since this session's first game.");
     }
@@ -179,11 +188,13 @@ Boot Prepare(QWidget* parent, u64 program_id, const QString& game, bool fullscre
 bool OfferRestart(QWidget* parent, const QString& running_game, bool fullscreen) {
     std::optional<std::vector<Perf::Var>> applied;
     bool bananza = false;
+    bool mkw = false;
     if (g_applied) {
         applied = g_applied->plan;
         bananza = g_applied->bananza;
+        mkw = g_applied->mkw;
     }
-    const auto plan = Perf::Plan(UISettings::values.nx2perf, bananza, SetOutside);
+    const auto plan = Perf::Plan(UISettings::values.nx2perf, bananza, SetOutside, mkw);
     const bool pending = HasPendingGraphics();
     const bool pending_new = std::exchange(g_pending_unasked, false);
     if (!Perf::NeedsRestart(applied, plan) && !(applied && pending_new)) {

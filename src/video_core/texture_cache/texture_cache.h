@@ -476,6 +476,28 @@ typename P::ImageView& TextureCache<P>::GetImageView(ImageViewId id) noexcept {
 }
 
 template <class P>
+bool TextureCache<P>::PublishComputeCollisionImage(u32 index) {
+    const auto view_id = VisitImageView(index, true);
+    if (view_id == NULL_IMAGE_VIEW_ID || !slot_image_views[view_id].image_id) {
+        return false;
+    }
+    const ImageId image_id = slot_image_views[view_id].image_id;
+    Image& image = slot_images[image_id];
+    const auto& info = image.info;
+    if (info.type != ImageType::Linear || info.format != PixelFormat::R16G16B16A16_SNORM ||
+        info.size.width != 256 || info.size.height != 256 || info.size.depth != 1 ||
+        info.pitch != 2048 || info.resources.layers != 1 || info.resources.levels != 1 ||
+        !IsDownloadable(image) ||
+        !gpu_memory->IsFullyMappedRange(image.gpu_addr, image.guest_size_bytes)) {
+        return false;
+    }
+    // The next fence downloads it and writes it back once the GPU reaches that fence, the same
+    // path as a preemptive render-target download. No wait for the GPU here.
+    uncommitted_downloads.emplace_back(PendingImageDownload<Image>{true, 0, image_id});
+    return true;
+}
+
+template <class P>
 typename P::ImageView& TextureCache<P>::GetImageView(u32 index) noexcept {
     // Not compute!
     const auto image_view_id = VisitImageView(index, false);

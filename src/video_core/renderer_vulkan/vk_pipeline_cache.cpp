@@ -754,9 +754,12 @@ GraphicsPipeline* PipelineCache::CurrentGraphicsPipeline() {
     return CurrentGraphicsPipelineSlowPath();
 }
 
-ComputePipeline* PipelineCache::CurrentComputePipeline() {
-
+ComputePipeline* PipelineCache::CurrentComputePipeline(u64* native_key) {
     const ShaderInfo* const shader{ComputeShader()};
+    if (native_key) {
+        *native_key = shader && shader->lowered_native ? shader->lowered_native->native_program_key
+                                                       : 0;
+    }
     if (!shader) {
         return nullptr;
     }

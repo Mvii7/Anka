@@ -476,6 +476,7 @@ void Puller::ProcessFenceActionMethod(DmaPusher& dma_pusher) {
         // UNIMPLEMENTED_MSG("Channel Scheduling pending.");
         // WaitFence(regs.fence_action.syncpoint_id, regs.fence_value);
         OnBack([rasterizer = dma_pusher.rasterizer] { rasterizer->ReleaseFences(); });
+        VideoCommon::GpuSplit::Get().NoteSync();
         if (VideoCommon::Nx2FrontDiag::On()) [[unlikely]] {
             VideoCommon::Nx2FrontDiag::NoteWork(VideoCommon::Nx2FrontDiag::WorkKind::Fences);
         }
@@ -549,6 +550,7 @@ void Puller::ProcessSemaphoreTriggerMethod(DmaPusher& dma_pusher) {
             CountPeek(&PeekStats::skipped);
             PeekMet(dma_pusher, peek, acquire.value);
             PeekSkipped();
+            VideoCommon::GpuSplit::Get().NoteSync();
             return;
         }
         DrainBack(VideoCommon::Nx2Profile::DrainSite::PullerAcquire);
@@ -556,6 +558,7 @@ void Puller::ProcessSemaphoreTriggerMethod(DmaPusher& dma_pusher) {
         PeekAfter(dma_pusher, peek, acquire.address, acquire.operation, acquire.value, current);
         if (acquire.Matches(current)) {
             PeekMet(dma_pusher, peek, acquire.value);
+            VideoCommon::GpuSplit::Get().NoteSync();
             return;
         }
         // Registered before the fences run, so a release among them that meets the value counts
@@ -572,6 +575,7 @@ void Puller::ProcessSemaphoreTriggerMethod(DmaPusher& dma_pusher) {
             waiters.Remove(this);
             PeekMet(dma_pusher, peek, acquire.value);
         }
+        VideoCommon::GpuSplit::Get().NoteSync();
     } else {
         DrainBack(VideoCommon::Nx2Profile::DrainSite::PullerAcquire);
         do {
@@ -737,6 +741,7 @@ void Puller::CallPullerMethod(DmaPusher& dma_pusher, const MethodCall& method_ca
         break;
     case BufferMethods::WaitForIdle:
         OnBack([rasterizer = dma_pusher.rasterizer] { rasterizer->WaitForIdle(); });
+        VideoCommon::GpuSplit::Get().NoteSync();
         break;
     case BufferMethods::SemaphoreOperation: {
         ProcessSemaphoreTriggerMethod(dma_pusher);
