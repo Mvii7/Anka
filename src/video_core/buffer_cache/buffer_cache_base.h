@@ -373,6 +373,11 @@ public:
     /// zeroed count, and the indirect draw kept that mesh after the debris was gone.
     void PreserveGuestWrite(DAddr device_addr, u64 size);
 
+    /// Copy these bytes into the buffer the indirect draw reads, in the main command stream
+    /// so the copy stays after the dispatch that wrote the previous mesh. A reordered upload
+    /// runs first and that draw still fetches the mesh.
+    void WriteIntoBuffer(DAddr dest_address, size_t copy_size, std::span<const u8> bytes);
+
     /// WriteMemory for each range, in order (the pre-draw invalidation).
     void WriteMemoryRanges(std::span<const std::pair<DAddr, std::size_t>> ranges);
 

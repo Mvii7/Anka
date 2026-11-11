@@ -12,12 +12,10 @@ and `=0` brings back the 2.0.0 code path.
   flushed, from whatever the vertex-buffer registers held. Each instance is drawn once. Array
   textures are unswizzled with the image's layer stride, and a readback uses the row alignment
   instead of 1, so a padded layer is not read as the next one.
-- The debris reset follows Lichii build 31: every pointer in the draw's list is stored as
-  a zero triangle count, and a record no buffer holds yet is left in guest memory for the
-  next upload. The previous path refused a list longer than its descriptor and, for a record
-  with no buffer, downloaded the page over the zeroed count, so the indirect draw kept the
-  previous mesh after the debris was gone. The build that drew the culled count read the
-  guest count, and the shape left with the debris.
+- The debris reset copies each zeroed record into the host buffer the indirect draw reads,
+  in command-stream order, after the dispatch that left the previous mesh there. Marking the
+  guest bytes was not that copy: the macro read the guest count and the shape left with the
+  debris, and the host draw kept the mesh.
 - An open GPU method keeps the next command entry. Parking that entry (`PARK_SPLIT_METHODS`,
   previously the default) left Bananza's draw on the previous mesh, the black shape with the
   white halo. `EDEN_NX2_PARK_SPLIT_METHODS=1` parks again.

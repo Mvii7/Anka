@@ -2662,14 +2662,10 @@ void RasterizerVulkan::StoreResetRecord(GPUVAddr address) {
         return;
     }
     gpu_memory->WriteBlockUnsafe(address, bytes.data(), bytes.size(), true);
-    const bool uploaded = buffer_cache.InlineMemory(*cpu_addr, bytes.size(), bytes);
+    // The macro reads these guest bytes. The indirect draw reads the host buffer, which
+    // still held the previous mesh: marking the guest range was not a copy into that buffer.
+    buffer_cache.WriteIntoBuffer(*cpu_addr, bytes.size(), bytes);
     query_cache.InvalidateRegion(*cpu_addr, bytes.size());
-    if (!uploaded) {
-        // No buffer holds the record. Lichii's WriteMemory marks the guest bytes and does
-        // not download the page. Dozer's deferred invalidation does, and that download puts
-        // the previous mesh back over the zeroed count.
-        buffer_cache.PreserveGuestWrite(*cpu_addr, bytes.size());
-    }
     {
         std::scoped_lock lock{texture_cache.mutex};
         texture_cache.WriteMemory(*cpu_addr, bytes.size());
@@ -5112,55 +5108,27 @@ void RasterizerVulkan::InlineRunsB(std::span<const std::pair<GPUVAddr, u32>> run
     // the buffer cache (its copies into B's list) and the shaders here, the query and texture
     // invalidations to C (stage_c_ranges, sent before the packet's records).
     namespace Profile = VideoCommon::Nx2Profile;
-    buffer_cache.force_registered_upload = true;
-    SCOPE_EXIT {
-        buffer_cache.force_registered_upload = false;
-        if (!runs.empty()) {
-            buffer_cache.NoteIndirectBufferWrite();
-        }
-    };
-    static const bool batch_enabled = [] {
-        const char* value = std::getenv("EDEN_NX2_RESET_BATCH");
-        return value == nullptr || value[0] != '0';
-    }();
-    const bool batched = batch_enabled && !Settings::IsGPUFenceBehaviorAccurate();
-    BufferCache::InlineBatch batch;
     u64 uploads = 0;
-    u64 commands = 0;
-    SCOPE_EXIT {
-        buffer_cache.FlushInlineBatch(batch);
-    };
     for (const auto& [address, size] : runs) {
         const std::span<const u8> bytes = data.first(size);
         const std::optional<DAddr> cpu_addr = gpu_memory->GpuToCpuAddress(address);
         if (!cpu_addr) [[unlikely]] {
-            // Not one device range: written now, every cache told at the next FlushCaching.
-            commands += buffer_cache.FlushInlineBatch(batch) ? 1 : 0;
             gpu_memory->WriteBlockUnsafe(address, bytes.data(), size, true);
             gpu_memory->AccumulateInvalidation(address, size);
             continue;
         }
         gpu_memory->WriteBlockUnsafe(address, bytes.data(), size, true);
-        bool uploaded;
-        if (batched) {
-            const size_t before = batch.copies.size();
-            uploaded = buffer_cache.InlineMemoryBatched(*cpu_addr, size, bytes, batch);
-            commands += uploaded && batch.copies.size() <= before ? 1 : 0;
-        } else {
-            uploaded = buffer_cache.InlineMemory(*cpu_addr, size, bytes);
-            commands += uploaded ? 1 : 0;
-        }
-        uploads += uploaded ? 1 : 0;
-        if (!uploaded) {
-            buffer_cache.PreserveGuestWrite(*cpu_addr, size);
-        }
+        buffer_cache.WriteIntoBuffer(*cpu_addr, size, bytes);
+        ++uploads;
         stage_c_ranges.push_back(*cpu_addr);
         stage_c_ranges.push_back(u64{size} | StageRangeQuery | StageRangeTexture);
         pipeline_cache.InvalidateRegion(*cpu_addr, size);
     }
-    commands += buffer_cache.FlushInlineBatch(batch) ? 1 : 0;
+    if (!runs.empty()) {
+        buffer_cache.NoteIndirectBufferWrite();
+    }
     Profile::Add(Profile::Counter::ResetUploads, uploads);
-    Profile::Add(Profile::Counter::ResetCopyCommands, commands);
+    Profile::Add(Profile::Counter::ResetCopyCommands, uploads);
 }
 
 void RasterizerVulkan::InlineToMemoryB(GPUVAddr address, size_t copy_size,

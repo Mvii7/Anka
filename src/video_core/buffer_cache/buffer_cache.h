@@ -230,6 +230,33 @@ void BufferCache<P>::PreserveGuestWrite(DAddr device_addr, u64 size) {
 }
 
 template <class P>
+void BufferCache<P>::WriteIntoBuffer(DAddr dest_address, size_t copy_size,
+                                    std::span<const u8> bytes) {
+    if (copy_size == 0 || bytes.size() < copy_size) {
+        return;
+    }
+    ClearDownload(dest_address, copy_size);
+    gpu_modified_ranges.Subtract(dest_address, copy_size);
+    memory_tracker.MarkRegionAsCpuModified(dest_address, copy_size);
+    const BufferId buffer_id = FindBuffer(dest_address, static_cast<u32>(copy_size), false);
+    Buffer& buffer = slot_buffers[buffer_id];
+    if constexpr (USE_MEMORY_MAPS_FOR_UPLOADS) {
+        auto upload_staging = runtime.UploadStagingBuffer(copy_size);
+        const std::array copies{BufferCopy{
+            .src_offset = upload_staging.offset,
+            .dst_offset = buffer.Offset(dest_address),
+            .size = copy_size,
+        }};
+        std::memcpy(upload_staging.mapped_span.data(), bytes.data(), copy_size);
+        runtime.CopyBuffer(buffer, upload_staging.buffer, copies, true, false);
+    } else {
+        buffer.ImmediateUpload(buffer.Offset(dest_address), bytes.first(copy_size));
+    }
+    buffer.MarkUsage(buffer.Offset(dest_address), copy_size);
+    written_since_indirect = true;
+}
+
+template <class P>
 void BufferCache<P>::WriteMemoryRanges(std::span<const std::pair<DAddr, std::size_t>> ranges) {
     // EDEN_NX2_INVAL_HULL=0: one GPU-modified lookup per range, as WriteMemory does.
     static const bool use_hull = [] {
