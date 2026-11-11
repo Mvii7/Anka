@@ -3117,6 +3117,9 @@ public:
         void ProcessDraw(Maxwell3D& maxwell3d, bool draw_indexed, u32 instance_count);
         void ProcessDrawIndirect(Maxwell3D& maxwell3d);
         State draw_state{};
+        // Base instance of a vertex-array instance draw. Separate from instance_count, which a
+        // deferred instance loop (draw.instance_id) still uses.
+        u32 instance_index{};
         DrawTextureState draw_texture_state{};
         IndirectParams indirect_state{};
     };

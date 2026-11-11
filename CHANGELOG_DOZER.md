@@ -8,12 +8,15 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
-- Fix: Bananza's black debris mesh and the white bloom around it. The geometry shader's exits
-  are branches to a handler that writes the output vertex; leaving at the exit drew that vertex
-  unfinished, so the piece stayed in the scene (it writes depth) and the bloom spread it. The
-  exit now goes to the handler. The stage is known before that lowering: recording it afterwards
-  rejected the terrain geometry shader (`native program counter load outside geometry stage`) and
-  skipped its draws. Shader caches rebuild (pipeline cache version 1020).
+- Fix: a vertex-array instance was drawn, then drawn again when the deferred instance loop
+  flushed, from whatever the vertex-buffer registers held. Each instance is drawn once. Array
+  textures are unswizzled with the image's layer stride, and a readback uses the row alignment
+  instead of 1, so a padded layer is not read as the next one.
+- The terrain geometry shader's exits go to the handler that writes the output vertex, and the
+  stage is known before that lowering. Recording the stage afterwards rejected the shader
+  (`native program counter load outside geometry stage`) and skipped its draws, which removed
+  the terrain. The white glow still showed on that build while the draw was skipped, so the
+  glow is not this shader. Shader caches from that build stay (pipeline cache version 1020).
 - A register a shader reads before writing it is zero, as on the hardware
   (`EDEN_NX2_UNDEF_ZERO=0` restores `OpUndef`). That was not this mesh.
 - Fix: Bananza's destroyed-terrain hole. The colour pass was drawing the debris reset's zero
