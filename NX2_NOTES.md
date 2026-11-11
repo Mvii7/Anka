@@ -470,7 +470,7 @@ Cherry-picked from PokeDinner 2.5.0 (216b5034c) onto perf/tam faddee043; no full
   build throws "Native matrix multiply program has no compute pipeline" (Vulkan): both keep the
   upscale stand-in the old first-HMMA rejection gave. Not with `stub` or `unguarded`.
 - FP16 TEX results pack c0 in the low half (ee247a0b6).
-- Pipeline cache versions 1018 (Vulkan) and 1015 (OpenGL): the disk cache holds lowered code. The
+- Pipeline cache versions 1019 (Vulkan) and 1016 (OpenGL): the disk cache holds lowered code. The
   first session rebuilds every pipeline. 2.5.0's 19 is a different file layout.
 - The 3D register-write history records only with `EDEN_NX2_3D_HISTORY` in release builds
   (1a346fb3b); RecordWrite is gated itself, so both the K1 (BackLoop) and staged (RunStagedBack)

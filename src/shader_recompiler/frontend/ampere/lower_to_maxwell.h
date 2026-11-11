@@ -63,7 +63,10 @@ inline u64 BranchOffsetField(const Instruction& insn) {
 // Lower only operations whose semantics are representable by the existing
 // Maxwell frontend. These are new instructions, not reinterpretations of the
 // native bytes. Scheduling/control words are added by the environment adapter.
-inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code) {
+// geometry_code_address: guest address of instruction 0 when this is a geometry program.
+// Zero keeps a program-counter load as zero, which is what every other stage uses.
+inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code,
+                                      u64 geometry_code_address = 0) {
     LoweredProgram result;
     struct Relocation { u32 output_index; s64 target; };
     std::vector<Relocation> relocations;
@@ -1850,14 +1853,17 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code) {
                 return fail(index, "native stage buffer read mode");
             emit(base(0x5c98000000000000ULL) | (u64{15} << 39) | (u64{insn.Bits(24, 8)} << 20));
             break;
-        case 0x34e: { // LEPC: 64-bit address of the next instruction
-            // Only seen in geometry shader prologues, where the address is consumed by opcode 0x357
-            // and the registers are overwritten right after. Native code addresses mean nothing in
-            // the lowered program, so it reads as zero.
+        case 0x34e: { // LEPC: 64-bit address of this instruction
+            // A geometry prologue uses the address to find the exit that writes the output vertex.
+            // Zero there leaves that vertex unfinished, and the rock is a black triangle. Other
+            // stages still read zero: their addresses are not a guest pointer into this program.
             if (insn.Bits(24, 8) || insn.words[1] || insn.words[2] || dest >= 254)
                 return fail(index, "native program counter load mode");
-            mov_imm(static_cast<u32>(dest), 0);
-            mov_imm(static_cast<u32>(dest) + 1, 0);
+            const u64 address = geometry_code_address == 0
+                                    ? 0
+                                    : geometry_code_address + u64{index} * sizeof(Instruction);
+            mov_imm(static_cast<u32>(dest), static_cast<u32>(address));
+            mov_imm(static_cast<u32>(dest) + 1, static_cast<u32>(address >> 32));
             break;
         }
         case 0x357: // Takes the LEPC-derived address in geometry shader prologues; no Maxwell counterpart.

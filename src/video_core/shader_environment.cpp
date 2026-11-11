@@ -380,13 +380,14 @@ private:
 // A native program is captured and lowered once, when the shader cache first meets it. The
 // environments built later for its pipelines receive that result instead of lowering again.
 void GenericEnvironment::InitializeNativeCode(std::shared_ptr<const LoweredNativeCode> lowered,
-                                              u32 source_header_size, bool is_compute) {
+                                              u32 source_header_size, bool is_compute,
+                                              u64 geometry_code_address) {
     if (!lowered) {
         const Vulkan::PipelineStats::ScopedTimer timer{
             is_compute ? Vulkan::PipelineStats::Kind::Compute
                        : Vulkan::PipelineStats::Kind::Graphics,
             Vulkan::PipelineStats::Stage::Lower};
-        lowered = LowerNativeCode(source_header_size);
+        lowered = LowerNativeCode(source_header_size, geometry_code_address);
     }
     if (lowered->texture_bound != ~0U) {
         // Native TEX carries its cbuf index explicitly; TEXS obtains it from the environment.
@@ -399,7 +400,8 @@ void GenericEnvironment::InitializeNativeCode(std::shared_ptr<const LoweredNativ
     lowered_native = std::move(lowered);
 }
 
-std::shared_ptr<const LoweredNativeCode> GenericEnvironment::LowerNativeCode(u32 source_header_size) {
+std::shared_ptr<const LoweredNativeCode> GenericEnvironment::LowerNativeCode(
+    u32 source_header_size, u64 geometry_code_address) {
     using Shader::Ampere::Instruction;
     const u32 native_header_size = source_header_size;
     constexpr u32 maximum_instructions = Shader::Ampere::ProgramCaptureState::MaximumInstructions;
@@ -437,7 +439,7 @@ std::shared_ptr<const LoweredNativeCode> GenericEnvironment::LowerNativeCode(u32
         }
         if (status == Shader::Ampere::ProgramCaptureState::Result::Complete) break;
     }
-    auto lowered = Shader::Ampere::LowerToMaxwell(native);
+    auto lowered = Shader::Ampere::LowerToMaxwell(native, geometry_code_address);
     // EDEN_NX2_REJECT=<hex address>,...: treat these programs as rejected (to find which newly
     // lowered program changes a game's behaviour without rebuilding).
     if (static const std::string reject_list = [] {
@@ -568,7 +570,12 @@ GraphicsEnvironment::GraphicsEnvironment(Tegra::Engines::Maxwell3D& maxwell3d_,
                 dump.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
             }
         }
-        InitializeNativeCode(std::move(lowered_native_));
+        // A geometry prologue loads its own guest address. Zero is what leaves the output vertex
+        // unfinished (the black rock). Vertex and fragment programs keep a zero load.
+        const u64 geometry_code_address = program == Maxwell::ShaderType::Geometry
+                                              ? program_base + 128
+                                              : 0;
+        InitializeNativeCode(std::move(lowered_native_), 128, false, geometry_code_address);
     }
     gp_passthrough_mask = maxwell3d->regs.post_vtg_shader_attrib_skip_mask;
     switch (program) {

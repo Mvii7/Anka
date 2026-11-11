@@ -379,7 +379,15 @@ std::optional<StorageBufferAddr> Track(const IR::Value& value, const Bias* bias,
         }
         return storage_buffer;
     }};
-    return BreadthFirstSearchPruned(value, pred, exhausted);
+    // A pointer loaded from memory is a new address, not an offset into the buffer that held the
+    // pointer. Following the load writes the rock's vertex into that buffer.
+    const auto stop_at_memory = [](IR::Value operand) {
+        if (!operand.IsImmediate() && IsGlobalMemory(*operand.InstRecursive())) {
+            return IR::Value{u32{0}};
+        }
+        return operand;
+    };
+    return BreadthFirstSearchPruned(value, pred, exhausted, stop_at_memory);
 }
 
 /// Collects the storage buffer used by a global memory instruction and the instruction itself

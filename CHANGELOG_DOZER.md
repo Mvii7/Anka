@@ -8,6 +8,11 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- Donkey Kong Bananza's geometry prologue loads its own guest address, and a storage access
+  through a pointer loaded from memory is no longer treated as an offset into the buffer that
+  held the pointer. The zero address left the output vertex unfinished, which is the rock that
+  flickers black. From Eglantine #363, which is the build where those rocks stopped. The pipeline
+  caches are 1019 (Vulkan) and 1016 (OpenGL).
 - Consecutive NVN indexed indirect draws merge into one host multi-draw again (`INDIRECT_BATCH`,
   on). The terrain damage that had it off by default was not this merge. `=0` is one host draw
   per call.
