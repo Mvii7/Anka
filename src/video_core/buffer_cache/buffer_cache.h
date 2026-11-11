@@ -2821,7 +2821,8 @@ bool BufferCache<P>::InlineMemory(DAddr dest_address, size_t copy_size,
     }
     DAddr aligned_start = Common::AlignDown(dest_address, DEVICE_PAGESIZE);
     DAddr aligned_end = Common::AlignUp(dest_address + copy_size, DEVICE_PAGESIZE);
-    if (!IsRegionGpuModified(aligned_start, aligned_end - aligned_start)) {
+    if (!IsRegionGpuModified(aligned_start, aligned_end - aligned_start) &&
+        !force_registered_upload) {
         return false;
     }
 
@@ -2877,7 +2878,8 @@ bool BufferCache<P>::InlineMemoryBatched(DAddr dest_address, size_t copy_size,
     }
     const DAddr aligned_start = Common::AlignDown(dest_address, DEVICE_PAGESIZE);
     const DAddr aligned_end = Common::AlignUp(dest_address + copy_size, DEVICE_PAGESIZE);
-    if (!IsRegionGpuModified(aligned_start, aligned_end - aligned_start)) {
+    if (!IsRegionGpuModified(aligned_start, aligned_end - aligned_start) &&
+        !force_registered_upload) {
         return false;
     }
     ClearDownload(dest_address, copy_size);

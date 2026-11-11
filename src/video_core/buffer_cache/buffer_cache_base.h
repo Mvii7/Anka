@@ -521,6 +521,12 @@ public:
         return std::exchange(written_since_indirect, false);
     }
 
+    /// The host reset wrote indirect records. The next indirect draw waits for that transfer
+    /// and for the vertex and index data those writes share, or it draws the previous mesh.
+    void NoteIndirectBufferWrite() noexcept {
+        written_since_indirect = true;
+    }
+
     [[nodiscard]] std::pair<Buffer*, u32> GetDrawIndirectCount();
 
     /// The vertex streams BindHostVertexBuffers binds (a non-null binding of non-zero size): back
@@ -552,6 +558,9 @@ public:
     Runtime& runtime;
     bool any_buffer_uploaded = false;
     bool written_since_indirect = false; ///< See TakeIndirectBarrier
+    /// Set around the debris reset. A buffer that already holds the record is uploaded even
+    /// when the page is not marked GPU-modified: the indirect draw reads that copy.
+    bool force_registered_upload = false;
     /// EDEN_NX2_LIGHT_SYNC_SKIP: set by the rasterizer around a plain light draw's
     /// BindHostGeometryBuffers only.
     bool plain_light_draw = false;

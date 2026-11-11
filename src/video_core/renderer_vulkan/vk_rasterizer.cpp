@@ -727,6 +727,13 @@ void RasterizerVulkan::PrepareDraw(bool is_indexed, bool indirect, Func&& draw_f
                 if (batch) {
                     batch_runs.reserve(records.size());
                 }
+                // The indirect draw reads the buffer, not the guest words. Upload a buffer that
+                // already holds the record even when the page is not marked GPU-modified, and
+                // make that draw wait for the copy and for the vertex data written with it.
+                buffer_cache.force_registered_upload = true;
+                SCOPE_EXIT {
+                    buffer_cache.force_registered_upload = false;
+                };
                 GPUVAddr run_start = 0;
                 u32 run_records = 0;
                 u32 writes = 0;
@@ -760,6 +767,9 @@ void RasterizerVulkan::PrepareDraw(bool is_indexed, bool indirect, Func&& draw_f
                 if (!batch_runs.empty()) {
                     AccelerateInlineRuns(batch_runs, {reinterpret_cast<const u8*>(run_words.data()),
                                                       sizeof(run_words)});
+                }
+                if (!records.empty()) {
+                    buffer_cache.NoteIndirectBufferWrite();
                 }
                 thread_local u32 reset_logs{};
                 if (reset_logs < 5) {
@@ -5258,6 +5268,13 @@ void RasterizerVulkan::InlineRunsB(std::span<const std::pair<GPUVAddr, u32>> run
     // invalidations to C (stage_c_ranges, sent before the packet's records).
     namespace Profile = VideoCommon::Nx2Profile;
     const bool defer = InlineDeferEnabled();
+    buffer_cache.force_registered_upload = true;
+    SCOPE_EXIT {
+        buffer_cache.force_registered_upload = false;
+        if (!runs.empty()) {
+            buffer_cache.NoteIndirectBufferWrite();
+        }
+    };
     static const bool batch_enabled = [] {
         const char* value = std::getenv("EDEN_NX2_RESET_BATCH");
         return value == nullptr || value[0] != '0';
