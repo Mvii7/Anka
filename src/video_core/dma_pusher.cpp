@@ -189,8 +189,11 @@ bool DmaPusher::Step() {
                 bool back_idle = false;
                 const GPUVAddr address = dma_state.dma_get;
                 const size_t bytes = words * sizeof(u32);
-                // NVN's indexed indirect draw macro, continued by a record the GPU wrote: the
-                // host GPU reads the record itself (Maxwell3D::FrontTakeIndirectRecord).
+                // NVN's indexed indirect draw macro, continued by a record the GPU wrote.
+                // EDEN_NX2_HLE_INDIRECT=1: the host GPU reads the record
+                // (Maxwell3D::FrontTakeIndirectRecord). Off, the flush below downloads the
+                // culled count and the macro draws that. The buffer itself still holds the
+                // debris reset's zero count, and drawing it leaves a hole in the floor.
                 if (macro_payload && words == 5 && dma_state.method_count == 5 &&
                     header.size == 5 && VideoCommon::GpuSplit::Get().Active() &&
                     IsGpuWrittenRange(address, bytes)) {

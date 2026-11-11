@@ -263,7 +263,8 @@ without a launcher; the menu program sets the recommended ones from its Tuning t
 | `FG_TIMED=1` | off | FSR3 generated frames blended for the time they are shown |
 | `OSD=1` | off | game FPS, display FPS (with frame generation's multiplier) and speed in RTSS |
 | `LIGHT_DRAW`, `LIGHT_UNIFORM`, `UBO_*`, `SYNC_*`, `VERTEX_*`, `RESET_*`, ... (about 60) | **on** | per-draw shortcuts on the GPU thread; `=0` is the 2.0.0 code path, many accept `=2` to check themselves and log |
-| `HLE_INDIRECT`, `INDIRECT_BATCH`, `PBFLUSH_WINDOW_KIB` | **on** | Bananza's terrain: indirect draws on the host GPU, merged; GPU-written parameters flushed in 256 KiB windows |
+| `HLE_INDIRECT` | off | host GPU reads Bananza's indirect records; that buffer still holds the debris reset's zero count, so the floor piece is never drawn. `=1` opts in |
+| `INDIRECT_BATCH`, `PBFLUSH_WINDOW_KIB` | **on** | consecutive indirect draws merge; GPU-written macro parameters flush in 256 KiB windows |
 | `RX_RT_FIT=3` | off | meant for reactive flushing (it acts without it too, not measured that way): Bananza's opening renders into one image instead of copying it per draw, ordered by a barrier inside the render pass (experimental; `=1` ends the render pass instead, slower; both need `barrier_feedback_loops=true`) |
 | `FLUSH_FIRST_READ`, `READ_LATCH_AGE`, `RX_ONE_SUBMIT`, `RX_COALESCE`, `RX_PITCH_FORCED` | off | reactive flushing experiments; no gain measured, not recommended |
 | `RX_MASKED_TARGETS` | off | **known defect, do not turn on** |

@@ -8,6 +8,10 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- Fix: Bananza's destroyed-terrain hole. The colour pass was drawing the debris reset's zero
+  triangle count from the indirect buffer, so that piece of floor was never drawn. The macro
+  reads the culling pass's count back and draws that (`HLE_INDIRECT` off; `=1` is the old GPU
+  read).
 - Consecutive NVN indexed indirect draws merge into one host multi-draw again (`INDIRECT_BATCH`,
   on). The terrain damage that had it off by default was not this merge. `=0` is one host draw
   per call.
