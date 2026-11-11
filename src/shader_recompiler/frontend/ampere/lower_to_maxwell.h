@@ -1226,6 +1226,16 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code, bool geo
                      (u64{lane} << 20) | (u64{1} << 29) | (u64{0x1f} << 34) | (u64{7} << 48));
             };
             const auto round_half = [&](u32 reg) {
+                // The f32 sum sits near the top of the f16 range. Past 65504, F2F returns
+                // infinity, and Bananza's lighting rejects that: the piece is black and the
+                // bloom of the infinity is the yellow streak. Hardware rounding of this sum
+                // stays finite. Clamp to the finite f16 range first.
+                mov_imm(254, 0x477fe000); // +65504
+                emit(0x5c60000000000000ULL | predicate | reg | (u64{reg} << 8) | (u64{254} << 20) |
+                     (u64{7} << 39));
+                mov_imm(254, 0xc77fe000); // -65504
+                emit(0x5c60000000000000ULL | predicate | reg | (u64{reg} << 8) | (u64{254} << 20) |
+                     (u64{7} << 39) | (u64{1} << 42));
                 emit(0x5ca8000000000000ULL | predicate | reg | (u64{1} << 8) |
                      (u64{2} << 10) | (u64{reg} << 20));
             };

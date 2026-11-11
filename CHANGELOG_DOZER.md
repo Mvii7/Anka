@@ -12,11 +12,12 @@ and `=0` brings back the 2.0.0 code path.
   flushed, from whatever the vertex-buffer registers held. Each instance is drawn once. Array
   textures are unswizzled with the image's layer stride, and a readback uses the row alignment
   instead of 1, so a padded layer is not read as the next one.
-- The debris reset does not create a host buffer for a record. Creating one zeros the page,
-  and the terrain vertices share that page, so the ground disappears and one triangle is left
-  as the black sail with the white bloom. A copy is made only when a buffer already holds
-  GPU-written data, as in Lichii. The glow shader already returns zero for a colour it did not
-  write; this run was a fresh shader cache and the sail was still there, so that was not it.
+- The debris reset does not create a host buffer for a record. Creating one zeros the page
+  the terrain vertices share. On `2e7b8ae71f` the ground stayed and the glitch did not: a fresh
+  cache, the first reset copied 0 of 786 records, and the yellow streak was already there.
+- The half-float matrix multiply clamps its f32 sum to the finite f16 range before rounding.
+  Past 65504 the conversion was infinity. Bananza's lighting rejects that, so the piece is
+  black and the bloom of the infinity is the yellow streak. The pipeline cache is 1021.
 - An open GPU method keeps the next command entry. Parking that entry (`PARK_SPLIT_METHODS`,
   previously the default) left Bananza's draw on the previous mesh, the black shape with the
   white halo. `EDEN_NX2_PARK_SPLIT_METHODS=1` parks again.
