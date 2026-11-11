@@ -515,15 +515,10 @@ public:
         current_draw_indirect = current_draw_indirect_;
     }
 
-    /// Whether a draw or dispatch has written buffers since the last call, including global
-    /// stores that never mark a storage buffer (NoteIndirectSource). An indirect draw must
-    /// then wait for those writes. Without the wait it fetches the previous mesh.
+    /// Whether a draw or dispatch has written buffers (MarkWrittenBuffer) since the last call:
+    /// an indirect draw must then wait for those writes before it reads its arguments.
     [[nodiscard]] bool TakeIndirectBarrier() {
         return std::exchange(written_since_indirect, false);
-    }
-
-    void NoteIndirectSource() noexcept {
-        written_since_indirect = true;
     }
 
     [[nodiscard]] std::pair<Buffer*, u32> GetDrawIndirectCount();
