@@ -8,6 +8,9 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- Consecutive NVN indexed indirect draws merge into one host multi-draw again (`INDIRECT_BATCH`,
+  on). The terrain damage that had it off by default was not this merge. `=0` is one host draw
+  per call.
 - Rumble: HID command 214 (the Switch 2 titles' vibration, sent every frame) is forwarded to the
   controller through the existing vibration path; it was accepted and dropped. From the Selevet
   fork (`49e2ed7`); not tried with a controller yet.
@@ -143,8 +146,8 @@ in Donkey Kong Bananza on one PC. About 400 commits, made between 31 October and
 
 - NVN's indexed indirect draw records are drawn on the host GPU (`vkCmdDrawIndexedIndirect`)
   instead of being read back on the CPU each frame (`HLE_INDIRECT`, on).
-- Consecutive terrain indirect draws can merge into one multi-draw on the split back
-  (`INDIRECT_BATCH=1`, off: merged, Bananza's terrain drew garbage polygons and lost chunks);
+- Consecutive terrain indirect draws merge into one multi-draw on the split back
+  (`INDIRECT_BATCH`, on; `=0` is one host draw per call);
   the indirect draw reset's uploads are batched, sorted and written in
   runs (`RESET_BATCH`, `RESET_SORT`, `RESET_RUNS`, `RESET_LAST`, on).
 - GPU-written macro parameters are flushed with the 256 KiB window around them, and no second

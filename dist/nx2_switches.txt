@@ -120,9 +120,9 @@
 # HLE_INDIRECT=0: run NVN's indexed indirect draw macro as it is, reading its records on the
 # CPU (default: one host indirect draw from the GPU-written records).
 #EDEN_NX2_HLE_INDIRECT=0
-# INDIRECT_BATCH=1: calls of NVN's multi-draw macro whose records follow each other share one
-# host draw (default: one host draw per call; merged, Bananza's terrain glitched after minutes).
-#EDEN_NX2_INDIRECT_BATCH=1
+# INDIRECT_BATCH=0: one host draw per call of NVN's multi-draw macro (default: calls whose
+# records follow each other share one host draw).
+#EDEN_NX2_INDIRECT_BATCH=0
 # LAYOUT_MEMO=0: look the layout size up every time (default: remembered).
 #EDEN_NX2_LAYOUT_MEMO=0
 # SAME_SKIP=0: constant buffer writes of bytes memory already holds are still made (default:
