@@ -35,6 +35,7 @@
 #include "video_core/nx2_reactive_flush.h"
 #include "video_core/gpu_logging/gpu_logging.h"
 #include "video_core/control/channel_state.h"
+#include "video_core/indirect_reset.h"
 #include "video_core/native_query_trace.h"
 #include "video_core/engines/maxwell_3d.h"
 #include "video_core/engines/kepler_compute.h"
@@ -507,10 +508,10 @@ void RasterizerVulkan::PrepareDraw(bool is_indexed, bool indirect, Func&& draw_f
     std::scoped_lock lock{buffer_cache.mutex, texture_cache.mutex};
     // Donkey Kong Bananza's terrain: a GPU program run over points resets each rock/dirt piece's
     // 5-word indirect draw record ({triangles 0, copies 1, 0, 0, 0}) through the pointers in a list
-    // (c0[0x110]). Stores through addresses loaded from memory can't be mapped onto a storage
-    // buffer, so the recompiler loses them and every record keeps 0 copies -- and a draw of 0
-    // copies draws nothing. Do that program's stores here instead. EDEN_NX2_RESETFIX=0 leaves it
-    // to the GPU.
+    // (c0[0x110], byte length at c0[0x118]). Stores through addresses loaded from memory can't be
+    // mapped onto a storage buffer, so the recompiler loses them and a destroyed piece keeps the
+    // previous mesh. Do the stores here when the draw fits that list. EDEN_NX2_RESETFIX=0 leaves
+    // it to the GPU.
     static const bool reset_fix = [] {
         const char* value = std::getenv("EDEN_NX2_RESETFIX");
         return value == nullptr || value[0] != '0';
@@ -567,21 +568,19 @@ void RasterizerVulkan::PrepareDraw(bool is_indexed, bool indirect, Func&& draw_f
         }
         if (is_reset) {
             const auto& reset_draw = maxwell3d->draw_manager.draw_state;
-            const auto& cbuf0 = maxwell3d->state.shader_stages[0].const_buffers[0];
-            const GPUVAddr list = gpu_memory->Read<u64>(cbuf0.address + 0x110);
-            const u32 count = (std::min)(reset_draw.vertex_buffer.count, 1u << 20);
-            const GPUVAddr list_begin = list + u64{reset_draw.vertex_buffer.first} * sizeof(u64);
-            const size_t list_bytes = size_t{count} * sizeof(u64);
-            if (count != 0 && gpu_memory->IsFullyMappedRange(list_begin, list_bytes)) {
+            const bool reset_launch =
+                !indirect && reset_draw.topology == Maxwell::PrimitiveTopology::Points &&
+                draw_instances == 1;
+            if (!reset_launch) {
+                LogResetLeft("not a single points draw");
+            }
+            const std::optional<ResetList> reset_list =
+                reset_launch ? CollectResetRecords(*maxwell3d, *gpu_memory) : std::nullopt;
+            if (reset_list) {
                 Profile::Add(Profile::Counter::ResetFixLists, 1);
-                if (gpu_memory->IsMemoryDirty(list_begin, list_bytes,
-                                              VideoCommon::CacheType::BufferCache)) {
-                    Profile::Add(Profile::Counter::ResetFixFlushes, 1);
-                    gpu_memory->FlushRegion(list_begin, list_bytes,
-                                            VideoCommon::CacheType::BufferCache);
-                }
-                std::vector<u64> pointers(count);
-                gpu_memory->ReadBlockUnsafe(list_begin, pointers.data(), list_bytes);
+                const GPUVAddr list_begin = reset_list->begin;
+                const u32 count = reset_list->requested;
+                const std::vector<u64>& pointers = reset_list->pointers;
                 // Records the list points at one after another within a 4 KiB page are reset
                 // with one inline write (the caches see the same bytes, in the same order).
                 // EDEN_NX2_RESET_RUNS=0: one write per record.
@@ -716,9 +715,9 @@ void RasterizerVulkan::PrepareDraw(bool is_indexed, bool indirect, Func&& draw_f
                              "inline writes{})",
                              list_begin, count, records.size(), writes, sorted ? ", sorted" : "");
                 }
+                submitted = true;
+                return;
             }
-            submitted = true;
-            return;
         }
     }
     if (Profile::Enabled() && LightDrawEnabled()) {
@@ -1407,9 +1406,64 @@ void TraceWindowTarget(const Tegra::Engines::Maxwell3D& maxwell3d, Tegra::Memory
         }
     }
 }
+
+struct ResetList {
+    u64 begin{};
+    u32 requested{};
+    std::vector<u64> pointers;
+};
+
+void LogResetLeft(std::string_view reason) {
+    static u32 reported{};
+    if (reported < 8) {
+        ++reported;
+        LOG_WARNING(HW_GPU, "Indirect draw reset left to the shader: {}", reason);
+    }
+}
+
+// The descriptor at c0[0x110] is the pointer list and its byte length. Download GPU writes before
+// following it. A draw that does not fit the descriptor is refused whole: zeroing past the list
+// hits other records, and the debris draw keeps the previous mesh.
+std::optional<ResetList> CollectResetRecords(Tegra::Engines::Maxwell3D& engine,
+                                             Tegra::MemoryManager& memory) {
+    const auto& draw = engine.draw_manager.draw_state;
+    const auto& cbuf = engine.state.shader_stages[0].const_buffers[0];
+    if (!cbuf.enabled || cbuf.size < 0x120 ||
+        !memory.IsFullyMappedRange(cbuf.address + 0x110, 16)) {
+        LogResetLeft("descriptor unavailable");
+        return std::nullopt;
+    }
+    std::array<u64, 2> descriptor{};
+    memory.ReadBlock(cbuf.address + 0x110, descriptor.data(), sizeof(descriptor),
+                     VideoCommon::CacheType::BufferCache);
+    const auto range = VideoCommon::IndirectResetRange(descriptor[0], static_cast<u32>(descriptor[1]),
+                                                       draw.vertex_buffer.first,
+                                                       draw.vertex_buffer.count);
+    if (!range || !memory.IsFullyMappedRange(range->begin, range->size)) {
+        LogResetLeft("list outside its descriptor");
+        return std::nullopt;
+    }
+    ResetList list{
+        .begin = range->begin,
+        .requested = draw.vertex_buffer.count,
+    };
+    list.pointers.resize(draw.vertex_buffer.count);
+    memory.ReadBlock(range->begin, list.pointers.data(), range->size,
+                     VideoCommon::CacheType::BufferCache);
+    constexpr u32 RecordSize = 5 * sizeof(u32);
+    for (const u64 pointer : list.pointers) {
+        if (pointer != 0 && pointer < range->begin + range->size &&
+            range->begin < pointer + RecordSize) {
+            LogResetLeft("record overlaps the pointer list");
+            return std::nullopt;
+        }
+    }
+    return list;
+}
 } // Anonymous namespace
 
 void RasterizerVulkan::Draw(bool is_indexed, u32 instance_count) {
+    draw_instances = instance_count;
     if (Common::Nx2Reactive::StatsEnabled()) [[unlikely]] {
         Common::Nx2Reactive::Add(Common::Nx2Reactive::Counter::Draws, 1);
     }
@@ -4962,11 +5016,8 @@ void RasterizerVulkan::PrepareDrawB(bool is_indexed, bool indirect, bool shape_o
         FlushStageCWork();
         return;
     }
-    if (StageResetProgram(mb, is_indexed)) {
-        if (indirect_barrier) {
-            StageBufferWork(record_indirect_barrier);
-        }
-        StageResetStores(mb);
+    if (!indirect && StageResetProgram(mb, is_indexed) &&
+        StageResetStores(mb, instance_count)) {
         return;
     }
     if (pipeline->HasDynamicVertexInput()) {
@@ -5105,31 +5156,25 @@ bool RasterizerVulkan::StageResetProgram(Tegra::Engines::Maxwell3D& mb, bool is_
     return entry->second;
 }
 
-void RasterizerVulkan::StageResetStores(Tegra::Engines::Maxwell3D& mb) {
+bool RasterizerVulkan::StageResetStores(Tegra::Engines::Maxwell3D& mb, u32 instance_count) {
     // PrepareDraw's RESETFIX stores (its runs, sorted when the records share no byte), B's half:
-    // the list flushed in a join, the inline writes in a packet (InlineRunsB).
+    // the list downloaded in a join, the inline writes in a packet (InlineRunsB). A list that
+    // does not fit its descriptor is left to the shader.
     namespace Profile = VideoCommon::Nx2Profile;
     const auto& reset_draw = mb.draw_manager.draw_state;
-    const auto& cbuf0 = mb.state.shader_stages[0].const_buffers[0];
-    const GPUVAddr list = gpu_memory->Read<u64>(cbuf0.address + 0x110);
-    const u32 count = (std::min)(reset_draw.vertex_buffer.count, 1u << 20);
-    const GPUVAddr list_begin = list + u64{reset_draw.vertex_buffer.first} * sizeof(u64);
-    const size_t list_bytes = size_t{count} * sizeof(u64);
-    if (count == 0 || !gpu_memory->IsFullyMappedRange(list_begin, list_bytes)) {
-        FlushStageCWork();
-        return;
+    if (instance_count != 1 || reset_draw.topology != Maxwell::PrimitiveTopology::Points) {
+        LogResetLeft("not a single points draw");
+        return false;
+    }
+    // ReadBlock downloads GPU writes. On B that joins (FlushRegionB) with no cache lock held.
+    const std::optional<ResetList> reset_list = CollectResetRecords(mb, *gpu_memory);
+    if (!reset_list) {
+        return false;
     }
     Profile::Add(Profile::Counter::ResetFixLists, 1);
-    if (gpu_memory->IsMemoryDirty(list_begin, list_bytes, VideoCommon::CacheType::BufferCache)) {
-        Profile::Add(Profile::Counter::ResetFixFlushes, 1);
-        // A download records and waits: C parked, no cache lock held (K3).
-        FlushStageCWork();
-        JoinB([&] {
-            gpu_memory->FlushRegion(list_begin, list_bytes, VideoCommon::CacheType::BufferCache);
-        });
-    }
-    std::vector<u64> pointers(count);
-    gpu_memory->ReadBlockUnsafe(list_begin, pointers.data(), list_bytes);
+    const GPUVAddr list_begin = reset_list->begin;
+    const u32 count = reset_list->requested;
+    const std::vector<u64>& pointers = reset_list->pointers;
     static const bool runs_enabled = [] {
         const char* value = std::getenv("EDEN_NX2_RESET_RUNS");
         return value == nullptr || value[0] != '0';
@@ -5203,6 +5248,7 @@ void RasterizerVulkan::StageResetStores(Tegra::Engines::Maxwell3D& mb) {
         LOG_INFO(HW_GPU, "Indirect draw reset (B): list {:#x}, {} records ({} written in {} runs)",
                  list_begin, count, records.size(), runs.size());
     }
+    return true;
 }
 
 void RasterizerVulkan::InlineRunsB(std::span<const std::pair<GPUVAddr, u32>> runs,

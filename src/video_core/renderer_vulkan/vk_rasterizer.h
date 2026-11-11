@@ -315,9 +315,10 @@ private:
     /// B, RESETFIX (Donkey Kong Bananza's terrain reset program, PrepareDraw): whether this draw
     /// runs that program (its answers kept in B's statics); StageResetStores then makes its
     /// stores, the list flushed first in a join (no lock held), the writes in a packet of their
-    /// own, and the draw is cut short.
+    /// own, and the draw is cut short. False leaves the draw to run: the list did not fit its
+    /// descriptor.
     [[nodiscard]] bool StageResetProgram(Tegra::Engines::Maxwell3D& mb, bool is_indexed);
-    void StageResetStores(Tegra::Engines::Maxwell3D& mb);
+    [[nodiscard]] bool StageResetStores(Tegra::Engines::Maxwell3D& mb, u32 instance_count);
     /// B, inside a packet with the buffer cache locked: AccelerateInlineRuns' memory half.
     void InlineRunsB(std::span<const std::pair<GPUVAddr, u32>> runs, std::span<const u8> data);
     void InlineToMemoryB(GPUVAddr address, size_t copy_size, std::span<const u8> memory);
@@ -529,6 +530,8 @@ private:
     boost::container::static_vector<VkSampler, MAX_TEXTURES> sampler_handles;
 
     u32 draw_counter = 0;
+    /// Instance count of the draw PrepareDraw is setting up (Draw). Indirect draws leave it.
+    u32 draw_instances = 0;
 
     LightAnchor light_anchor;
     LightEntry light_entry;
