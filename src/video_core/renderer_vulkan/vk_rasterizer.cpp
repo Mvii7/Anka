@@ -1759,6 +1759,29 @@ void RasterizerVulkan::DrawIndirect() {
                                               own->second.first,
                                               buffer_cache.terrain_serial - own->second.second));
             }
+            // Same mesh address: did its size change since the pass, and how old is the pass?
+            static std::array<u64, 4> age_tally{}; ///< under 4096 passes, under 65536, older, resized
+            if (known && slot->second.stream == stream) {
+                const u64 age = buffer_cache.terrain_serial - slot->second.serial;
+                ++age_tally[age < 4096 ? 0 : age < 65536 ? 1 : 2];
+                const u64 now_size = static_cast<u64>(regs.NativeVertexStreamSize(0));
+                if (static_cast<u64>(slot->second.stream_size) != now_size &&
+                    (++age_tally[3] <= 80 || (age_tally[3] & (age_tally[3] - 1)) == 0)) {
+                    LOG_WARNING(HW_GPU,
+                                "VB_CHECK resized #{}: draw with stream {:#x} size {:#x} reads slot "
+                                "{:#x} written {} passes ago when the stream was {:#x} bytes "
+                                "(source indices {:#x} count {})",
+                                age_tally[3], stream, now_size, slot->first, age,
+                                static_cast<u64>(slot->second.stream_size),
+                                slot->second.source_index, slot->second.source_count);
+                }
+            }
+            if (((slot_draws + 1) & slot_draws) == 0 && slot_draws + 1 >= 4096) {
+                LOG_INFO(HW_GPU,
+                         "VB_CHECK ages: pass under 4096 passes old {}, under 65536 {}, older {}; "
+                         "stream resized since the pass {}",
+                         age_tally[0], age_tally[1], age_tally[2], age_tally[3]);
+            }
             if ((++slot_draws & (slot_draws - 1)) == 0 && slot_draws >= 4096) {
                 LOG_INFO(HW_GPU,
                          "VB_CHECK slots: {} draws read a slot its own mesh's pass wrote, {} a "

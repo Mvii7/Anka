@@ -1614,6 +1614,82 @@ void BufferCache<P>::BindHostGraphicsStorageBuffers(size_t stage) {
                         binding.device_addr, terrain_serial};
                 }
             });
+            // What the pass reads: do the bound ranges match the registers, are they flagged as
+            // GPU-written (then guest memory is not uploaded), and do the guest's source indices
+            // fit the guest's vertex count?
+            static const bool source_resync = [] {
+                const char* value = std::getenv("EDEN_NX2_SRC_RESYNC");
+                return value != nullptr && value[0] == '1';
+            }();
+            const Binding& source = channel_state->index_buffer;
+            const Binding& verts = channel_state->vertex_buffers[0];
+            const u32 stride = regs.vertex_streams[0].stride.Value();
+            const u64 native_size = static_cast<u64>(regs.NativeVertexStreamSize(0));
+            const u64 vertex_count = stride != 0 ? native_size / stride : 0;
+            const auto index_addr = gpu_memory->GpuToCpuAddress(draw.index_buffer.StartAddress());
+            const auto stream_addr = gpu_memory->GpuToCpuAddress(regs.vertex_streams[0].Address());
+            u32 problems = 0;
+            if (!index_addr || *index_addr != source.device_addr || !stream_addr ||
+                *stream_addr != verts.device_addr || verts.size < native_size) {
+                problems |= 1;
+            }
+            if (IsRegionGpuModified(source.device_addr, source.size)) {
+                problems |= 2;
+            }
+            if (IsRegionGpuModified(verts.device_addr, verts.size)) {
+                problems |= 4;
+            }
+            u32 max_index = 0;
+            if (draw.index_buffer.FormatSizeInBytes() == 2 && source.size >= 2 &&
+                source.size <= 0x10000) {
+                static std::vector<u16> scratch;
+                scratch.resize(source.size / 2);
+                device_memory.ReadBlockUnsafe(source.device_addr, scratch.data(),
+                                              scratch.size() * 2);
+                for (const u16 value : scratch) {
+                    if (value != 0xffff) {
+                        max_index = (std::max<u32>)(max_index, value);
+                    }
+                }
+                if (max_index >= vertex_count) {
+                    problems |= 8;
+                }
+            }
+            static std::array<u64, 4> input_tally{};
+            static u64 input_passes{};
+            static u64 input_bad{};
+            for (u32 bit = 0; bit < 4; ++bit) {
+                input_tally[bit] += (problems >> bit) & 1;
+            }
+            if (problems != 0 && (++input_bad <= 80 || (input_bad & (input_bad - 1)) == 0)) {
+                LOG_WARNING(HW_GPU,
+                            "VB_CHECK input #{}: problems {:#x}; registers: indices {:#x} count {} "
+                            "stream {:#x} size {:#x} ({} vertices); bound: indices {:#x} size {:#x} "
+                            "stream {:#x} size {:#x}; highest guest index {}; slot pass {}",
+                            input_bad, problems, index_addr.value_or(0), draw.index_buffer.count,
+                            stream_addr.value_or(0), native_size, vertex_count,
+                            source.device_addr, source.size, verts.device_addr, verts.size,
+                            max_index, terrain_serial);
+            }
+            if ((++input_passes & (input_passes - 1)) == 0 && input_passes >= 4096) {
+                LOG_INFO(HW_GPU,
+                         "VB_CHECK inputs: {} passes; bound range differs from registers {}, "
+                         "source indices flagged GPU-written {}, vertices flagged GPU-written {}, "
+                         "guest index past the vertex count {}",
+                         input_passes, input_tally[0], input_tally[1], input_tally[2],
+                         input_tally[3]);
+            }
+            if (source_resync) {
+                for (const Binding* input : {&source, &verts}) {
+                    if (input->buffer_id == NULL_BUFFER_ID || input->size == 0) {
+                        continue;
+                    }
+                    gpu_modified_ranges.Subtract(input->device_addr, input->size);
+                    memory_tracker.MarkRegionAsCpuModified(input->device_addr, input->size);
+                    SynchronizeBuffer(slot_buffers[input->buffer_id], input->device_addr,
+                                      input->size);
+                }
+            }
         }
         static u64 generators{};
         if (generator && (++generators <= 40 || (generators & (generators - 1)) == 0)) {
