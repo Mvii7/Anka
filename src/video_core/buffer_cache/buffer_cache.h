@@ -1955,7 +1955,20 @@ void BufferCache<P>::UpdateVertexBuffer(u32 index) {
     if (native && array.enable != 0 && native_size > (std::numeric_limits<u32>::max)()) {
         throw std::runtime_error("Native vertex stream exceeds supported 32-bit buffer size");
     }
-    const GPUVAddr gpu_addr_end = native ? gpu_addr_begin + native_size : limit.Address() + 1;
+    GPUVAddr gpu_addr_end = native ? gpu_addr_begin + native_size : limit.Address() + 1;
+    // EDEN_NX2_VB_EXTEND=1 (test build): bind a native stream up to what 16-bit indices can
+    // reach, as far as the memory after it is mapped in one piece.
+    static const bool extend_native = [] {
+        const char* value = std::getenv("EDEN_NX2_VB_EXTEND");
+        return value != nullptr && value[0] == '1';
+    }();
+    if (extend_native && native && array.enable != 0 && native_size != 0 && array.stride != 0) {
+        const u64 reach = u64{array.stride.Value()} * 0x10000;
+        if (native_size < reach) {
+            const u64 mapped = gpu_memory->MaxContinuousRange(gpu_addr_begin, reach);
+            gpu_addr_end = gpu_addr_begin + (std::max<u64>)(native_size, mapped);
+        }
+    }
     // EDEN_NX2_VERTEX_SKIP: a disabled or empty stream binds nothing whatever its address
     // translates to, and a stream range seen before reuses its translation and buffer while the
     // GPU page table and that buffer are unchanged (VertexBufferMemo). ~5,000 draws a frame

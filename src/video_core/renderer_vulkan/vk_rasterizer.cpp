@@ -1571,6 +1571,93 @@ void RasterizerVulkan::Draw(bool is_indexed, u32 instance_count) {
     });
 }
 
+namespace {
+// EDEN_NX2_VB_CHECK (test build, =0 turns it off): an indexed indirect draw whose record names a
+// vertex past the end of a bound vertex stream. Reads guest memory only and changes nothing.
+void CheckIndirectVertexBounds(Tegra::Engines::Maxwell3D& maxwell3d, Tegra::MemoryManager& memory) {
+    static const bool enabled = [] {
+        const char* value = std::getenv("EDEN_NX2_VB_CHECK");
+        return value == nullptr || value[0] != '0';
+    }();
+    using Regs = Tegra::Engines::Maxwell3D::Regs;
+    const auto& params = maxwell3d.draw_manager.indirect_state;
+    if (!enabled || !maxwell3d.GetNativeMacroEngine().native_turing || !params.is_indexed ||
+        params.include_count || params.is_byte_count) {
+        return;
+    }
+    static u64 draws{};
+    static u64 violations{};
+    static std::array<std::pair<GPUVAddr, u64>, Regs::NumVertexArrays> previous{};
+    ++draws;
+    const auto& regs = maxwell3d.regs;
+    std::array<u32, 5> record{};
+    if (!memory.IsFullyMappedRange(params.indirect_start_address, sizeof(record))) {
+        return;
+    }
+    memory.ReadBlockUnsafe(params.indirect_start_address, record.data(), sizeof(record));
+    const u32 count = record[0];
+    const u32 first = record[2];
+    const s32 base_vertex = static_cast<s32>(record[3]);
+    const size_t index_size = regs.index_buffer.FormatSizeInBytes();
+    const GPUVAddr index_address = regs.index_buffer.StartAddress() + u64{first} * index_size;
+    s64 max_index = -1;
+    if (count != 0 && count <= (1U << 16) &&
+        memory.IsFullyMappedRange(index_address, count * index_size)) {
+        std::vector<u8> indices(count * index_size);
+        memory.ReadBlockUnsafe(index_address, indices.data(), indices.size());
+        for (u32 i = 0; i < count; ++i) {
+            u32 value = 0;
+            std::memcpy(&value, indices.data() + i * index_size, index_size);
+            max_index = (std::max)(max_index, s64{value});
+        }
+    }
+    for (u32 stream = 0; stream < Regs::NumVertexArrays; ++stream) {
+        const auto& array = regs.vertex_streams[stream];
+        const GPUVAddr address = array.Address();
+        const u64 size = regs.NativeVertexStreamSize(stream);
+        const auto [previous_address, previous_size] = previous[stream];
+        previous[stream] = {address, size};
+        const u32 stride = array.stride.Value();
+        if (max_index < 0 || array.enable == 0 || stride == 0 || size == 0 ||
+            regs.vertex_stream_instances.IsInstancingEnabled(stream)) {
+            continue;
+        }
+        const s64 last_vertex = max_index + base_vertex;
+        const s64 held = static_cast<s64>(size / stride);
+        if (last_vertex < held) {
+            continue;
+        }
+        ++violations;
+        if (violations > 48 && (violations & (violations - 1)) != 0) {
+            continue;
+        }
+        const auto vertex = [&](s64 number) {
+            std::array<f32, 3> words{};
+            const GPUVAddr at = address + static_cast<u64>(number) * stride;
+            if (number < 0 || !memory.IsFullyMappedRange(at, sizeof(words))) {
+                return std::string{"unmapped"};
+            }
+            memory.ReadBlockUnsafe(at, words.data(), sizeof(words));
+            return fmt::format("{:.2f},{:.2f},{:.2f}", words[0], words[1], words[2]);
+        };
+        LOG_WARNING(HW_GPU,
+                    "VB_CHECK #{} (draw {}): stream {} at {:#x} size {:#x} stride {} holds {} "
+                    "vertices, the record needs vertex {} (count {} first {} base {}, index "
+                    "buffer {:#x} {} bytes each); limit register {:#x}; the stream before was "
+                    "{:#x} size {:#x}; vertex {} = [{}], vertex {} = [{}], vertex {} = [{}]",
+                    violations, draws, stream, address, size, stride, held, last_vertex, count,
+                    first, base_vertex, regs.index_buffer.StartAddress(), index_size,
+                    regs.vertex_stream_limits[stream].Address(), previous_address, previous_size,
+                    held - 1, vertex(held - 1), held, vertex(held), last_vertex,
+                    vertex(last_vertex));
+    }
+    if ((draws & (draws - 1)) == 0 && draws >= 1024) {
+        LOG_INFO(HW_GPU, "VB_CHECK: {} indexed indirect draws checked, {} read past a stream",
+                 draws, violations);
+    }
+}
+} // Anonymous namespace
+
 void RasterizerVulkan::DrawIndirect() {
     if (Common::Nx2Reactive::StatsEnabled()) [[unlikely]] {
         Common::Nx2Reactive::Add(Common::Nx2Reactive::Counter::Draws, 1);
@@ -1584,6 +1671,7 @@ void RasterizerVulkan::DrawIndirect() {
     }
     VideoCommon::Nx2Profile::Scope profile_scope{VideoCommon::Nx2Profile::Zone::Draw};
     const auto& params = maxwell3d->draw_manager.indirect_state;
+    CheckIndirectVertexBounds(*maxwell3d, *gpu_memory);
     // Light indirect draws take indexed records from memory (no count buffer, no byte count).
     BeginLightDraw(true, params.is_indexed && !params.include_count && !params.is_byte_count &&
                              LightDrawShape(maxwell3d->draw_manager.draw_state, true));
