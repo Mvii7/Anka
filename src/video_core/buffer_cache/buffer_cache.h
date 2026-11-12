@@ -7,9 +7,11 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdlib>
 #include <memory>
 #include <numeric>
 #include <stdexcept>
+#include <string>
 #include <vector>
 #include <fmt/ranges.h>
 
@@ -1564,6 +1566,49 @@ bool BufferCache<P>::BindMultiRangeStorage(const Binding& binding, bool is_writt
 template <class P>
 void BufferCache<P>::BindHostGraphicsStorageBuffers(size_t stage) {
     u32 binding_index = 0;
+    // Test build. EDEN_NX2_INPUT_RESYNC=1: storage buffers a draw only reads are uploaded from
+    // guest memory again (what the GPU wrote there stays).
+    static const bool input_resync = [] {
+        const char* value = std::getenv("EDEN_NX2_INPUT_RESYNC");
+        return value != nullptr && value[0] == '1';
+    }();
+    {
+        // The draws that write into the range the terrain's indices are read from.
+        bool generator = false;
+        std::string bindings;
+        ForEachEnabledBit(channel_state->enabled_storage_buffers[stage], [&](u32 index) {
+            const Binding& binding = channel_state->storage_buffers[stage][index];
+            const bool written =
+                ((channel_state->written_storage_buffers[stage] >> index) & 1) != 0;
+            generator |= written && InTerrainIndex(binding.device_addr, binding.size);
+            bindings += fmt::format(" [{} {:#x} {:#x}{}]", index, binding.device_addr,
+                                    binding.size, written ? " written" : "");
+        });
+        static u64 generators{};
+        if (generator && (++generators <= 40 || (generators & (generators - 1)) == 0)) {
+            const auto& regs = maxwell3d->regs;
+            const auto& draw = maxwell3d->draw_manager.draw_state;
+            std::string streams;
+            for (u32 index = 0; index < 8; ++index) {
+                const auto& array = regs.vertex_streams[index];
+                if (array.enable != 0) {
+                    streams += fmt::format(" [{} {:#x} size {:#x} stride {}]", index,
+                                           array.Address(), regs.NativeVertexStreamSize(index),
+                                           array.stride.Value());
+                }
+            }
+            LOG_INFO(HW_GPU,
+                     "VB_CHECK generator #{}: stage {} vs {:#x} topology {} vertices {}+{} index "
+                     "buffer {:#x} first {} count {} ({} bytes each); storage{}; streams{}",
+                     generators, stage,
+                     (u64{regs.pipelines[1].reserved[0] & 0xff} << 32) |
+                         regs.pipelines[1].reserved[1],
+                     static_cast<u32>(draw.topology), draw.vertex_buffer.first,
+                     draw.vertex_buffer.count, draw.index_buffer.StartAddress(),
+                     draw.index_buffer.first, draw.index_buffer.count,
+                     draw.index_buffer.FormatSizeInBytes(), bindings, streams);
+        }
+    }
     ForEachEnabledBit(channel_state->enabled_storage_buffers[stage], [&](u32 index) {
         const Binding& binding = channel_state->storage_buffers[stage][index];
         const bool is_written = ((channel_state->written_storage_buffers[stage] >> index) & 1) != 0;
@@ -1573,6 +1618,9 @@ void BufferCache<P>::BindHostGraphicsStorageBuffers(size_t stage) {
         Buffer& buffer = slot_buffers[binding.buffer_id];
         TouchBuffer(buffer, binding.buffer_id);
         const u32 size = binding.size;
+        if (input_resync && !is_written) {
+            memory_tracker.MarkRegionAsCpuModified(binding.device_addr, size);
+        }
         SynchronizeBuffer(buffer, binding.device_addr, size);
 
         const u32 offset = buffer.Offset(binding.device_addr);
@@ -1710,6 +1758,23 @@ void BufferCache<P>::BindHostComputeUniformBuffers() {
 template <class P>
 void BufferCache<P>::BindHostComputeStorageBuffers() {
     u32 binding_index = 0;
+    {
+        // Test build: the dispatches that write into the range the terrain's indices are read from.
+        bool generator = false;
+        std::string bindings;
+        ForEachEnabledBit(channel_state->enabled_compute_storage_buffers, [&](u32 index) {
+            const Binding& binding = channel_state->compute_storage_buffers[index];
+            const bool written =
+                ((channel_state->written_compute_storage_buffers >> index) & 1) != 0;
+            generator |= written && InTerrainIndex(binding.device_addr, binding.size);
+            bindings += fmt::format(" [{} {:#x} {:#x}{}]", index, binding.device_addr,
+                                    binding.size, written ? " written" : "");
+        });
+        static u64 generators{};
+        if (generator && (++generators <= 24 || (generators & (generators - 1)) == 0)) {
+            LOG_INFO(HW_GPU, "VB_CHECK compute generator #{}: storage{}", generators, bindings);
+        }
+    }
     ForEachEnabledBit(channel_state->enabled_compute_storage_buffers, [&](u32 index) {
         const Binding& binding = channel_state->compute_storage_buffers[index];
         const bool is_written =
