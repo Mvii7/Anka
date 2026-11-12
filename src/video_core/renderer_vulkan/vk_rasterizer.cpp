@@ -65,6 +65,19 @@
 
 namespace Vulkan {
 
+namespace {
+// EDEN_NX2_VB_CHECK (test build): when each indirect draw record was last reset by the reset
+// workaround in PrepareDraw, counted in reset lists.
+struct ResetTrack {
+    std::unordered_map<GPUVAddr, u64> last_reset;
+    u64 serial{};
+};
+ResetTrack& GetResetTrack() {
+    static ResetTrack track;
+    return track;
+}
+} // Anonymous namespace
+
 using Maxwell = Tegra::Engines::Maxwell3D::Regs;
 using VideoCommon::ImageViewId;
 using VideoCommon::ImageViewType;
@@ -614,6 +627,13 @@ void RasterizerVulkan::PrepareDraw(bool is_indexed, bool indirect, Func&& draw_f
                 for (const u64 pointer : pointers) {
                     if (pointer != 0 && gpu_memory->IsFullyMappedRange(pointer, RecordSize)) {
                         records.push_back(pointer);
+                    }
+                }
+                {
+                    auto& track = GetResetTrack();
+                    ++track.serial;
+                    for (const u64 pointer : records) {
+                        track.last_reset[pointer] = track.serial;
                     }
                 }
                 bool sorted = false;
@@ -1587,6 +1607,8 @@ void CheckIndirectVertexBounds(Tegra::Engines::Maxwell3D& maxwell3d, Tegra::Memo
     }
     static u64 draws{};
     static u64 violations{};
+    static std::array<u64, 6> ages{}; ///< reset 0-2, 3-8, 9-64, more lists ago, never, guest count 0
+    static u64 old_logs{};
     static std::array<std::pair<GPUVAddr, u64>, Regs::NumVertexArrays> previous{};
     ++draws;
     const auto& regs = maxwell3d.regs;
@@ -1595,6 +1617,28 @@ void CheckIndirectVertexBounds(Tegra::Engines::Maxwell3D& maxwell3d, Tegra::Memo
         return;
     }
     memory.ReadBlockUnsafe(params.indirect_start_address, record.data(), sizeof(record));
+    {
+        // The record the draw reads on the host is what the game's culling pass wrote after the
+        // reset: one that was not reset lately still holds an older mesh's counts.
+        const auto& track = GetResetTrack();
+        const auto found = track.last_reset.find(params.indirect_start_address);
+        const u64 age = found == track.last_reset.end() ? ~u64{0} : track.serial - found->second;
+        ++ages[age == ~u64{0} ? 4 : age <= 2 ? 0 : age <= 8 ? 1 : age <= 64 ? 2 : 3];
+        ages[5] += record[0] == 0 ? 1 : 0;
+        if (age > 64 && (++old_logs <= 48 || (old_logs & (old_logs - 1)) == 0)) {
+            const u64 vs =
+                (u64{regs.pipelines[1].reserved[0] & 0xff} << 32) | regs.pipelines[1].reserved[1];
+            LOG_WARNING(HW_GPU,
+                        "VB_CHECK old #{} (draw {}): record {:#x} {}, guest words {} {} {} {} {}, "
+                        "vs {:#x}, stream 0 at {:#x} size {:#x} stride {}, index buffer {:#x}",
+                        old_logs, draws, params.indirect_start_address,
+                        age == ~u64{0} ? std::string{"was never reset"}
+                                       : fmt::format("was reset {} lists ago", age),
+                        record[0], record[1], record[2], record[3], record[4], vs,
+                        regs.vertex_streams[0].Address(), regs.NativeVertexStreamSize(0),
+                        regs.vertex_streams[0].stride.Value(), regs.index_buffer.StartAddress());
+        }
+    }
     const u32 count = record[0];
     const u32 first = record[2];
     const s32 base_vertex = static_cast<s32>(record[3]);
@@ -1652,8 +1696,10 @@ void CheckIndirectVertexBounds(Tegra::Engines::Maxwell3D& maxwell3d, Tegra::Memo
                     vertex(last_vertex));
     }
     if ((draws & (draws - 1)) == 0 && draws >= 1024) {
-        LOG_INFO(HW_GPU, "VB_CHECK: {} indexed indirect draws checked, {} read past a stream",
-                 draws, violations);
+        LOG_INFO(HW_GPU,
+                 "VB_CHECK: {} indexed indirect draws checked, {} read past a stream; record "
+                 "reset 0-2 lists ago {}, 3-8 {}, 9-64 {}, longer {}, never {}; guest count 0: {}",
+                 draws, violations, ages[0], ages[1], ages[2], ages[3], ages[4], ages[5]);
     }
 }
 } // Anonymous namespace
