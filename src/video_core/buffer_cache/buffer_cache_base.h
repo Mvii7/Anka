@@ -365,6 +365,19 @@ public:
 
     void WriteMemory(DAddr device_addr, u64 size);
 
+    /// Test build (EDEN_NX2_VB_CHECK): the device range the indexed indirect draws took their
+    /// indices from, and the rasterizer line that asked for the write being handled.
+    DAddr terrain_index_low = ~DAddr{};
+    DAddr terrain_index_high = 0;
+    int write_tag = 0;
+    void NoteTerrainIndex(DAddr device_addr, u64 size) {
+        terrain_index_low = (std::min)(terrain_index_low, device_addr);
+        terrain_index_high = (std::max)(terrain_index_high, static_cast<DAddr>(device_addr + size));
+    }
+    bool InTerrainIndex(DAddr device_addr, u64 size) const {
+        return device_addr < terrain_index_high && device_addr + size > terrain_index_low;
+    }
+
     /// WriteMemory for each range, in order (the pre-draw invalidation).
     void WriteMemoryRanges(std::span<const std::pair<DAddr, std::size_t>> ranges);
 

@@ -183,6 +183,25 @@ void BufferCache<P>::UnmapGPUMemory(size_t as_id, GPUVAddr gpu_addr, size_t size
 template <class P>
 void BufferCache<P>::WriteMemory(DAddr device_addr, u64 size) {
     if (IsRegionGpuModified(device_addr, size)) {
+        // Test build: data the GPU wrote gives way to guest memory here.
+        static u64 dropped{};
+        static u64 dropped_in_index{};
+        ++dropped;
+        if (InTerrainIndex(device_addr, size)) {
+            ++dropped_in_index;
+            if (dropped_in_index <= 64 || (dropped_in_index & (dropped_in_index - 1)) == 0) {
+                u64 gpu_bytes = 0;
+                gpu_modified_ranges.ForEachInRange(device_addr, size, [&](DAddr begin, DAddr end) {
+                    gpu_bytes += end - begin;
+                });
+                LOG_WARNING(HW_GPU,
+                            "VB_CHECK drop #{} (of {}): GPU-written data at {:#x} size {:#x} ({:#x} "
+                            "bytes GPU-written) replaced by guest memory, asked at line {}; index "
+                            "range {:#x}-{:#x}",
+                            dropped_in_index, dropped, device_addr, size, gpu_bytes, write_tag,
+                            terrain_index_low, terrain_index_high);
+            }
+        }
         ClearDownload(device_addr, size);
         gpu_modified_ranges.Subtract(device_addr, size);
     }
@@ -2258,6 +2277,17 @@ void BufferCache<P>::MarkWrittenBuffer(BufferId buffer_id, DAddr device_addr, u3
         if (needs_sync) {
             Buffer& buffer = slot_buffers[buffer_id];
             buffer.setWriteTick(runtime.CurrentTick());
+        }
+    }
+    if (InTerrainIndex(device_addr, size)) {
+        // Test build: what the GPU writes into the range the terrain's indices come from.
+        static u64 writes{};
+        if (++writes <= 24 || (writes & (writes - 1)) == 0) {
+            LOG_INFO(HW_GPU,
+                     "VB_CHECK gpu write #{}: {:#x} size {:#x} in buffer at {:#x}; index range "
+                     "{:#x}-{:#x}",
+                     writes, device_addr, size, slot_buffers[buffer_id].CpuAddr(),
+                     terrain_index_low, terrain_index_high);
         }
     }
     memory_tracker.MarkRegionAsGpuModified(device_addr, size);

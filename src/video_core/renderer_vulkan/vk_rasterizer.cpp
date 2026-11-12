@@ -1724,6 +1724,14 @@ void RasterizerVulkan::DrawIndirect() {
         const char* value = std::getenv("EDEN_NX2_GEOM_RESYNC");
         return value != nullptr ? std::atoi(value) : 0;
     }();
+    if (params.is_indexed && !params.include_count && !params.is_byte_count &&
+        maxwell3d->GetNativeMacroEngine().native_turing) {
+        const GPUVAddr indices = maxwell3d->regs.index_buffer.StartAddress();
+        if (const auto device_addr = gpu_memory->GpuToCpuAddress(indices)) {
+            std::scoped_lock lock{buffer_cache.mutex};
+            buffer_cache.NoteTerrainIndex(*device_addr, 0x8000);
+        }
+    }
     if (resync != 0 && params.is_indexed && maxwell3d->GetNativeMacroEngine().native_turing) {
         const auto& regs = maxwell3d->regs;
         std::scoped_lock lock{buffer_cache.mutex};
@@ -1731,7 +1739,7 @@ void RasterizerVulkan::DrawIndirect() {
             const auto device_addr = gpu_memory->GpuToCpuAddress(address);
             const u64 mapped = gpu_memory->MaxContinuousRange(address, size);
             if (device_addr && mapped != 0) {
-                buffer_cache.WriteMemory(*device_addr, mapped);
+                (buffer_cache.write_tag = __LINE__, buffer_cache).WriteMemory(*device_addr, mapped);
             }
         };
         if ((resync & 1) != 0) {
@@ -2396,7 +2404,7 @@ void RasterizerVulkan::InvalidateRegion(DAddr addr, u64 size, VideoCommon::Cache
     if ((True(which & VideoCommon::CacheType::BufferCache))) {
         CheckBufferLockOffB("RasterizerVulkan::InvalidateRegion");
         std::scoped_lock lock{buffer_cache.mutex};
-        buffer_cache.WriteMemory(addr, size);
+        (buffer_cache.write_tag = __LINE__, buffer_cache).WriteMemory(addr, size);
     }
     if ((True(which & VideoCommon::CacheType::QueryCache))) {
         query_cache.InvalidateRegion(addr, size);
@@ -2450,7 +2458,7 @@ void RasterizerVulkan::InnerInvalidation(std::span<const std::pair<DAddr, std::s
     {
         CheckBufferLockOffB("RasterizerVulkan::InnerInvalidation");
         std::scoped_lock lock{buffer_cache.mutex};
-        buffer_cache.WriteMemoryRanges(sequences);
+        (buffer_cache.write_tag = __LINE__, buffer_cache).WriteMemoryRanges(sequences);
     }
     {
         for (const auto& [addr, size] : sequences) {
@@ -2495,7 +2503,7 @@ void RasterizerVulkan::OnCacheInvalidation(DAddr addr, u64 size) {
     }
     {
         std::scoped_lock lock{buffer_cache.mutex};
-        buffer_cache.WriteMemory(addr, size);
+        (buffer_cache.write_tag = __LINE__, buffer_cache).WriteMemory(addr, size);
     }
     pipeline_cache.InvalidateRegion(addr, size);
 }
@@ -2520,7 +2528,7 @@ void RasterizerVulkan::OnCachedWrite(DAddr addr, u64 size) {
         // Copies just these bytes in: marking the pages CPU-modified instead re-uploads them
         // whole from guest memory, over what the GPU wrote there and never copied back.
         std::scoped_lock lock{buffer_cache.mutex};
-        buffer_cache.CachedWriteMemory(addr, size);
+        (buffer_cache.write_tag = __LINE__, buffer_cache).CachedWriteMemory(addr, size);
     }
     pipeline_cache.InvalidateRegion(addr, size);
 }
@@ -2532,7 +2540,7 @@ bool RasterizerVulkan::TryCacheInvalidation(DAddr addr, u64 size) {
         std::scoped_lock lock{buffer_cache.mutex, texture_cache.mutex};
         if (buffer_cache.IsRegionGpuModified(addr, size)) return false;
         texture_cache.WriteMemory(addr, size);
-        buffer_cache.WriteMemory(addr, size);
+        (buffer_cache.write_tag = __LINE__, buffer_cache).WriteMemory(addr, size);
     }
     pipeline_cache.InvalidateRegion(addr, size);
     return true;
@@ -2551,7 +2559,7 @@ void RasterizerVulkan::UnmapMemory(DAddr addr, u64 size) {
     }
     {
         std::scoped_lock lock{buffer_cache.mutex};
-        buffer_cache.WriteMemory(addr, size);
+        (buffer_cache.write_tag = __LINE__, buffer_cache).WriteMemory(addr, size);
     }
     pipeline_cache.OnCacheInvalidation(addr, size);
 }
@@ -2898,7 +2906,7 @@ void RasterizerVulkan::AccelerateInlineToMemory(GPUVAddr address, size_t copy_si
         std::scoped_lock lock{buffer_cache.mutex};
         uploaded = buffer_cache.InlineMemory(*cpu_addr, copy_size, memory);
         if (!uploaded && !defer) {
-            buffer_cache.WriteMemory(*cpu_addr, copy_size);
+            (buffer_cache.write_tag = __LINE__, buffer_cache).WriteMemory(*cpu_addr, copy_size);
         }
     }
     // Pending query results must not land over the new words later: drop them now.
@@ -2974,7 +2982,7 @@ void RasterizerVulkan::AccelerateInlineRuns(std::span<const std::pair<GPUVAddr, 
             // this call upload the pages, recorded ahead of the batch: what is batched goes
             // first, so a batched copy can't land over bytes written after it.
             commands += buffer_cache.FlushInlineBatch(batch) ? 1 : 0;
-            buffer_cache.WriteMemory(*cpu_addr, size);
+            (buffer_cache.write_tag = __LINE__, buffer_cache).WriteMemory(*cpu_addr, size);
         }
         query_cache.InvalidateRegion(*cpu_addr, size);
         if (!uploaded && defer) {
@@ -5393,7 +5401,7 @@ void RasterizerVulkan::InlineRunsB(std::span<const std::pair<GPUVAddr, u32>> run
         uploads += uploaded ? 1 : 0;
         if (!uploaded && !defer) {
             commands += buffer_cache.FlushInlineBatch(batch) ? 1 : 0;
-            buffer_cache.WriteMemory(*cpu_addr, size);
+            (buffer_cache.write_tag = __LINE__, buffer_cache).WriteMemory(*cpu_addr, size);
         }
         const bool deferred = !uploaded && defer;
         stage_c_ranges.push_back(*cpu_addr);
@@ -5440,7 +5448,7 @@ void RasterizerVulkan::InlineToMemoryB(GPUVAddr address, size_t copy_size,
     StageBufferWork([&] {
         const bool uploaded = buffer_cache.InlineMemory(*cpu_addr, copy_size, memory);
         if (!uploaded && !defer) {
-            buffer_cache.WriteMemory(*cpu_addr, copy_size);
+            (buffer_cache.write_tag = __LINE__, buffer_cache).WriteMemory(*cpu_addr, copy_size);
         }
         deferred = !uploaded && defer;
         stage_c_ranges.push_back(*cpu_addr);
@@ -5464,7 +5472,7 @@ void RasterizerVulkan::InnerInvalidationB(
         stage_c_ranges.push_back(addr);
         stage_c_ranges.push_back(u64{size} | StageRangeTexture | StageRangeQuery);
     }
-    StageBufferWork([&] { buffer_cache.WriteMemoryRanges(sequences); });
+    StageBufferWork([&] { (buffer_cache.write_tag = __LINE__, buffer_cache).WriteMemoryRanges(sequences); });
     FlushStageCWork();
     for (const auto& [addr, size] : sequences) {
         pipeline_cache.InvalidateRegion(addr, size);
@@ -5492,9 +5500,9 @@ void RasterizerVulkan::InvalidateRegionB(DAddr addr, u64 size, VideoCommon::Cach
     if (True(halves.b & CacheType::BufferCache)) {
         StageBufferWork([&] {
             if (cached_write) {
-                buffer_cache.CachedWriteMemory(addr, size);
+                (buffer_cache.write_tag = __LINE__, buffer_cache).CachedWriteMemory(addr, size);
             } else {
-                buffer_cache.WriteMemory(addr, size);
+                (buffer_cache.write_tag = __LINE__, buffer_cache).WriteMemory(addr, size);
             }
         });
     }
