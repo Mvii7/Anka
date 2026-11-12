@@ -380,14 +380,13 @@ private:
 // A native program is captured and lowered once, when the shader cache first meets it. The
 // environments built later for its pipelines receive that result instead of lowering again.
 void GenericEnvironment::InitializeNativeCode(std::shared_ptr<const LoweredNativeCode> lowered,
-                                              u32 source_header_size, bool is_compute,
-                                              bool is_geometry) {
+                                              u32 source_header_size, bool is_compute) {
     if (!lowered) {
         const Vulkan::PipelineStats::ScopedTimer timer{
             is_compute ? Vulkan::PipelineStats::Kind::Compute
                        : Vulkan::PipelineStats::Kind::Graphics,
             Vulkan::PipelineStats::Stage::Lower};
-        lowered = LowerNativeCode(source_header_size, is_geometry);
+        lowered = LowerNativeCode(source_header_size);
     }
     if (lowered->texture_bound != ~0U) {
         // Native TEX carries its cbuf index explicitly; TEXS obtains it from the environment.
@@ -400,8 +399,7 @@ void GenericEnvironment::InitializeNativeCode(std::shared_ptr<const LoweredNativ
     lowered_native = std::move(lowered);
 }
 
-std::shared_ptr<const LoweredNativeCode> GenericEnvironment::LowerNativeCode(u32 source_header_size,
-                                                                             bool is_geometry) {
+std::shared_ptr<const LoweredNativeCode> GenericEnvironment::LowerNativeCode(u32 source_header_size) {
     using Shader::Ampere::Instruction;
     const u32 native_header_size = source_header_size;
     constexpr u32 maximum_instructions = Shader::Ampere::ProgramCaptureState::MaximumInstructions;
@@ -439,7 +437,7 @@ std::shared_ptr<const LoweredNativeCode> GenericEnvironment::LowerNativeCode(u32
         }
         if (status == Shader::Ampere::ProgramCaptureState::Result::Complete) break;
     }
-    auto lowered = Shader::Ampere::LowerToMaxwell(native, is_geometry);
+    auto lowered = Shader::Ampere::LowerToMaxwell(native);
     // EDEN_NX2_REJECT=<hex address>,...: treat these programs as rejected (to find which newly
     // lowered program changes a game's behaviour without rebuilding).
     if (static const std::string reject_list = [] {
@@ -526,6 +524,7 @@ std::shared_ptr<const LoweredNativeCode> GenericEnvironment::LowerNativeCode(u32
     }
     auto result = std::make_shared<LoweredNativeCode>();
     result->texture_bound = lowered.required_texture_buffer;
+    result->matrix_multiply = lowered.matrix_multiply;
     result->source_size = native_header_size + lowered.source_size;
     auto& lowered_code = result->code;
     lowered_code.resize(sizeof(sph) / sizeof(u64));
@@ -560,8 +559,7 @@ GraphicsEnvironment::GraphicsEnvironment(Tegra::Engines::Maxwell3D& maxwell3d_,
             throw Shader::RuntimeError("Unsupported native graphics shader stage {}", static_cast<u32>(program));
         }
         if (std::getenv("EDEN_NATIVE_DRAW_DIAGNOSTICS")) {
-            const u32 native_stage = program == Maxwell::ShaderType::Pixel ? 4 :
-                                     program == Maxwell::ShaderType::Geometry ? 3 : 0;
+            const u32 native_stage = program == Maxwell::ShaderType::Pixel ? 4 : 0;
             const auto& table = maxwell3d->state.shader_stages[native_stage].const_buffers[1];
             if (table.enabled && table.size && table.size <= Tegra::Engines::Maxwell3D::Regs::MaxConstBufferSize) {
                 std::vector<u8> bytes(table.size);
@@ -570,8 +568,7 @@ GraphicsEnvironment::GraphicsEnvironment(Tegra::Engines::Maxwell3D& maxwell3d_,
                 dump.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
             }
         }
-        InitializeNativeCode(std::move(lowered_native_), 128, false,
-                             program == Maxwell::ShaderType::Geometry);
+        InitializeNativeCode(std::move(lowered_native_));
     }
     gp_passthrough_mask = maxwell3d->regs.post_vtg_shader_attrib_skip_mask;
     switch (program) {

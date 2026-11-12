@@ -6,6 +6,7 @@
 #include "shader_recompiler/frontend/ir/basic_block.h"
 #include "shader_recompiler/frontend/ir/ir_emitter.h"
 #include "shader_recompiler/frontend/ir/value.h"
+#include "shader_recompiler/ir_opt/nx2_root.h"
 #include "shader_recompiler/ir_opt/passes.h"
 
 namespace Shader::Optimization {
@@ -79,9 +80,40 @@ void PositionPass(Environment& env, IR::Program& program) {
 // render target it holds: texel size (0x0/0x4, again at 0x10/0x14), size (0x8/0xc), a UV scale of
 // 1 (0x18/0x1c), the UV clamp rectangle 0,0..1,1 (0x30-0x3c, read by the fragment shader), a zero
 // dither bias (0x40-0x48) and the integer source rectangle 0,0..W-1,H-1 (0x50-0x5c).
+// EDEN_NX2_ROOT_DIAG / EDEN_NX2_ROOT_TABLES (nx2_root.h): the reads are gathered first; with the
+// tables, a program reading a root table instead of the blit block keeps them.
 void BlitConstantsPass(Environment& env, IR::Program& program) {
+    const bool diag = Nx2Root::DiagEnabled();
+    const bool tables = Nx2Root::TablesEnabled();
+    if (diag) {
+        Nx2Root::LastReads() = {};
+    }
     if (env.ShaderStage() != Stage::VertexB && env.ShaderStage() != Stage::Fragment) {
         return;
+    }
+    if (diag || tables) [[unlikely]] {
+        Nx2Root::Reads reads;
+        for (IR::Block* const block : program.post_order_blocks) {
+            for (IR::Inst& inst : block->Instructions()) {
+                const IR::Opcode opcode{inst.GetOpcode()};
+                if ((opcode != IR::Opcode::GetCbufU32 && opcode != IR::Opcode::GetCbufF32 &&
+                     opcode != IR::Opcode::GetCbufU32x2) ||
+                    !inst.Arg(0).IsImmediate() || inst.Arg(0).U32() != 17) {
+                    continue;
+                }
+                if (!inst.Arg(1).IsImmediate()) {
+                    ++reads.indirect;
+                    continue;
+                }
+                reads.Add(inst.Arg(1).U32(), opcode == IR::Opcode::GetCbufU32x2);
+            }
+        }
+        if (diag) {
+            Nx2Root::LastReads() = reads;
+        }
+        if (tables && reads.ReadsTable()) {
+            return;
+        }
     }
     bool used{};
     for (IR::Block* const block : program.post_order_blocks) {
