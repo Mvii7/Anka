@@ -10,7 +10,6 @@
 #include <type_traits>
 #include <bit>
 #include <numeric>
-#include "common/logging.h"
 #include "shader_recompiler/environment.h"
 #include "shader_recompiler/exception.h"
 #include "shader_recompiler/frontend/ir/ir_emitter.h"
@@ -911,12 +910,6 @@ void FoldConstBuffer(Environment& env, IR::Block& block, IR::Inst& inst) {
     if (!replacement) {
         return;
     }
-    // Draw parameters only exist in vertex shaders.
-    if (env.ShaderStage() != Stage::VertexA && env.ShaderStage() != Stage::VertexB) {
-        LOG_WARNING(Shader, "Stage {} reads draw parameter copy at cbuf {} {:#x}: left as it is",
-                    static_cast<u32>(env.ShaderStage()), bank_value, offset_value);
-        return;
-    }
     const auto new_attribute = [replacement]() {
         switch (*replacement) {
         case ReplaceConstant::BaseInstance:
@@ -1149,9 +1142,6 @@ void ConstantPropagation(Environment& env, IR::Block& block, IR::Inst& inst) {
     case IR::Opcode::GetCbufU32:
         if (env.HasHLEMacroState()) {
             FoldConstBuffer(env, block, inst);
-            if (inst.GetOpcode() == IR::Opcode::Identity) {
-                break;
-            }
         }
         if (env.IsProprietaryDriver()) {
             FoldDriverConstBuffer(env, block, inst, 1);
