@@ -1584,6 +1584,37 @@ void BufferCache<P>::BindHostGraphicsStorageBuffers(size_t stage) {
             bindings += fmt::format(" [{} {:#x} {:#x}{}]", index, binding.device_addr,
                                     binding.size, written ? " written" : "");
         });
+        if (generator) {
+            const auto& regs = maxwell3d->regs;
+            const auto& draw = maxwell3d->draw_manager.draw_state;
+            DAddr record = 0;
+            ForEachEnabledBit(channel_state->enabled_storage_buffers[stage], [&](u32 index) {
+                const Binding& binding = channel_state->storage_buffers[stage][index];
+                const bool written =
+                    ((channel_state->written_storage_buffers[stage] >> index) & 1) != 0;
+                if (written && !InTerrainIndex(binding.device_addr, binding.size)) {
+                    record = binding.device_addr;
+                }
+            });
+            ++terrain_serial;
+            ForEachEnabledBit(channel_state->enabled_storage_buffers[stage], [&](u32 index) {
+                const Binding& binding = channel_state->storage_buffers[stage][index];
+                const bool written =
+                    ((channel_state->written_storage_buffers[stage] >> index) & 1) != 0;
+                if (written && InTerrainIndex(binding.device_addr, binding.size)) {
+                    terrain_slots[binding.device_addr] = TerrainSlot{
+                        .stream = regs.vertex_streams[0].Address(),
+                        .stream_size = regs.NativeVertexStreamSize(0),
+                        .source_index = draw.index_buffer.StartAddress(),
+                        .source_count = draw.index_buffer.count,
+                        .record = record,
+                        .serial = terrain_serial,
+                    };
+                    terrain_slot_of_stream[regs.vertex_streams[0].Address()] = {
+                        binding.device_addr, terrain_serial};
+                }
+            });
+        }
         static u64 generators{};
         if (generator && (++generators <= 40 || (generators & (generators - 1)) == 0)) {
             const auto& regs = maxwell3d->regs;

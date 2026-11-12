@@ -1730,6 +1730,41 @@ void RasterizerVulkan::DrawIndirect() {
         if (const auto device_addr = gpu_memory->GpuToCpuAddress(indices)) {
             std::scoped_lock lock{buffer_cache.mutex};
             buffer_cache.NoteTerrainIndex(*device_addr, 0x8000);
+            // The slot this draw takes its indices from: was it written by the geometry pass of
+            // the mesh this draw binds?
+            static std::array<u64, 3> slot_tally{}; ///< same mesh, another mesh, no pass seen
+            static u64 slot_draws{};
+            const auto& regs = maxwell3d->regs;
+            const GPUVAddr stream = regs.vertex_streams[0].Address();
+            auto slot = buffer_cache.terrain_slots.upper_bound(*device_addr);
+            const bool known = slot != buffer_cache.terrain_slots.begin() &&
+                               *device_addr - (--slot)->first < 0x3a98;
+            ++slot_tally[!known ? 2 : slot->second.stream == stream ? 0 : 1];
+            if (known && slot->second.stream != stream &&
+                (slot_tally[1] <= 80 || (slot_tally[1] & (slot_tally[1] - 1)) == 0)) {
+                const auto own = buffer_cache.terrain_slot_of_stream.find(stream);
+                const auto record = gpu_memory->GpuToCpuAddress(params.indirect_start_address);
+                LOG_WARNING(HW_GPU,
+                            "VB_CHECK slot #{}: draw with stream {:#x} size {:#x} and record {:#x} "
+                            "reads slot {:#x}, last written {} passes ago by the mesh at {:#x} "
+                            "size {:#x} (source indices {:#x} count {}, record {:#x}); {}",
+                            slot_tally[1], stream, regs.NativeVertexStreamSize(0),
+                            record.value_or(0), slot->first,
+                            buffer_cache.terrain_serial - slot->second.serial, slot->second.stream,
+                            slot->second.stream_size, slot->second.source_index,
+                            slot->second.source_count, slot->second.record,
+                            own == buffer_cache.terrain_slot_of_stream.end()
+                                ? std::string{"no pass seen for this draw's mesh"}
+                                : fmt::format("this mesh's pass last wrote slot {:#x}, {} passes ago",
+                                              own->second.first,
+                                              buffer_cache.terrain_serial - own->second.second));
+            }
+            if ((++slot_draws & (slot_draws - 1)) == 0 && slot_draws >= 4096) {
+                LOG_INFO(HW_GPU,
+                         "VB_CHECK slots: {} draws read a slot its own mesh's pass wrote, {} a "
+                         "slot another mesh's pass wrote, {} a slot no pass was seen writing",
+                         slot_tally[0], slot_tally[1], slot_tally[2]);
+            }
         }
     }
     if (resync != 0 && params.is_indexed && maxwell3d->GetNativeMacroEngine().native_turing) {

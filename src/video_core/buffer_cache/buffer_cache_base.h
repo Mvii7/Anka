@@ -7,6 +7,8 @@
 #pragma once
 
 #include <algorithm>
+#include <map>
+#include <unordered_map>
 #include <cstdlib>
 #include <array>
 #include <atomic>
@@ -377,6 +379,19 @@ public:
     bool InTerrainIndex(DAddr device_addr, u64 size) const {
         return device_addr < terrain_index_high && device_addr + size > terrain_index_low;
     }
+
+    /// Test build: the geometry pass that last wrote each index slot.
+    struct TerrainSlot {
+        GPUVAddr stream{};       ///< The pass's vertex stream 0
+        u64 stream_size{};
+        GPUVAddr source_index{}; ///< Its index buffer
+        u32 source_count{};
+        DAddr record{};          ///< The 0x40-byte block it wrote with the slot
+        u64 serial{};
+    };
+    std::map<DAddr, TerrainSlot> terrain_slots;
+    std::unordered_map<GPUVAddr, std::pair<DAddr, u64>> terrain_slot_of_stream;
+    u64 terrain_serial = 0;
 
     /// WriteMemory for each range, in order (the pre-draw invalidation).
     void WriteMemoryRanges(std::span<const std::pair<DAddr, std::size_t>> ranges);
