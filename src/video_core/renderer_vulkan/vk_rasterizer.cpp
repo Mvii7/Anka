@@ -1718,6 +1718,35 @@ void RasterizerVulkan::DrawIndirect() {
     VideoCommon::Nx2Profile::Scope profile_scope{VideoCommon::Nx2Profile::Zone::Draw};
     const auto& params = maxwell3d->draw_manager.indirect_state;
     CheckIndirectVertexBounds(*maxwell3d, *gpu_memory);
+    // EDEN_NX2_GEOM_RESYNC (test build): before a native indexed indirect draw, upload the index
+    // buffer (1), the vertex streams (2) or both (3) from guest memory again.
+    static const int resync = [] {
+        const char* value = std::getenv("EDEN_NX2_GEOM_RESYNC");
+        return value != nullptr ? std::atoi(value) : 0;
+    }();
+    if (resync != 0 && params.is_indexed && maxwell3d->GetNativeMacroEngine().native_turing) {
+        const auto& regs = maxwell3d->regs;
+        std::scoped_lock lock{buffer_cache.mutex};
+        const auto mark = [&](GPUVAddr address, u64 size) {
+            const auto device_addr = gpu_memory->GpuToCpuAddress(address);
+            const u64 mapped = gpu_memory->MaxContinuousRange(address, size);
+            if (device_addr && mapped != 0) {
+                buffer_cache.WriteMemory(*device_addr, mapped);
+            }
+        };
+        if ((resync & 1) != 0) {
+            mark(regs.index_buffer.StartAddress(), 0x8000);
+        }
+        if ((resync & 2) != 0) {
+            for (u32 stream = 0; stream < Tegra::Engines::Maxwell3D::Regs::NumVertexArrays;
+                 ++stream) {
+                const u64 size = regs.NativeVertexStreamSize(stream);
+                if (regs.vertex_streams[stream].enable != 0 && size != 0 && size <= 0x200000) {
+                    mark(regs.vertex_streams[stream].Address(), size);
+                }
+            }
+        }
+    }
     // Light indirect draws take indexed records from memory (no count buffer, no byte count).
     BeginLightDraw(true, params.is_indexed && !params.include_count && !params.is_byte_count &&
                              LightDrawShape(maxwell3d->draw_manager.draw_state, true));
