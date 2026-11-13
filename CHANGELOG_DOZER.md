@@ -8,6 +8,12 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- Native HDR output (Graphics > HDR output: Off, Auto (default), On; Vulkan only), ported from
+  Lichii #1326. An HDR10 or scRGB swapchain while it is on; nx2:vi2 104/105 (HDR status, paper
+  white) now answer SDR or HDR with the monitor's peak and SDR white instead of an empty success,
+  and 10-bit and FP16 present images are shown. Anti-aliasing, post-processing, upscaling filters
+  and frame generation are off while HDR is active. Not tried on an HDR display yet. See
+  `docs/user/Graphics.md`.
 - Tuning: the **Recommended** preset is renamed **Balanced** and **Fast** is renamed
   **Performance**; the launchers are now `start-balanced.bat` and `start-performance.bat`.
   Performance is the first start's preset. A `qt-config.ini` that never left the old default

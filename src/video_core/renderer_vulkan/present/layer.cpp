@@ -52,6 +52,10 @@ VkFormat GetFormat(const Tegra::FramebufferConfig& framebuffer) {
         return VK_FORMAT_R5G6B5_UNORM_PACK16;
     case Service::android::PixelFormat::Bgra8888:
         return VK_FORMAT_B8G8R8A8_UNORM;
+    case Service::android::PixelFormat::Rgba1010102:
+        return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+    case Service::android::PixelFormat::RgbaFp16:
+        return VK_FORMAT_R16G16B16A16_SFLOAT;
     default:
         UNIMPLEMENTED_MSG("Unknown framebuffer pixel format: {}",
                           static_cast<u32>(framebuffer.pixel_format));
@@ -89,7 +93,7 @@ void Layer::ConfigureDraw(const Device& device, PresentPushConstants* out_push_c
                           VkDescriptorSet* out_descriptor_set, RasterizerVulkan& rasterizer,
                           VkSampler sampler, size_t image_index,
                           const Tegra::FramebufferConfig& framebuffer,
-                          const Layout::FramebufferLayout& layout) {
+                          const Layout::FramebufferLayout& layout, const HdrPresent& output) {
     const auto texture_info = rasterizer.AccelerateDisplay(
         framebuffer, framebuffer.address + framebuffer.offset, framebuffer.stride);
     const u32 texture_width = texture_info ? texture_info->width : framebuffer.width;
@@ -97,14 +101,17 @@ void Layer::ConfigureDraw(const Device& device, PresentPushConstants* out_push_c
     const u32 scaled_width = texture_info ? texture_info->scaled_width : texture_width;
     const u32 scaled_height = texture_info ? texture_info->scaled_height : texture_height;
     const bool use_accelerated = texture_info.has_value();
+    const bool hdr_output = output.IsHdr();
     const bool is_applet =
         (framebuffer.layer_stack_mask & Service::Nvnflinger::LayerStackBit(
                                             Service::Nvnflinger::LayerStackId::Recording)) == 0;
 
     RefreshResources(device, framebuffer);
-    SetAntiAliasPass(device);
+    if (!hdr_output) {
+        SetAntiAliasPass(device);
+    }
 #ifdef HAS_RESHADE
-    SetPostProcessPass(device, is_applet);
+    SetPostProcessPass(device, is_applet || hdr_output);
 #endif
 
     // Finish any pending renderpass
@@ -122,10 +129,26 @@ void Layer::ConfigureDraw(const Device& device, PresentPushConstants* out_push_c
     VkImageView source_image_view =
         texture_info ? texture_info->image_view : *raw_image_views[image_index];
 
-    if (auto* fxaa = std::get_if<FXAA>(&anti_alias)) {
-        fxaa->Draw(device, scheduler, image_index, &source_image, &source_image_view);
-    } else if (auto* smaa = std::get_if<SMAA>(&anti_alias)) {
-        smaa->Draw(device, scheduler, image_index, &source_image, &source_image_view);
+    const HdrConvertParams convert = MakeHdrConvertParams(framebuffer, output);
+    if (NeedsHdrConvert(convert)) {
+        if (!hdr_convert || hdr_convert->Extent().width != scaled_width ||
+            hdr_convert->Extent().height != scaled_height) {
+            for (const u64 tick : resource_ticks) {
+                scheduler.Wait(tick);
+            }
+            hdr_convert.emplace(device, memory_allocator, image_count,
+                                VkExtent2D{scaled_width, scaled_height});
+        }
+        hdr_convert->Draw(device, scheduler, image_index, convert, &source_image,
+                          &source_image_view);
+    }
+
+    if (!hdr_output) {
+        if (auto* fxaa = std::get_if<FXAA>(&anti_alias)) {
+            fxaa->Draw(device, scheduler, image_index, &source_image, &source_image_view);
+        } else if (auto* smaa = std::get_if<SMAA>(&anti_alias)) {
+            smaa->Draw(device, scheduler, image_index, &source_image, &source_image_view);
+        }
     }
 
 #ifdef HAS_RESHADE
@@ -140,7 +163,9 @@ void Layer::ConfigureDraw(const Device& device, PresentPushConstants* out_push_c
         .height = scaled_height,
     };
 
-    if (auto* fsr = std::get_if<FSR>(&sr_filter)) {
+    if (hdr_output) {
+        // Upscaling filters are written for SDR: the window adapt pass scales bilinearly.
+    } else if (auto* fsr = std::get_if<FSR>(&sr_filter)) {
         source_image_view = fsr->Draw(device, scheduler, image_index, source_image, source_image_view, render_extent, crop_rect);
         crop_rect = {0, 0, 1, 1};
     } else if (auto* sgsr = std::get_if<SGSR>(&sr_filter)) {
