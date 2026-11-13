@@ -3,13 +3,13 @@
 # Dozer
 
 **Dozer — a Nintendo Switch 2 emulator for Windows, tuned for Donkey Kong Bananza and Mario Kart
-World (more games may follow).** A fork of [Anka](https://github.com/EddizEge/Anka) by EddizEge.
+World (more games may follow).**
 
 Not affiliated with Nintendo or the Eglantine project; please report problems in this
 repository's Issues, not to them. https://github.com/Mvii7/Dozer/issues
 
 **Support is limited.** Dozer is tuned for two games, Donkey Kong Bananza and Mario Kart World.
-Other games are not supported yet. More may be added later, and any game Dozer is tuned for will
+Other games may work but are not supported yet. More may be added later, and any game Dozer is tuned for will
 be listed here.
 
 ## At a glance
@@ -35,7 +35,7 @@ Dozer runs on its own: unzip it into a new, empty folder (see "Install"). It shi
 - Nothing else to install: the zip carries the Qt 6.8.3 DLLs and plugins `dozer.exe` needs and
   the Microsoft Visual C++ runtime DLLs. (Should Windows still report a missing
   `VCRUNTIME140.dll` or `MSVCP140.dll`, install the Microsoft Visual C++ 2015-2022 x64 runtime.)
-- A GPU with a current **Vulkan** driver. Only an NVIDIA RTX 4060 Ti (Anka's author) and an RTX 5070 Ti (Dozer's maintainer) were tried.
+- A GPU with a current **Vulkan** driver. Only NVIDIA GPUs were tried (an RTX 4060 Ti and an RTX 5070 Ti).
 - An x86-64 CPU. The build asks for no AVX2 (the only AVX2 code is in the Opus audio codec,
   which checks the CPU at run time), but only a Ryzen 7 5700X was tried. Many changes speed up
   the GPU thread on a fast desktop CPU; on a slow CPU expect less.
@@ -281,7 +281,7 @@ error. Take the launchers from the release zip: they need Windows line endings (
   changelog) stay in. Read traps are off (`EDEN_NX2_READ_TRAPS=0`).
 - **`start-reactive-experimental.bat`** - EXPERIMENTAL: the balanced settings with Reactive
   Flushing instead of read traps (`EDEN_NX2_READ_TRAPS=0`, reactive flushing on), plus `RX_RT_FIT=3` (one
-  image for Bananza's opening render target instead of a copy per draw). In Anka's author's
+  image for Bananza's opening render target instead of a copy per draw). In earlier
   tests it trades the opening for open areas: slower at the game's opening, faster in open areas,
   against the same build with reactive flushing off. Not checked yet: together with frame generation, and the
   image with `RX_RT_FIT=3`. Reactive flushing is a config setting, not a switch: with `CONFIG=`
@@ -381,8 +381,8 @@ display; `0` uses `frame_gen_multiplier`, 2-4). `frame_gen_type=0` would pick LS
 ## Reactive flushing
 
 `use_reactive_flushing` (`[Renderer]`) copies data the GPU wrote back to game memory when the
-game reads it. **The program's default on desktop is on.** Dozer's recommended setup has it **off**: in Anka's
-author's tests, turning it on helped in open areas and hurt at the game's opening. Look at your `sdl2-config.ini`:
+game reads it. **The program's default on desktop is on.** Dozer's recommended setup has it **off**: in earlier
+tests, turning it on helped in open areas and hurt at the game's opening. Look at your `sdl2-config.ini`:
 
 ```ini
 use_reactive_flushing\default=false
@@ -412,7 +412,7 @@ before such a draw; `=3` records a barrier inside the render pass instead (color
 writes before fragment shader reads, by region), so the render pass goes on. Both need
 `barrier_feedback_loops=true` under `[Renderer]` (the switch does nothing without it).
 
-In Anka's author's tests `RX_RT_FIT=3` was clearly better than `=1` at the opening and the same in the
+In earlier tests `RX_RT_FIT=3` was clearly better than `=1` at the opening and the same in the
 open area. Against reactive flushing off it is a trade that depends on the scene. That is why there
 are three setups for play, as launchers and as presets of the Tuning tab: balanced (reactive
 flushing off, read traps on; foliage is rendered at a performance cost), performance (read traps and
@@ -458,8 +458,7 @@ Much of this fork's code, its commit messages and these documents were written w
 assistants (Claude, by Anthropic) working under the direction of the human maintainer, who decided
 what to try, played and tested the builds, and is responsible for them. Commits made with an
 assistant say so in their trailers, as the Eden project's AI policy asks (`docs/policies/AI.md`).
-This fork is published on its own and is not submitted upstream. The measurements above are Anka's
-author's. The upstream commits picked into this fork are listed with their authors in the changelog.
+This fork is published on its own and is not submitted upstream. The upstream commits picked into this fork are listed with their authors in the changelog.
 
 ## Credits
 
