@@ -111,8 +111,8 @@ it links the menu program (`yuzu`) instead, which the release only optimizes (st
 1. Instrument: `pgo_link.sh build-lto instrument dozer-cli-pgi` links `yuzu-cmd`'s objects again
    with `/LTCG /FASTGENPROFILE:PGD=bin\dozer-cli-pgi.pgd` (the same link line otherwise;
    `/GENPROFILE` builds are too slow to play).
-2. Train: play Donkey Kong Bananza with the instrumented program and the recommended switches
-   (`dist/dozer/start-recommended.bat`), in the opening area and an open area; it writes
+2. Train: play Donkey Kong Bananza with the instrumented program and the balanced switches
+   (`dist/dozer/start-balanced.bat`), in the opening area and an open area; it writes
    `.pgc` files next to the `.pgd`. `pgort140.dll` from the MSVC tools must be next to it.
 3. Optimize: `pgo_link.sh build-lto optimize dozer-cli-pgo <the .pgd> <folder of .pgc files>`
    runs `pgomgr /merge` for each `.pgc` and links again with `/LTCG /USEPROFILE:PGD=...`.
@@ -139,8 +139,8 @@ GitHub Actions (`.github/workflows/release-binaries.yml`) builds `dozer.exe` and
 runs `windeployqt` on `dozer.exe` and uploads the `bin` folder as the `dozer-windows-x86_64-<commit>`
 artifact. That folder holds the two programs and the Qt 6.8.3 DLLs and plugins; it does not yet hold
 the extras a full install wants. A complete package would add an empty `user/` folder (so the
-programs start in portable mode), the launchers from `dist/dozer/` (`start-recommended.bat`,
-`start-fast.bat`, `start-reactive-experimental.bat`, `start-safe.bat`) with `dozer-config.ps1`, an empty `Games`
+programs start in portable mode), the launchers from `dist/dozer/` (`start-performance.bat`,
+`start-balanced.bat`, `start-reactive-experimental.bat`, `start-safe.bat`) with `dozer-config.ps1`, an empty `Games`
 folder with its note (`dist/dozer/Games/PUT-YOUR-GAMES-HERE.txt`), `README_DOZER.md`,
 `CHANGELOG_DOZER.md`, `BUILDING_DOZER.md`, `LICENSE.txt`, `LICENSES/` and a reference copy of
 `dist/nx2_switches.txt`. For now that is done by hand.

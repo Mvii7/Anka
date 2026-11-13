@@ -36,9 +36,9 @@ launcher) and double-click a launcher:
 
 | Launcher | When to use it |
 |---|---|
-| `start-recommended.bat` | **Recommended.** The recommended settings. Foliage is rendered at a performance cost. |
-| `start-fast.bat` | **Fast.** The fastest settings with read traps and reactive flushing off. Foliage is not rendered for a performance gain. |
-| `start-reactive-experimental.bat` | **Experimental.** The recommended settings with Reactive Flushing instead of Read traps. |
+| `start-performance.bat` | **Performance (the default).** The fastest settings with read traps and reactive flushing off. Foliage is not rendered for a performance gain. |
+| `start-balanced.bat` | **Balanced.** The performance settings with read traps on. Foliage is rendered at a performance cost. |
+| `start-reactive-experimental.bat` | **Experimental.** The balanced settings with Reactive Flushing instead of Read traps. |
 | `start-safe.bat` | **For troubleshooting and for games other than Bananza.** The GPU shortcuts Dozer keeps on by default turned off (`EDEN_NX2_LIGHT_DRAW=0` and the rest of its list), read traps off, and the optional settings that change play cleared. Dozer's fixes and its changes without a switch stay in. |
 
 On the first start a launcher makes dozer-cli's settings file (`user\config\sdl2-config.ini`) as
@@ -51,11 +51,11 @@ does this). The game starts in full screen: **quit with Alt+F4**.
 In `dozer.exe`: **Emulation > Configure... > Tuning**. The **Preset** box at the top has five
 choices:
 
-- **Recommended** (the first start's choice): all nine settings on,
-  Reactive Flushing off (Graphics > Advanced). Foliage is rendered at a performance cost. The same as `start-recommended.bat`. On Dozer's first start it also turns Reactive
-  Flushing off in `qt-config.ini` by itself; choosing Recommended later turns it off as well.
-- **Fast**: the fastest settings with read traps and Reactive Flushing off. Foliage is not rendered for a performance gain. The same as `start-fast.bat`.
-- **Experimental**: the recommended settings with Reactive Flushing instead of read traps (barrier
+- **Performance** (the first start's choice): the fastest settings with read traps and Reactive Flushing off. Foliage is not rendered for a performance gain. The same as `start-performance.bat`. On Dozer's first start it also turns Reactive
+  Flushing off in `qt-config.ini` by itself; choosing Performance or Balanced later turns it off as well.
+- **Balanced**: all nine settings on,
+  Reactive Flushing off (Graphics > Advanced). Foliage is rendered at a performance cost. The same as `start-balanced.bat`.
+- **Experimental**: the balanced settings with Reactive Flushing instead of read traps (barrier
   feedback loops on, Graphics > Advanced, and `EDEN_NX2_RX_RT_FIT=3`).
   The same as `start-reactive-experimental.bat`.
 - **Safe**: all nine off, Frame generation off, and the GPU shortcuts Dozer keeps on by default
@@ -63,7 +63,7 @@ choices:
   Other graphics settings such as Reactive Flushing stay as they are; Dozer's fixes and its
   changes without a switch stay in.
 - **Custom**: chosen by itself when you change a box by hand. Unticking read traps while
-  Recommended is selected does this.
+  Balanced is selected does this.
 
 GPU Mode (GPU accuracy) starts at **Fast** (Low), as in newer Eden versions (2.0.0 started at
 Accurate, High, on desktop). If a game shows image errors, set

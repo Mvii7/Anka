@@ -368,8 +368,8 @@ void QtConfig::ReadNx2PerfValues() {
                 ReadIntegerSetting(std::string{key}, std::make_optional(static_cast<s64>(def))));
         });
     EndGroup();
-    // The first start selects Recommended, which is measured with Reactive Flushing off (like
-    // start-recommended.bat); it is saved with the other settings.
+    // The first start selects Performance, which is measured with Reactive Flushing off (like
+    // start-performance.bat); it is saved with the other settings.
     const auto reactive =
         Core::Nx2PerfSettings::ReactiveFlushing(UISettings::values.nx2perf.preset);
     if (first_start && reactive) {
