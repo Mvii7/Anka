@@ -87,6 +87,11 @@ public:
     /// of a renderpass.
     void RequestOutsideRenderPassOperationContext();
 
+    /// A dispatch was recorded: the next render pass must see what it wrote.
+    void NoteComputeWrites() {
+        compute_writes_pending = true;
+    }
+
     /// Returns true when a render pass is currently active in the scheduler state.
     bool IsRenderPassActive() const {
         return state.renderpass != VK_NULL_HANDLE;
@@ -405,6 +410,7 @@ private:
     std::mutex reserve_mutex;
     std::mutex queue_mutex;
     std::condition_variable_any event_cv;
+    bool compute_writes_pending{};
     bool worker_waiting{}; ///< The worker is waiting for work (guarded by queue_mutex)
     bool wake_next_dispatch{}; ///< The last dispatched chunk was a submission (recording thread)
     u32 dispatch_count{};      ///< Dispatched chunks (recording thread, for the wake log)
