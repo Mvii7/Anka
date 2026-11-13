@@ -328,22 +328,22 @@
     </widget>
    </item>
    <item>
-    <widget class="QGroupBox" name="bananza">
+    <widget class="QGroupBox" name="games">
      <property name="title">
-      <string>Donkey Kong Bananza only (off in other games)</string>
+      <string>Specific Games</string>
      </property>
-     <layout class="QVBoxLayout" name="bananza_layout">
+     <layout class="QVBoxLayout" name="games_layout">
       <item>
        <widget class="QCheckBox" name="dk_dyn">
         <property name="text">
-         <string>Dynamic frame rate</string>
+         <string>Donkey Kong Bananza dynamic frame rate</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QLabel" name="dk_dyn_text">
         <property name="text">
-         <string>The game may run at any rate from 40 to 60 fps instead of dropping to 30; patched in memory, no file is changed (DK_DYN).</string>
+         <string>The game picks its own rate from 40 to 60 fps instead of dropping to 30, and keeps its speed right down to 24 fps; patched in memory, no file is changed (DK_DYN). Off, the game's own 60/30/20 fps choice is followed at the right speed.</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>
@@ -357,16 +357,16 @@
        </widget>
       </item>
       <item>
-       <widget class="QCheckBox" name="dk_pacing">
+       <widget class="QCheckBox" name="mkw_dyn">
         <property name="text">
-         <string>Frame pacing</string>
+         <string>Mario Kart World dynamic frame rate</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QLabel" name="dk_pacing_text">
+       <widget class="QLabel" name="mkw_dyn_text">
         <property name="text">
-         <string>Follows the game's own 60/30/20 fps choice at the right speed; set aside while the dynamic frame rate applies (PRESENT_INTERVAL_WORD, MODE_PACE, PACE_SPIN_US).</string>
+         <string>The game picks 1 or 2 vblanks a frame from its real frame time instead of staying at 30 fps; patched in memory, no file is changed (MKW_DYN). Not measured on Dozer yet.</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>
@@ -375,7 +375,7 @@
          <number>22</number>
         </property>
         <property name="buddy">
-         <cstring>dk_pacing</cstring>
+         <cstring>mkw_dyn</cstring>
         </property>
        </widget>
       </item>

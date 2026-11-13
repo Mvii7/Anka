@@ -77,6 +77,7 @@ std::atomic<u64> g_nx2_present_count{};
 std::atomic<u64> g_nx2_album_count{};
 std::atomic<u32> g_nx2_session{};
 std::atomic<bool> g_nx2_dk_dyn_applied{};
+std::atomic<bool> g_nx2_mkw_dyn_applied{};
 
 FileSys::VirtualFile GetGameFileFromPath(const FileSys::VirtualFilesystem& vfs,
                                          const std::string& path) {

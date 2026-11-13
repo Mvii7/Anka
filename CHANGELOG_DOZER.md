@@ -8,6 +8,14 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- Mario Kart World dynamic frame rate (`MKW_DYN=1` / `EDEN_NX2_MKW_DYN=1`): its frame mode
+  choice is patched in memory so the game picks 1 or 2 vblanks a frame from its real frame time,
+  with presents paced to every vblank. After the Lichii fork's patch (zortos293/Lichii#1332),
+  which also skips the game's own wait for the second vblank that kept it at 30 fps. Not
+  measured on Dozer yet. Off in dozer-cli, on in the launchers and the Tuning tab. The Tuning
+  tab's "Bananza only" group is now "Specific Games" (Donkey Kong Bananza and Mario Kart World
+  dynamic frame rate): no preset changes them, Safe included, and Bananza's frame pacing box is
+  gone (always set for Bananza).
 - Native HDR output (Graphics > HDR output: Off, Auto (default), On; Vulkan only), ported from
   Lichii #1326. An HDR10 or scRGB swapchain while it is on; nx2:vi2 104/105 (HDR status, paper
   white) now answer SDR or HDR with the monitor's peak and SDR white instead of an empty success,

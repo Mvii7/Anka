@@ -28,6 +28,16 @@ TEST_CASE("Nx2DkDynPace: only once the patch went in, only for Bananza", "[core]
     REQUIRE(((u64{VrrReply[1]} << 32 | VrrReply[0]) >> 63) == 1);
 }
 
+TEST_CASE("Nx2DkDynPace: Mario Kart World paces every vblank once patched, without VRR", "[core]") {
+    REQUIRE(MkwProgramId == Mkw);
+    REQUIRE(PaceOneMkw(true, Mkw, nullptr));
+    REQUIRE(PaceOneMkw(true, Mkw, "1"));
+    REQUIRE(!PaceOneMkw(true, Mkw, "0"));
+    REQUIRE(!PaceOneMkw(false, Mkw, nullptr));
+    REQUIRE(!PaceOneMkw(true, ProgramId, nullptr));
+    REQUIRE(!PaceOneMkw(true, 0, nullptr));
+}
+
 TEST_CASE("Nx2DkDynPace: the step estimate", "[core]") {
     StepEstimate none;
     REQUIRE(none.Speed() == 1.0);
