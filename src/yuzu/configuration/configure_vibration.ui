@@ -511,6 +511,56 @@
        </widget>
       </item>
       <item>
+       <widget class="QCheckBox" name="checkBoxDualSenseHaptics">
+        <property name="toolTip">
+         <string>Play HD Rumble through the DualSense haptic actuators, left and right apart. Requires a USB connection and a single wired DualSense; otherwise standard rumble is used.</string>
+        </property>
+        <property name="text">
+         <string>Enable DualSense HD Haptics</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="layoutDualSenseHapticsStrength">
+        <item>
+         <widget class="QLabel" name="labelDualSenseHapticsStrength">
+          <property name="text">
+           <string>DualSense Haptics Strength</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSlider" name="sliderDualSenseHapticsStrength">
+          <property name="minimum">
+           <number>50</number>
+          </property>
+          <property name="maximum">
+           <number>150</number>
+          </property>
+          <property name="value">
+           <number>90</number>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Orientation::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="labelDualSenseHapticsStrengthValue">
+          <property name="minimumSize">
+           <size>
+            <width>40</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>90%</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
        <widget class="QCheckBox" name="checkBoxFrequencyRumble">
         <property name="toolTip">
          <string>On controllers with two rumble motors, send each part of the HD Rumble to the motor that matches its frequency: low tones to the heavy motor, high tones to the light one. When off, each band drives its own motor as before.</string>
