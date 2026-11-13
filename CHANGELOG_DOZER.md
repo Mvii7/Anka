@@ -8,6 +8,8 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+## Dozer 0.1.0 (`v0.1.0`)
+
 - Mario Kart World dynamic frame rate (`MKW_DYN=1` / `EDEN_NX2_MKW_DYN=1`): its frame mode
   choice is patched in memory so the game picks 1 or 2 vblanks a frame from its real frame time,
   with presents paced to every vblank. After the Lichii fork's patch (zortos293/Lichii#1332),
