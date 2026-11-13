@@ -47,6 +47,7 @@ ConfigureBananza::ConfigureBananza(QWidget* parent) : QWidget(parent) {
         row.slider = new QSlider(Qt::Horizontal, this);
         row.slider->setRange(knob.min, knob.max);
         row.slider->setValue(knob.game);
+        row.slider->setVisible(!Quality::IsToggle(knob));
         row.value = new QLabel(this);
         row.value->setMinimumWidth(
             row.value->fontMetrics().horizontalAdvance(QStringLiteral("000 frames (game)")));
@@ -96,7 +97,8 @@ void ConfigureBananza::RetranslateUI() {
                       "the game starts: a change needs a restart of the program."));
     note->setText(tr("Lower values are faster, except the cube map interval, where higher is "
                      "faster. The terrain's own resolution is fixed by the game's data and has "
-                     "no setting."));
+                     "no setting. Rows marked \"for testing\" have an effect nobody has "
+                     "measured yet."));
     findChild<QPushButton*>(QStringLiteral("reset"))->setText(tr("Reset to the Game's"));
     preset->setItemText(static_cast<int>(Quality::Preset::Default), tr("Default"));
     preset->setItemText(static_cast<int>(Quality::Preset::Balanced), tr("Balanced"));
@@ -104,35 +106,76 @@ void ConfigureBananza::RetranslateUI() {
     preset->setItemText(static_cast<int>(Quality::Preset::Custom), tr("Custom"));
     ShowPreset();
 
-    const std::array<std::pair<QString, QString>, Quality::Count> texts{{
-        {tr("Best render resolution"),
-         tr("The highest resolution the game renders at before its upscaler, per axis, in "
-            "percent of the output (2880x1620 docked). The game's own is 73% (2095x1179).")},
-        {tr("Worst render resolution"),
-         tr("The lowest resolution the game's resolution control may drop to; the game's own is "
-            "50% (1440x810). Set equal to the best one for a fixed resolution.")},
-        {tr("Bloom buffer scale"), tr("The bloom buffers' size relative to the frame.")},
-        {tr("Cube map update interval"),
-         tr("Frames between two captures of the reflection cube maps. Higher is faster (the "
-            "only row where it is); reflections follow changes later.")},
-        {tr("Radial blur render scale"),
-         tr("The radial blur's buffer size relative to the frame.")},
-        {tr("Radial blur samples"), tr("Samples the radial blur takes per pixel.")},
-        {tr("Terrain LOD distance"),
-         tr("Scales the two distances at which the destructible terrain switches to its "
-            "coarser meshes. Lower: coarser terrain closer to the camera, fewer triangles.")},
-        {tr("Terrain mesh simplification"),
-         tr("How the game simplifies the destructible terrain's meshes: 1 Normal (the game's "
-            "usual), 2 High, 3 SuperHigh, 4 NoSimplify, 5 Low. Which of them simplifies the most "
-            "is not known: the names could mean either way, so try them. Applies to every "
-            "terrain field, including ones the game keeps unsimplified.")},
-        {tr("Camera far distance"),
-         tr("Scales the distance beyond which the game draws nothing. A big cut (about 10%) "
-            "doubled the frame rate in a busy area in testing, but scenery stops being drawn "
-            "fairly close. From the Selevet fork's far clip scale.")},
-        {tr("Colour decal limit"),
-         tr("The most colour decals (paint marks) the game keeps; its own is 660.")},
-    }};
+    // Indexed by the setting, so a row cannot get another's text.
+    std::array<std::pair<QString, QString>, Quality::Count> texts;
+    texts[Quality::ResBest] = {
+        tr("Best render resolution"),
+        tr("The highest resolution the game renders at before its upscaler, per axis, in "
+           "percent of the output (2880x1620 docked). The game's own is 73% (2095x1179).")};
+    texts[Quality::ResWorst] = {
+        tr("Worst render resolution"),
+        tr("The lowest resolution the game's resolution control may drop to; the game's own is "
+           "50% (1440x810). Set equal to the best one for a fixed resolution.")};
+    texts[Quality::GpuTarget] = {
+        tr("Resolution control: GPU load target"),
+        tr("The game lowers its resolution when its measured GPU load goes above this (its own "
+           "is 90). Lower: it drops sooner, within the range above. The load it measures under "
+           "emulation may not be meaningful: for testing.")};
+    texts[Quality::FrameMinScale] = {
+        tr("Frame buffer minimum scale"),
+        tr("The lowest scale of the game's frame buffer scaling. The game's own is 100%, which "
+           "may mean it does not use it: lower values are untested.")};
+    texts[Quality::BloomScale] = {tr("Bloom buffer scale"),
+                                  tr("The bloom buffers' size relative to the frame.")};
+    texts[Quality::CubeMapInterval] = {
+        tr("Cube map update interval"),
+        tr("Frames between two captures of the reflection cube maps. Higher is faster (the "
+           "only row where it is); reflections follow changes later.")};
+    texts[Quality::RadialBlurScale] = {tr("Radial blur render scale"),
+                                       tr("The radial blur's buffer size relative to the frame.")};
+    texts[Quality::RadialBlurSamples] = {tr("Radial blur samples"),
+                                         tr("Samples the radial blur takes per pixel.")};
+    texts[Quality::VoxelLodDist] = {
+        tr("Terrain LOD distance"),
+        tr("Scales the two distances at which the destructible terrain switches to its "
+           "coarser meshes. Lower: coarser terrain closer to the camera, fewer triangles.")};
+    texts[Quality::VoxelLodValue] = {
+        tr("Terrain LOD value"),
+        tr("Scales the two values the terrain's LOD steps carry beside their distance (how "
+           "coarse a step is). What higher or lower does is not known yet: for testing.")};
+    texts[Quality::CameraFar] = {
+        tr("Camera far distance"),
+        tr("Scales the distance beyond which the game draws nothing. A big cut (about 10%) "
+           "doubled the frame rate in a busy area in testing, but scenery stops being drawn "
+           "fairly close. From the Selevet fork's far clip scale.")};
+    texts[Quality::ColorDecalMax] = {
+        tr("Colour decal limit"),
+        tr("The most colour decals (paint marks) the game keeps; its own is 660.")};
+    texts[Quality::MeshSimplify] = {
+        tr("Terrain mesh simplification"),
+        tr("How the game simplifies the destructible terrain's meshes: 1 Normal (the game's "
+           "usual), 2 High, 3 SuperHigh, 4 NoSimplify, 5 Low. Which of them simplifies the "
+           "most is not known: the names could mean either way, so try them. Applies to every "
+           "terrain field, including ones the game keeps unsimplified.")};
+    texts[Quality::GgxFilterOff] = {
+        tr("Reflection filtering off"),
+        tr("Skips the GGX filtering of the reflection cube maps. Reflections get sharper or "
+           "wrong; may cost less. For testing.")};
+    texts[Quality::CubeMapOcclusionOff] = {
+        tr("Cube map occlusion check off"),
+        tr("Skips the occlusion check the reflection cube maps make. For testing.")};
+    texts[Quality::OcclusionDepth] = {
+        tr("Occlusion query depth"),
+        tr("Scales the depth threshold of the game's occlusion queries (its own is 50). What "
+           "higher or lower does is not known yet: for testing.")};
+    texts[Quality::OcclusionRadius] = {
+        tr("Occlusion query radius"),
+        tr("Scales the radius threshold of the game's occlusion queries (its own is 50). For "
+           "testing.")};
+    texts[Quality::OcclusionPolygon] = {
+        tr("Occlusion query polygons"),
+        tr("Scales the polygon count threshold of the game's occlusion queries (its own is "
+           "1000). For testing.")};
     for (std::size_t i = 0; i < rows.size(); ++i) {
         rows[i].box->setText(texts[i].first);
         QString tip = texts[i].second;
@@ -165,6 +208,10 @@ void ConfigureBananza::ShowValue(std::size_t index) {
     const Row& row = rows[index];
     const bool on = row.box->isChecked();
     row.slider->setEnabled(on && row.box->isEnabled());
+    if (Quality::IsToggle(Quality::Knobs[index])) {
+        row.value->setText(on ? tr("off") : tr("on (game)"));
+        return;
+    }
     const int value = on ? row.slider->value() : Quality::Knobs[index].game;
     QString text;
     switch (static_cast<Quality::Id>(index)) {

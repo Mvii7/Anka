@@ -28,14 +28,22 @@ namespace Loader::Nx2DkQuality {
 enum Id : size_t {
     ResBest,           ///< highest render resolution, % of the output (NdsrUpscaleMinRate)
     ResWorst,          ///< lowest render resolution, % of the output (NdsrUpscaleMaxRate)
+    GpuTarget,         ///< GPU load the resolution control aims for, % (MaintainGpuPercentage)
+    FrameMinScale,     ///< FrameBufferMinScale, %
     BloomScale,        ///< BloomBufferBaseScale, %
     CubeMapInterval,   ///< CubeMapShotInterval, frames
     RadialBlurScale,   ///< RadialBlurRenderScale, %
     RadialBlurSamples, ///< RadialBlurSamplingNum
     VoxelLodDist,      ///< terrain Lod1Dist and Lod2Dist, % of the game's
+    VoxelLodValue,     ///< terrain Lod1Value and Lod2Value, % of the game's
     CameraFar,         ///< the camera's far distance, % (EDEN_NX2_FAR_SCALE of the Selevet fork)
     ColorDecalMax,     ///< ColorDecalMaxNum
     MeshSimplify,      ///< terrain MeshSimplifyType: 1 Normal, 2 High, 3 SuperHigh, 4 NoSimplify, 5 Low
+    GgxFilterOff,      ///< IsUseGGXFilter forced off (reflection cube map filtering)
+    CubeMapOcclusionOff, ///< IsUseCubeMapOcclusionCheck forced off
+    OcclusionDepth,    ///< OcclusionQueryThresholdDepth, % of the game's
+    OcclusionRadius,   ///< OcclusionQueryThresholdRadius, % of the game's
+    OcclusionPolygon,  ///< OcclusionQueryThresholdPolygon, % of the game's
     Count,
 };
 
@@ -47,18 +55,31 @@ struct Knob {
     int game; ///< the game's own value, shown only (the % of the game's ones: 100)
 };
 
+/// A row with nothing to choose but on: its variable is 1 and it forces something off.
+constexpr bool IsToggle(const Knob& knob) {
+    return knob.min == knob.max;
+}
+
 
 inline constexpr std::array<Knob, Count> Knobs{{
     {"res_best", "EDEN_NX2_DKQ_RES_BEST", 25, 100, 73},
     {"res_worst", "EDEN_NX2_DKQ_RES_WORST", 25, 100, 50},
+    {"gpu_target", "EDEN_NX2_DKQ_GPU_TARGET", 40, 100, 90},
+    {"frame_min_scale", "EDEN_NX2_DKQ_FRAME_MIN_SCALE", 25, 100, 100},
     {"bloom_scale", "EDEN_NX2_DKQ_BLOOM_SCALE", 10, 100, 25},
     {"cubemap_interval", "EDEN_NX2_DKQ_CUBEMAP_INTERVAL", 1, 240, 8},
     {"radial_blur_scale", "EDEN_NX2_DKQ_RADIAL_BLUR_SCALE", 10, 100, 50},
     {"radial_blur_samples", "EDEN_NX2_DKQ_RADIAL_BLUR_SAMPLES", 1, 32, 20},
     {"voxel_lod_dist", "EDEN_NX2_DKQ_VOXEL_LOD_DIST", 10, 400, 100},
+    {"voxel_lod_value", "EDEN_NX2_DKQ_VOXEL_LOD_VALUE", 10, 400, 100},
     {"camera_far", "EDEN_NX2_DKQ_CAMERA_FAR", 10, 100, 100},
     {"color_decal_max", "EDEN_NX2_DKQ_COLOR_DECAL_MAX", 1, 660, 660},
     {"mesh_simplify", "EDEN_NX2_DKQ_MESH_SIMPLIFY", 1, 5, 1},
+    {"ggx_filter_off", "EDEN_NX2_DKQ_GGX_FILTER_OFF", 1, 1, 0},
+    {"cubemap_occlusion_off", "EDEN_NX2_DKQ_CUBEMAP_OCCLUSION_OFF", 1, 1, 0},
+    {"occlusion_depth", "EDEN_NX2_DKQ_OCCLUSION_DEPTH", 10, 400, 100},
+    {"occlusion_radius", "EDEN_NX2_DKQ_OCCLUSION_RADIUS", 10, 400, 100},
+    {"occlusion_polygon", "EDEN_NX2_DKQ_OCCLUSION_POLYGON", 10, 400, 100},
 }};
 
 /// One number per knob; 0 leaves the game's own.
@@ -191,7 +212,7 @@ constexpr float GameMaxRate = 2.0f;
 /// the terrain LOD routines start at word 20.
 constexpr size_t CaveOffset = 20;
 constexpr size_t CaveRoutineWords = 5;
-constexpr size_t MeshRoutine = 2 * CaveRoutineWords; ///< after the terrain LOD routines
+constexpr size_t MeshRoutine = 4 * CaveRoutineWords; ///< after the terrain LOD routines
 constexpr size_t MeshRoutineWords = 4;
 constexpr size_t FarRoutine = MeshRoutine + MeshRoutineWords; ///< three, after the mesh one
 constexpr size_t FarRoutineWords = 5;
@@ -219,6 +240,9 @@ constexpr u32 LdrS(u32 rt, u32 rn, u32 offset) {
 constexpr u32 LdrW(u32 rt, u32 rn, u32 offset) {
     return 0xB9400000U | ((offset / 4) << 10) | (rn << 5) | rt; // ldr wT, [xN, #offset]
 }
+constexpr u32 LdrBW0X8(u32 offset) {
+    return 0x39400100U | (offset << 10); // ldrb w0, [x8, #offset]
+}
 constexpr u32 Ret = 0xD65F03C0U;
 
 // A graphics parameter is an object with its value at +0x64, held by GraphicsParam at a fixed
@@ -226,11 +250,23 @@ constexpr u32 Ret = 0xD65F03C0U;
 constexpr u32 ValueOffset = 0x64;
 constexpr u32 MinRateParam = 0x5c8;      // NdsrUpscaleMinRate
 constexpr u32 MaxRateParam = 0x5d0;      // NdsrUpscaleMaxRate
+constexpr u32 GpuTargetParam = 0x538;       // MaintainGpuPercentage
+constexpr u32 FrameMinScaleParam = 0x540;   // FrameBufferMinScale
 constexpr u32 BloomScaleParam = 0x570;   // BloomBufferBaseScale
 constexpr u32 CubeMapIntervalParam = 0x220; // CubeMapShotInterval
 constexpr u32 RadialBlurScaleParam = 0x508; // RadialBlurRenderScale
 constexpr u32 RadialBlurSamplesParam = 0x500; // RadialBlurSamplingNum
 constexpr u32 ColorDecalMaxParam = 0x280;     // ColorDecalMaxNum
+constexpr u32 GgxFilterParam = 0x210;         // IsUseGGXFilter
+constexpr u32 CubeMapOcclusionParam = 0x218;  // IsUseCubeMapOcclusionCheck
+constexpr u32 OcclusionDepthParam = 0x520;    // OcclusionQueryThresholdDepth
+constexpr u32 OcclusionRadiusParam = 0x528;   // OcclusionQueryThresholdRadius
+constexpr u32 OcclusionPolygonParam = 0x530;  // OcclusionQueryThresholdPolygon
+
+// The game's values of the occlusion rows, from its ProjectGraphicsParam (Default).
+constexpr float GameOcclusionDepth = 50.0f;
+constexpr float GameOcclusionRadius = 50.0f;
+constexpr int GameOcclusionPolygon = 1000;
 
 // `text` starts at the text segment and holds at least `aligned_size` bytes, the segment's size
 // rounded up to whole pages; `text_size` is its size in the NSO header.
@@ -345,19 +381,39 @@ inline Result Apply(std::span<u8> text, u32 text_size, u32 aligned_size, const V
             result[id] = State::Applied;
         }
     };
-    const auto int_getter = [&](Id id, u32 offset) {
+    const auto int_getter = [&](Id id, u32 offset, int value = 0) {
         std::array<size_t, 1> at{};
         if (set(id) != 0 &&
             find({{0, LdrX(8, 0, offset)}, {1, LdrW(0, 8, ValueOffset)}, {2, Ret}}, at)) {
-            put(at[0], Movz(0, static_cast<u32>(set(id))));
+            put(at[0], Movz(0, static_cast<u32>(value != 0 ? value : set(id))));
             put(at[0] + 1, Ret);
             result[id] = State::Applied;
         }
     };
+    // A boolean getter: `ldr x8, [x0, #offset]; ldrb w0, [x8, #0x64]; ret`, forced to false.
+    const auto false_getter = [&](Id id, u32 offset) {
+        std::array<size_t, 1> at{};
+        if (set(id) != 0 &&
+            find({{0, LdrX(8, 0, offset)}, {1, LdrBW0X8(ValueOffset)}, {2, Ret}}, at)) {
+            put(at[0], Movz(0, 0));
+            put(at[0] + 1, Ret);
+            result[id] = State::Applied;
+        }
+    };
+    false_getter(GgxFilterOff, GgxFilterParam);
+    false_getter(CubeMapOcclusionOff, CubeMapOcclusionParam);
+    float_getter(OcclusionDepth, OcclusionDepthParam,
+                 GameOcclusionDepth * percent(set(OcclusionDepth)));
+    float_getter(OcclusionRadius, OcclusionRadiusParam,
+                 GameOcclusionRadius * percent(set(OcclusionRadius)));
+    float_getter(GpuTarget, GpuTargetParam, static_cast<float>(set(GpuTarget)));
+    float_getter(FrameMinScale, FrameMinScaleParam, percent(set(FrameMinScale)));
     float_getter(RadialBlurScale, RadialBlurScaleParam, percent(set(RadialBlurScale)));
     int_getter(RadialBlurSamples, RadialBlurSamplesParam);
     int_getter(CubeMapInterval, CubeMapIntervalParam);
     int_getter(ColorDecalMax, ColorDecalMaxParam);
+    int_getter(OcclusionPolygon, OcclusionPolygonParam,
+               GameOcclusionPolygon * set(OcclusionPolygon) / 100);
 
     // BloomBufferBaseScale is read in three places; the register it comes through is loaded
     // again right after each:
@@ -384,10 +440,10 @@ inline Result Apply(std::span<u8> text, u32 text_size, u32 aligned_size, const V
     //   bl Lod1Value; ldr s9, [x0];  mov x0, x24
     //   bl Lod2Dist;  ldr s10, [x0]; mov x0, x24
     //   bl Lod2Value; ldr s0, [x0]
-    // The two distance loads become a call to a routine in the free space past the text segment
+    // Each load asked for becomes a call to a routine in the free space past the text segment
     // that loads and scales (x16, s16 and x30 are free right after a call):
     //   ldr sN, [x0]; movz w16, #scale, lsl #16; fmov s16, w16; fmul sN, sN, s16; ret
-    if (const int dist = set(VoxelLodDist); dist != 0) {
+    if (const int dist = set(VoxelLodDist), value = set(VoxelLodValue); dist != 0 || value != 0) {
         constexpr u32 MovX0X24 = 0xAA1803E0U;
         std::array<size_t, 1> at{};
         const bool cave_free = CaveFree(0, MeshRoutine);
@@ -404,10 +460,13 @@ inline Result Apply(std::span<u8> text, u32 text_size, u32 aligned_size, const V
                 u32 reg;
                 int scale;
             };
-            // The distances are the 1st and 3rd loads; the values (2nd, 4th) are not scaled.
-            const std::array<Load, 2> loads{{{1, 8, dist}, {7, 10, dist}}};
+            const std::array<Load, 4> loads{
+                {{1, 8, dist}, {4, 9, value}, {7, 10, dist}, {10, 0, value}}};
             for (size_t i = 0; i < loads.size(); ++i) {
                 const Load& load = loads[i];
+                if (load.scale == 0) {
+                    continue;
+                }
                 const size_t from = at[0] + load.distance;
                 const size_t routine = cave + i * CaveRoutineWords;
                 put(routine, LdrS(load.reg, 0, 0));
@@ -417,7 +476,12 @@ inline Result Apply(std::span<u8> text, u32 text_size, u32 aligned_size, const V
                 put(routine + 4, Ret);
                 put(from, 0x94000000U | (static_cast<u32>(routine - from) & 0x3FFFFFFU)); // bl
             }
-            result[VoxelLodDist] = State::Applied;
+            if (dist != 0) {
+                result[VoxelLodDist] = State::Applied;
+            }
+            if (value != 0) {
+                result[VoxelLodValue] = State::Applied;
+            }
         }
     }
 

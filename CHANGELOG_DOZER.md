@@ -11,7 +11,7 @@ and `=0` brings back the 2.0.0 code path.
 - Tuning has a second tab, **Bananza**: a Default / Balanced / Performance / Custom preset box and experimental quality sliders for Donkey Kong Bananza
   (render resolution range,
   bloom and radial blur buffers, cube map update interval, terrain LOD distance, terrain mesh simplification, camera far distance, colour decal
-  limit; only settings where less is faster). A
+  limit; some of the rows are only for finding out what they do). A
   ticked row replaces one value the game reads from its graphics parameters while it loads
   (`EDEN_NX2_DKQ_*`, `core/loader/nx2_dk_quality.h`); all unticked by default. Found by reading
   the game's executable; which ones help, and which break something, is still being tried.

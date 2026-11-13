@@ -172,17 +172,22 @@ starts, so a change asks for a restart like the Tuning tab's boxes.
 | Row | The game's | What it changes |
 |---|---|---|
 | Best / worst render resolution | 73% / 50% | the range the game's resolution control moves in, per axis in % of the output; equal values fix the resolution |
+| Resolution control: GPU load target | 90% | the measured GPU load above which the game lowers its resolution (for testing) |
+| Frame buffer minimum scale | 100% | the lowest frame buffer scale (the game's 100% may mean it does not use it; for testing) |
 | Bloom buffer scale | 25% | the bloom buffers' size |
 | Cube map update interval | 8 frames | how often reflection cube maps are captured (the one row where higher is faster) |
 | Radial blur render scale / samples | 50% / 20 | the radial blur's buffer size and samples |
 | Terrain LOD distance | 100% | the two distances at which the destructible terrain switches to coarser meshes, relative to the game's data |
+| Terrain LOD value | 100% | the two values of the terrain's LOD steps (what higher or lower does is not known; for testing) |
 | Terrain mesh simplification | Normal | the type of mesh simplification the game's terrain fields use (Normal, High, SuperHigh, NoSimplify, Low); which one simplifies the most is not known, so try them; it is applied to every field |
 | Camera far distance | 100% | scales the distance beyond which the game draws nothing: a big cut roughly doubled the frame rate in a busy area, but scenery stops being drawn fairly close (from the Selevet fork's far clip scale) |
 | Colour decal limit | 660 | the most colour decals the game keeps |
+| Reflection filtering off, cube map occlusion check off | on | skips those two steps of the reflection cube maps (for testing) |
+| Occlusion query depth / radius / polygons | 100% | scales the thresholds of the game's occlusion queries (effect not known; for testing) |
+| Reflection filtering off, cube map occlusion check off | on | skips those two steps of the reflection cube maps (for testing) |
+| Occlusion query depth / radius / polygons | 100% | scales the thresholds of the game's occlusion queries (effect not known; for testing) |
 
-Only settings where less means faster are in. Others found in the executable (frame buffer
-minimum scale, terrain LOD value, occlusion query thresholds, reflection filtering) were left out
-because their effect is unknown or they are likely to break the picture.
+Rows marked "for testing" have an effect nobody has measured yet, and none of them is in the presets.
 
 The same settings as variables are `EDEN_NX2_DKQ_*` (`nx2_switches.txt`). The log
 (`user\log\eden_log.txt`) has a line "Donkey Kong Bananza: EDEN_NX2_DKQ_..." for each one that
