@@ -29,7 +29,7 @@ constexpr std::size_t RightActuator = 1;
 constexpr int UpdateFrames = 256;
 
 // Keeps sustained output away from the level where the coils heat up and distort
-constexpr f32 OutputGain = 0.8f;
+constexpr f32 OutputGain = 1.0f;
 
 // One pole smoothing with a 4ms time constant on amplitude and frequency changes
 const f32 SmoothingFactor = static_cast<f32>(1.0 - std::exp(-1000.0 / (SampleRate * 4.0)));
