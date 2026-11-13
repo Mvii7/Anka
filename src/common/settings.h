@@ -818,6 +818,8 @@ struct Values {
                                               Category::Controls};
     SwitchableSetting<bool> enable_accurate_vibrations{linkage, false, "enable_accurate_vibrations",
                                                        Category::Controls};
+    Setting<bool> rumble_frequency_mapping{linkage, false, "rumble_frequency_mapping",
+                                           Category::Controls};
 
     SwitchableSetting<bool> motion_enabled{linkage, true, "motion_enabled", Category::Controls};
     Setting<std::string> udp_input_servers{linkage, "127.0.0.1:26760", "udp_input_servers",

@@ -61,6 +61,8 @@ else()
         drivers/sdl_driver.h
         helpers/joycon_driver.cpp
         helpers/joycon_driver.h
+        helpers/rumble_mapping.cpp
+        helpers/rumble_mapping.h
         helpers/joycon_protocol/calibration.cpp
         helpers/joycon_protocol/calibration.h
         helpers/joycon_protocol/common_protocol.cpp

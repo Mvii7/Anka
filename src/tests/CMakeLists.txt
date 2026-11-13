@@ -64,6 +64,7 @@ add_executable(tests
     video_core/native_macro_fifo.cpp
     video_core/nx2_write_history.cpp
     input_common/calibration_configuration_job.cpp
+    input_common/rumble_mapping.cpp
     yuzu_cmd/nx2_auto_script.cpp
     ../yuzu_cmd/nx2_auto_script.cpp
 )
