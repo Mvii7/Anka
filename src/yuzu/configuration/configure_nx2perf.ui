@@ -20,7 +20,7 @@
    <item>
     <widget class="QLabel" name="intro">
      <property name="text">
-      <string>Speed settings. They apply when a game starts; once a game has run in this session, a change needs a restart (you are asked).</string>
+      <string>These settings affect performance. They take effect when a game starts. If a game has already run since Dozer was opened, Dozer will ask to restart before a change applies.</string>
      </property>
      <property name="wordWrap">
       <bool>true</bool>
