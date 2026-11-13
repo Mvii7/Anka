@@ -20,7 +20,7 @@ set "FULLSCREEN=-f"
 rem DK_DYN: 1 = Bananza dynamic frame rate patch (in memory, README), 0 = off.
 set "DK_DYN=1"
 rem MKW_DYN: 1 = Mario Kart World dynamic frame rate patch (in memory, README), 0 = off.
-set "MKW_DYN=0"
+set "MKW_DYN=1"
 rem OSD: 1 = FPS / speed overlay through RivaTuner Statistics Server (if running).
 set "OSD=1"
 rem ---------------------------------------------------------------------------------------

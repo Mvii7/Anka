@@ -249,7 +249,8 @@
 # MKW_DYN=1: while Mario Kart World's main module loads, patch its frame mode choice in memory
 # (after the Lichii fork's patch): the game picks 1 or 2 vblanks a frame from the real frame
 # time instead of staying at 30 fps, and presents are paced to every vblank (PACE_ONE=0 keeps
-# the interval). Off by default; off, no module is touched. Nothing is written to disk.
+# the interval). Off by default here (the launchers and the Tuning tab turn it on); off, no
+# module is touched. Nothing is written to disk.
 #EDEN_NX2_MKW_DYN=1
 
 # --- read traps (core/memory/read_traps.h; ported from the ZendNevs fork) ---

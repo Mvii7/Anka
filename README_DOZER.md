@@ -127,13 +127,17 @@ Below the preset are the nine settings, in two groups:
 | Lean front macro path | `FRONT_MACRO_LEAN=1` | All games |
 | Timed frame generation | `FG_TIMED=1` (only does something with frame generation on) | All games |
 | FPS overlay in RivaTuner | `OSD=1` (RTSS, if it runs) | All games |
-| Dynamic frame rate | `DK_DYN=1` | Donkey Kong Bananza only (off in other games) |
-| Frame pacing | `PRESENT_INTERVAL_WORD=12:16:4`, `MODE_PACE=2`, `PACE_SPIN_US=1500` | Donkey Kong Bananza only (off in other games) |
+| Donkey Kong Bananza dynamic frame rate | `DK_DYN=1` | Specific Games: Bananza only, no preset changes it |
+| Mario Kart World dynamic frame rate | `MKW_DYN=1` | Specific Games: Mario Kart World only, no preset changes it |
 
 These are the switches `start-recommended.bat` sets ("Launchers", "Main switches"). The program
-sets them in its own environment just before a game starts. The two Bananza settings are set
-only when the game's title id is 040074A01BF12000 (the one the dynamic frame rate patch checks);
-for any other game they stay off. The log says which were set ("Dozer settings for <title id>
+sets them in its own environment just before a game starts. The Specific Games settings are set
+only for their game, by title id: Bananza's 040074A01BF12000 and Mario Kart World's
+0400C3F00006E000 (the ones the patches check); for any other game they stay off. They are no part
+of the presets (not even Safe changes them) and both are on until unticked. For Bananza the
+program always sets its frame pacing too (`PRESENT_INTERVAL_WORD=12:16:4`, `MODE_PACE=2`,
+`PACE_SPIN_US=1500`, no box): the dynamic frame rate patch sets it aside while it applies, and
+it steers the game when the patch is unticked or finds nothing to patch. The log says which were set ("Dozer settings for <title id>
 ...").
 
 **When a change takes effect.** The switches are read once per session. The settings take effect
@@ -142,7 +146,8 @@ it. If you change them with **OK** or **Apply** after a game was already started
 session, Dozer asks "Restart Dozer now to apply?": **Restart Now** closes Dozer and opens it again,
 with the running game if one is running (unsaved game progress is lost), otherwise with the same
 command line; **Later** keeps the session's switches. When you start a game that needs other
-switches than the session's first game (Bananza after another game, or the other way round),
+switches than the session's first game (a game with Specific Games settings after another game,
+or the other way round),
 Dozer asks: **Restart** (opens again with that game), **Start Anyway** (keeps the session's
 switches) or **Cancel**.
 
@@ -204,7 +209,7 @@ changed:
 | `CONFIG=` | another `sdl2-config` .ini for this launcher; empty = automatic (above; the reactive launcher uses `sdl2-config-reactive.ini`) |
 | `FULLSCREEN=-f` | full screen; empty = window |
 | `DK_DYN=1` | Bananza dynamic frame rate patch (below); `0` = off |
-| `MKW_DYN=0` | Mario Kart World dynamic frame rate patch (below); `1` = on |
+| `MKW_DYN=1` | Mario Kart World dynamic frame rate patch (below); `0` = off |
 | `OSD=1` | FPS / speed display through RTSS; `0` = off |
 
 (`DK_DYN=` and `OSD=` are in the recommended, fast and reactive launchers only.) If the path of your
@@ -290,15 +295,15 @@ moves the 40 fps limit.
 
 It is off by default in dozer-cli; `start-recommended.bat`, `start-fast.bat` and
 `start-reactive-experimental.bat` turn it on (`DK_DYN=1` at the top), and so does the menu
-program's Tuning tab (Dynamic frame rate, on in Recommended, Fast and Experimental, Bananza
-only). With it the game's frame time varies by design (any rate between 40 and 60, in
+program's Tuning tab (Donkey Kong Bananza dynamic frame rate, under Specific Games, on until
+unticked, no preset changes it). With it the game's frame time varies by design (any rate between 40 and 60, in
 steps of 2); below 40 fps the game still drops to its 30 fps rule. While it is applied,
 `PRESENT_INTERVAL_WORD` and `MODE_PACE` are set aside and presents are paced to every vblank.
 
 ## Mario Kart World dynamic frame rate (MKW-DYN)
 
 `EDEN_NX2_MKW_DYN=1` (`MKW_DYN=1` in `start-recommended.bat`, `start-fast.bat` and
-`start-reactive-experimental.bat`) applies a game-specific patch: when Mario Kart World's main
+`start-reactive-experimental.bat`, and the menu program's Tuning tab, Specific Games) applies a game-specific patch: when Mario Kart World's main
 module is loaded, three instructions of its frame mode choice are rewritten **in memory** so that
 the game picks 1 or 2 vblanks a frame from its real frame time instead of staying at 30 fps, and
 presents are paced to every vblank (`PACE_ONE=0` keeps the interval). It follows the Lichii
@@ -306,8 +311,8 @@ fork's patch (zortos293/Lichii#1332, including its fix for the game's own wait f
 vblank, which kept the game at 30 fps). Nothing is written to disk, no game file is changed, and
 with the switch unset no module is touched. It only applies to Mario Kart World (title
 0400C3F00006E000) and only if each of the three instruction sequences is found exactly once;
-otherwise the log says which one was not. It is off by default and has no box in the Tuning tab
-yet. It was not measured on Dozer: the game may still not reach 60 fps where the CPU is the limit.
+otherwise the log says which one was not. It is off by default in dozer-cli, on in the launchers
+and the Tuning tab (until unticked; no preset changes it). It was not measured on Dozer: the game may still not reach 60 fps where the CPU is the limit.
 
 ## Frame generation (optional)
 

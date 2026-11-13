@@ -45,7 +45,7 @@ bool g_pending_unasked = false; // the waiting settings changed since the restar
 
 struct Applied {
     std::vector<Perf::Var> plan;
-    bool bananza;
+    Perf::Game game;
 };
 std::optional<Applied> g_applied; // set at the first boot
 
@@ -106,6 +106,18 @@ void CaptureOutsideSwitches() {
     });
 }
 
+const char* GameName(Perf::Game game) {
+    switch (game) {
+    case Perf::Game::Bananza:
+        return "Donkey Kong Bananza";
+    case Perf::Game::MarioKartWorld:
+        return "Mario Kart World";
+    case Perf::Game::Other:
+        break;
+    }
+    return "";
+}
+
 bool SetOutside(std::string_view name) {
     for (const std::string_view outside : g_set_outside) {
         if (outside == name) {
@@ -117,18 +129,19 @@ bool SetOutside(std::string_view name) {
 
 Boot Prepare(QWidget* parent, u64 program_id, const QString& game, bool fullscreen,
              bool applet) {
-    const bool bananza = Perf::IsBananza(program_id);
-    auto plan = Perf::Plan(UISettings::values.nx2perf, bananza, SetOutside);
+    const Perf::Game kind = Perf::GameOf(program_id);
+    auto plan = Perf::Plan(UISettings::values.nx2perf, kind, SetOutside);
     if (!g_applied) {
         for (const auto& var : plan) {
             SetVariable(var);
         }
         LOG_INFO(Frontend, "Dozer settings for {:016X}{}: {}", program_id,
-                 bananza ? " (Donkey Kong Bananza)" : "", Describe(plan).toStdString());
+                 kind == Perf::Game::Other ? "" : fmt::format(" ({})", GameName(kind)),
+                 Describe(plan).toStdString());
         for (const std::string_view name : g_set_outside) {
             LOG_INFO(Frontend, "Dozer: {} was set outside the program, left as it is", name);
         }
-        g_applied = Applied{std::move(plan), bananza};
+        g_applied = Applied{std::move(plan), kind};
         return Boot::Go;
     }
     if (plan == g_applied->plan) {
@@ -141,12 +154,14 @@ Boot Prepare(QWidget* parent, u64 program_id, const QString& game, bool fullscre
     }
 
     QString why;
-    if (bananza && !g_applied->bananza) {
-        why = QObject::tr("Donkey Kong Bananza's own settings are off in this session, which "
-                          "started with another game.");
-    } else if (!bananza && g_applied->bananza) {
-        why = QObject::tr("Donkey Kong Bananza's own settings are still on from Bananza; they "
-                          "are only for Bananza.");
+    if (kind != Perf::Game::Other && kind != g_applied->game) {
+        why = QObject::tr("%1's own settings are off in this session, which started with "
+                          "another game.")
+                  .arg(QString::fromUtf8(GameName(kind)));
+    } else if (kind == Perf::Game::Other && g_applied->game != Perf::Game::Other) {
+        why = QObject::tr("%1's own settings are still on in this session; they are only for "
+                          "that game.")
+                  .arg(QString::fromUtf8(GameName(g_applied->game)));
     } else {
         why = QObject::tr("The tuning settings changed since this session's first game.");
     }
@@ -178,12 +193,12 @@ Boot Prepare(QWidget* parent, u64 program_id, const QString& game, bool fullscre
 
 bool OfferRestart(QWidget* parent, const QString& running_game, bool fullscreen) {
     std::optional<std::vector<Perf::Var>> applied;
-    bool bananza = false;
+    Perf::Game game = Perf::Game::Other;
     if (g_applied) {
         applied = g_applied->plan;
-        bananza = g_applied->bananza;
+        game = g_applied->game;
     }
-    const auto plan = Perf::Plan(UISettings::values.nx2perf, bananza, SetOutside);
+    const auto plan = Perf::Plan(UISettings::values.nx2perf, game, SetOutside);
     const bool pending = HasPendingGraphics();
     const bool pending_new = std::exchange(g_pending_unasked, false);
     if (!Perf::NeedsRestart(applied, plan) && !(applied && pending_new)) {

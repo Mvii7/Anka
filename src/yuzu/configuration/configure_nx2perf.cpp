@@ -33,9 +33,7 @@ ConfigureNx2Perf::ConfigureNx2Perf(QWidget* parent)
         {ui->fg_timed, &S::fg_timed, {"EDEN_NX2_FG_TIMED"}},
         {ui->osd, &S::osd, {"EDEN_NX2_OSD"}},
         {ui->dk_dyn, &S::dk_dyn, {"EDEN_NX2_DK_DYN"}},
-        {ui->dk_pacing,
-         &S::dk_pacing,
-         {"EDEN_NX2_PRESENT_INTERVAL_WORD", "EDEN_NX2_MODE_PACE", "EDEN_NX2_PACE_SPIN_US"}},
+        {ui->mkw_dyn, &S::mkw_dyn, {"EDEN_NX2_MKW_DYN"}},
     };
 
     SetConfiguration();
@@ -138,7 +136,8 @@ void ConfigureNx2Perf::ShowPreset() {
         ui->preset_text->setText(tr("All settings below off, and the GPU shortcuts that are on by "
                                     "default off too (the variables start-safe.bat sets to 0). "
                                     "Frame generation off; other graphics settings such as "
-                                    "Reactive Flushing stay as they are."));
+                                    "Reactive Flushing stay as they are, and so do the settings "
+                                    "for specific games."));
         break;
     case Perf::Preset::Custom:
         ui->preset_text->setText(tr("Your own choice of the settings below."));
