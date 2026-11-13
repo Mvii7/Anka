@@ -207,13 +207,11 @@ void ConfigureBananza::ShowPreset() {
         break;
     case Quality::Preset::Balanced:
         preset_text->setText(tr("A moderate cut: render resolution 65% at best and 45% at "
-                                "worst, smaller bloom and blur, terrain LOD distance 75%, "
-                                "camera far distance 80%."));
+                                "worst, smaller bloom and blur, camera far distance 80%."));
         break;
     case Quality::Preset::Performance:
         preset_text->setText(tr("A hard cut: render resolution 50% at best and 35% at worst, "
-                                "terrain LOD distance 50%, camera far distance 50%, Low terrain "
-                                "mesh simplification. The picture gets visibly softer and "
+                                "camera far distance 50%. The picture gets visibly softer and "
                                 "distant scenery disappears."));
         break;
     case Quality::Preset::Custom:

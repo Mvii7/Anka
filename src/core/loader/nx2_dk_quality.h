@@ -73,7 +73,9 @@ enum class Preset : u8 {
     Custom,
 };
 
-/// A preset's values (0: the game's). Custom has none of its own: nothing set.
+/// A preset's values (0: the game's). Custom has none of its own: nothing set. The terrain LOD
+/// distance and mesh simplification are not in them: the first Performance preset with them was
+/// slower than the game's own, and which row did it is not known yet.
 constexpr Values PresetValues(Preset preset) {
     Values values{};
     if (preset == Preset::Balanced) {
@@ -83,7 +85,6 @@ constexpr Values PresetValues(Preset preset) {
         values[CubeMapInterval] = 12;
         values[RadialBlurScale] = 40;
         values[RadialBlurSamples] = 12;
-        values[VoxelLodDist] = 75;
         values[CameraFar] = 80;
         values[ColorDecalMax] = 400;
     } else if (preset == Preset::Performance) {
@@ -93,8 +94,6 @@ constexpr Values PresetValues(Preset preset) {
         values[CubeMapInterval] = 24;
         values[RadialBlurScale] = 25;
         values[RadialBlurSamples] = 8;
-        values[VoxelLodDist] = 50;
-        values[MeshSimplify] = 5;
         values[CameraFar] = 50;
         values[ColorDecalMax] = 200;
     }
