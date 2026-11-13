@@ -123,8 +123,9 @@ void ConfigureBananza::RetranslateUI() {
             "coarser meshes. Lower: coarser terrain closer to the camera, fewer triangles.")},
         {tr("Terrain mesh simplification"),
          tr("How the game simplifies the destructible terrain's meshes: 1 Normal (the game's "
-            "usual), 2 High, 3 SuperHigh, 4 NoSimplify, 5 Low. Low is the one that should cost "
-            "less. Applies to every terrain field, including ones the game keeps unsimplified.")},
+            "usual), 2 High, 3 SuperHigh, 4 NoSimplify, 5 Low. Which of them simplifies the most "
+            "is not known: the names could mean either way, so try them. Applies to every "
+            "terrain field, including ones the game keeps unsimplified.")},
         {tr("Camera far distance"),
          tr("Scales the distance beyond which the game draws nothing. A big cut (about 10%) "
             "doubled the frame rate in a busy area in testing, but scenery stops being drawn "

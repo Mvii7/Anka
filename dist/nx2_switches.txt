@@ -266,7 +266,8 @@
 # coarser terrain closer to the camera.
 #EDEN_NX2_DKQ_VOXEL_LOD_DIST=100
 # MESH_SIMPLIFY=<1-5>: the terrain's mesh simplification type for every field: 1 Normal (the
-# game's usual), 2 High, 3 SuperHigh, 4 NoSimplify, 5 Low.
+# game's usual), 2 High, 3 SuperHigh, 4 NoSimplify, 5 Low (which simplifies the most is not
+# known: higher could mean more simplification or less).
 #EDEN_NX2_DKQ_MESH_SIMPLIFY=5
 # CAMERA_FAR=<10-100>: the camera's far distance in % (100). Beyond it nothing is drawn: 10 about
 # doubled the frame rate in a busy area (Selevet fork, EDEN_NX2_FAR_SCALE) but scenery stops
