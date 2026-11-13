@@ -74,6 +74,18 @@ QString Describe(const std::vector<Perf::Var>& plan) {
     return lines.isEmpty() ? QStringLiteral("none") : lines.join(QLatin1Char(' '));
 }
 
+const char* GameName(Perf::Game game) {
+    switch (game) {
+    case Perf::Game::Bananza:
+        return "Donkey Kong Bananza";
+    case Perf::Game::MarioKartWorld:
+        return "Mario Kart World";
+    case Perf::Game::Other:
+        break;
+    }
+    return "";
+}
+
 } // Anonymous namespace
 
 void CaptureStartEnvironment() {
@@ -104,18 +116,6 @@ void CaptureOutsideSwitches() {
             g_set_outside.push_back(name);
         }
     });
-}
-
-const char* GameName(Perf::Game game) {
-    switch (game) {
-    case Perf::Game::Bananza:
-        return "Donkey Kong Bananza";
-    case Perf::Game::MarioKartWorld:
-        return "Mario Kart World";
-    case Perf::Game::Other:
-        break;
-    }
-    return "";
 }
 
 bool SetOutside(std::string_view name) {
