@@ -424,34 +424,6 @@ spec defines for feedback loops). If you see wrong images with it, set `RX_RT_FI
 launcher or use the balanced one. Do not turn on `RX_MASKED_TARGETS` (known defect: a texture
 blit ignores the mask) or `RX_COALESCE_LOOSE` (diagnostic only).
 
-## Known issues
-
-- **A game started from the Home Menu applet** in `dozer.exe` runs with the session's settings;
-  Dozer does not ask about a restart there.
-- **Restart starts the game normally**: with its per-game settings and its first program.
-- The launchers copy `qt-config.ini` once, on the first start; settings changed in the menu
-  programs later do not reach dozer-cli (`sdl2-config.ini`). To copy them again, rename
-  `sdl2-config.ini` (and `sdl2-config-reactive.ini`) and start a launcher.
-- **Black blocks with a bright edge** appear in some places. They were seen in a session with
-  frame generation and, before that, without it; the likely cause is an older rendering issue of
-  this game (also reported for upstream), not frame generation, but it is not settled. If you
-  see them, note whether they stay in place in the world, try without frame generation and with
-  `start-safe.bat` (or the Safe preset), and report where.
-- **Reactive flushing** (the program's default; the balanced and performance launchers turn it off only in a
-  `sdl2-config.ini` they make, the Performance preset, also on Dozer's first start, in
-  `qt-config.ini`) can cost FPS at the game's opening; its new switches were not tried
-  with frame generation.
-- **AMD and Intel GPUs were not tried**; neither were games other than Bananza and Mario Kart
-  World. The Bananza switches
-  (`PRESENT_INTERVAL_WORD`, `MODE_PACE`, `DK_DYN`) are meant for Bananza only.
-- The OSD writes to RTSS's shared memory; if the program is killed (Task Manager), the text can
-  stay on screen until RTSS is restarted.
-- A program built with profile-guided optimization is fastest on the paths it was trained on.
-  This release reuses the profile of an earlier training run (commit `c8bbd32fe9`, 3 Nov:
-  Bananza with the switches of that day, before `DK_DYN`, `FG_TIMED` and `RX_RT_FIT`, reactive
-  flushing off). Newer and other paths work, maybe a little slower. Both programs use it; the
-  menu program's own Qt code gets no profile.
-
 ## AI disclosure
 
 Much of this fork's code, its commit messages and these documents were written with AI coding
