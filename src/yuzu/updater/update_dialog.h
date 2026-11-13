@@ -22,6 +22,9 @@ private slots:
     void Download();
 
 private:
+    bool DownloadTo(const QString& filename);
+    void InstallInPlace(const QString& target);
+
     Ui::UpdateDialog* ui;
     QList<QRadioButton*> m_buttons;
     Common::Net::Asset m_asset;
