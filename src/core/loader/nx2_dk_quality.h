@@ -34,6 +34,7 @@ enum Id : size_t {
     RadialBlurScale,   ///< RadialBlurRenderScale, %
     RadialBlurSamples, ///< RadialBlurSamplingNum
     VoxelLodDist,      ///< terrain Lod1Dist and Lod2Dist, % of the game's
+    CameraFar,         ///< the camera's far distance, % (EDEN_NX2_FAR_SCALE of the Selevet fork)
     ColorDecalMax,     ///< ColorDecalMaxNum
     MeshSimplify,      ///< terrain MeshSimplifyType: 1 Normal, 2 High, 3 SuperHigh, 4 NoSimplify, 5 Low
     Count,
@@ -57,6 +58,7 @@ inline constexpr std::array<Knob, Count> Knobs{{
     {"radial_blur_scale", "EDEN_NX2_DKQ_RADIAL_BLUR_SCALE", 10, 100, 50},
     {"radial_blur_samples", "EDEN_NX2_DKQ_RADIAL_BLUR_SAMPLES", 1, 32, 20},
     {"voxel_lod_dist", "EDEN_NX2_DKQ_VOXEL_LOD_DIST", 10, 400, 100},
+    {"camera_far", "EDEN_NX2_DKQ_CAMERA_FAR", 10, 100, 100},
     {"color_decal_max", "EDEN_NX2_DKQ_COLOR_DECAL_MAX", 1, 660, 660},
     {"mesh_simplify", "EDEN_NX2_DKQ_MESH_SIMPLIFY", 1, 5, 1},
 }};
@@ -85,6 +87,7 @@ constexpr Values PresetValues(Preset preset) {
         values[RadialBlurScale] = 40;
         values[RadialBlurSamples] = 12;
         values[VoxelLodDist] = 75;
+        values[CameraFar] = 80;
         values[ColorDecalMax] = 400;
     } else if (preset == Preset::Performance) {
         values[ResBest] = 50;
@@ -96,6 +99,7 @@ constexpr Values PresetValues(Preset preset) {
         values[RadialBlurSamples] = 8;
         values[VoxelLodDist] = 50;
         values[MeshSimplify] = 5;
+        values[CameraFar] = 50;
         values[ColorDecalMax] = 200;
     }
     return values;
@@ -189,12 +193,14 @@ constexpr float GameMinRate = 1.375f;
 constexpr float GameMaxRate = 2.0f;
 
 /// Words of free space past the end of the text segment: the dynamic FPS patch has the first 19,
-/// the terrain LOD routines start at word 32.
-constexpr size_t CaveOffset = 32;
+/// the terrain LOD routines start at word 20.
+constexpr size_t CaveOffset = 20;
 constexpr size_t CaveRoutineWords = 5;
 constexpr size_t MeshRoutine = 2 * CaveRoutineWords; ///< after the terrain LOD routines
 constexpr size_t MeshRoutineWords = 4;
-constexpr size_t CaveWords = MeshRoutine + MeshRoutineWords;
+constexpr size_t FarRoutine = MeshRoutine + MeshRoutineWords; ///< three, after the mesh one
+constexpr size_t FarRoutineWords = 5;
+constexpr size_t CaveWords = FarRoutine + 3 * FarRoutineWords;
 
 /// The upper half of a float, rounded: the constants are put in with one `movz wN, #x, lsl #16`.
 constexpr u32 FloatHigh(float value) {
@@ -443,6 +449,41 @@ inline Result Apply(std::span<u8> text, u32 text_size, u32 aligned_size, const V
                 0x14000000U | (static_cast<u32>((from + 1) - (routine + 3)) & 0x3FFFFFFU));
             put(from, 0x14000000U | (static_cast<u32>(routine - from) & 0x3FFFFFFU));
             result[MeshSimplify] = State::Applied;
+        }
+    }
+
+    // The camera's far distance (the Selevet fork's EDEN_NX2_FAR_SCALE, from its pull request 15):
+    // three places load a fresh far into s1 before the camera setter. Each instruction becomes a
+    // jump to a routine that runs it, then multiplies s1 by the scale; s2 is written by the next
+    // instruction that uses it at all three, so the routine borrows it:
+    //   <the instruction>; ldr s2, <scale>; fmul s1, s1, s2; b back; <scale>
+    // Beyond the far the game does not draw: a low scale drops the scenery in the distance.
+    if (const int far_percent = set(CameraFar); far_percent != 0) {
+        constexpr u32 FmovS0S8 = 0x1E204100U, FmovS1S9 = 0x1E204121U, AddX2Sp8 = 0x910023E2U;
+        constexpr u32 FmovS2S10 = 0x1E204142U, FaddS1S1S2 = 0x1E222821U;
+        constexpr u32 LdrS2Literal = 0x1C000062U; // ldr s2, #12: the word after the branch
+        constexpr u32 FmulS1S1S2 = 0x1E220821U;
+        std::array<size_t, 1> first{}, second{}, third{};
+        if (CaveFree(FarRoutine, 3 * FarRoutineWords) &&
+            find({{0, FmovS0S8}, {1, FmovS1S9}, {2, AddX2Sp8}, {3, FmovS2S10}}, first) &&
+            find({{0, FmovS0S8}, {1, AddX2Sp8}, {2, FmovS1S9}, {3, FmovS2S10}, {4, 0xAA1303E0U}},
+                 second) &&
+            find({{0, 0xAA1503E0U}, {1, FaddS1S1S2}, {2, 0x2D418D02U}}, third)) {
+            const std::array<size_t, 3> sites{first[0] + 1, second[0] + 2, third[0] + 1};
+            const float scale = percent(far_percent);
+            for (size_t i = 0; i < sites.size(); ++i) {
+                const size_t routine = cave + FarRoutine + i * FarRoutineWords;
+                put(routine, word(sites[i]));
+                put(routine + 1, LdrS2Literal);
+                put(routine + 2, FmulS1S1S2);
+                put(routine + 3, 0x14000000U |
+                                     (static_cast<u32>((sites[i] + 1) - (routine + 3)) &
+                                      0x3FFFFFFU));
+                put(routine + 4, std::bit_cast<u32>(scale));
+                put(sites[i],
+                    0x14000000U | (static_cast<u32>(routine - sites[i]) & 0x3FFFFFFU));
+            }
+            result[CameraFar] = State::Applied;
         }
     }
     return result;

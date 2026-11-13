@@ -128,6 +128,10 @@ void ConfigureBananza::RetranslateUI() {
          tr("How the game simplifies the destructible terrain's meshes: 1 Normal (the game's "
             "usual), 2 High, 3 SuperHigh, 4 NoSimplify, 5 Low. Low is the one that should cost "
             "less. Applies to every terrain field, including ones the game keeps unsimplified.")},
+        {tr("Camera far distance"),
+         tr("Scales the distance beyond which the game draws nothing. A big cut (about 10%) "
+            "doubled the frame rate in a busy area in testing, but scenery stops being drawn "
+            "fairly close. From the Selevet fork's far clip scale.")},
         {tr("Colour decal limit"),
          tr("The most colour decals (paint marks) the game keeps; its own is 660.")},
     }};
@@ -206,12 +210,14 @@ void ConfigureBananza::ShowPreset() {
         break;
     case Quality::Preset::Balanced:
         preset_text->setText(tr("A moderate cut: render resolution 65% at best and 45% at "
-                                "worst, smaller bloom and blur, terrain LOD distance 75%."));
+                                "worst, smaller bloom and blur, terrain LOD distance 75%, "
+                                "camera far distance 80%."));
         break;
     case Quality::Preset::Performance:
         preset_text->setText(tr("A hard cut: render resolution 50% at best and 35% at worst, "
-                                "terrain LOD distance 50%, Low terrain mesh simplification. "
-                                "The picture gets visibly softer."));
+                                "terrain LOD distance 50%, camera far distance 50%, Low terrain "
+                                "mesh simplification. The picture gets visibly softer and "
+                                "distant scenery disappears."));
         break;
     case Quality::Preset::Custom:
         preset_text->setText(tr("Your own choice of the rows below."));

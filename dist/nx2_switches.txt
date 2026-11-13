@@ -270,6 +270,10 @@
 # MESH_SIMPLIFY=<1-5>: the terrain's mesh simplification type for every field: 1 Normal (the
 # game's usual), 2 High, 3 SuperHigh, 4 NoSimplify, 5 Low.
 #EDEN_NX2_DKQ_MESH_SIMPLIFY=5
+# CAMERA_FAR=<10-100>: the camera's far distance in % (100). Beyond it nothing is drawn: 10 about
+# doubled the frame rate in a busy area (Selevet fork, EDEN_NX2_FAR_SCALE) but scenery stops
+# being drawn fairly close.
+#EDEN_NX2_DKQ_CAMERA_FAR=100
 # COLOR_DECAL_MAX=<1-660>: the most colour decals (660).
 #EDEN_NX2_DKQ_COLOR_DECAL_MAX=660
 

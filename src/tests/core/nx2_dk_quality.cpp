@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: Copyright 2026 Eden Emulator Project
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <algorithm>
+#include <array>
+#include <iterator>
 #include <span>
 #include <string_view>
 #include <vector>
@@ -14,7 +17,7 @@ using namespace Loader::Nx2DkQuality;
 
 constexpr u32 Filler = 0x12345678;
 // A text segment of 0x2f04 bytes in 0x3000: the free space starts at word 0xbc4, the terrain
-// LOD routines at 0xbc4 + 32.
+// LOD routines at 0xbc4 + CaveOffset.
 constexpr u32 TextSize = 0x2f04;
 constexpr u32 AlignedSize = 0x3000;
 constexpr size_t Cave = 0xbc4 + CaveOffset;
@@ -24,6 +27,7 @@ constexpr size_t BlurSamplesGetter = 0x230, CubeMapGetter = 0x240;
 constexpr size_t BloomFirst = 0x300, BloomSecond = 0x310, BloomThird = 0x320;
 constexpr size_t DecalGetter = 0x260;
 constexpr size_t MeshStore = 0x500;
+constexpr size_t FarA = 0x600, FarB = 0x620, FarC = 0x640;
 constexpr size_t Voxel = 0x400;
 
 struct Text {
@@ -46,6 +50,12 @@ struct Text {
         PutGetter(BlurSamplesGetter, RadialBlurSamplesParam, false);
         PutGetter(CubeMapGetter, CubeMapIntervalParam, false);
         PutGetter(DecalGetter, ColorDecalMaxParam, false);
+        const u32 first[]{0x1E204100, 0x1E204121, 0x910023E2, 0x1E204142};
+        const u32 second[]{0x1E204100, 0x910023E2, 0x1E204121, 0x1E204142, 0xAA1303E0};
+        const u32 third[]{0xAA1503E0, 0x1E222821, 0x2D418D02};
+        std::copy(std::begin(first), std::end(first), &words[FarA]);
+        std::copy(std::begin(second), std::end(second), &words[FarB]);
+        std::copy(std::begin(third), std::end(third), &words[FarC]);
         words[MeshStore] = 0xB90097E8;     // str w8, [sp, #0x94]
         words[MeshStore + 1] = 0xF9403260; // ldr x0, [x19, #0x60]
         words[BloomFirst] = LdrX(8, 8, BloomScaleParam);
@@ -189,9 +199,40 @@ TEST_CASE("Nx2DkQuality: the terrain LOD and the mesh simplification together", 
     Values values{};
     values[VoxelLodDist] = 50;
     values[MeshSimplify] = 5;
+    values[CameraFar] = 50;
     const Result result = Apply(text.Bytes(), TextSize, AlignedSize, values);
     REQUIRE(result[VoxelLodDist] == State::Applied);
     REQUIRE(result[MeshSimplify] == State::Applied);
+    REQUIRE(result[CameraFar] == State::Applied);
+}
+
+TEST_CASE("Nx2DkQuality: the camera far, three places", "[core]") {
+    Text text;
+    std::vector<u32> expected = text.words;
+    const Result result = Apply(text.Bytes(), TextSize, AlignedSize, Only(CameraFar, 10));
+    REQUIRE(result[CameraFar] == State::Applied);
+    const std::array<size_t, 3> sites{FarA + 1, FarB + 2, FarC + 1};
+    const std::array<u32, 3> originals{0x1E204121, 0x1E204121, 0x1E222821};
+    for (size_t i = 0; i < 3; ++i) {
+        const size_t routine = Cave + FarRoutine + i * FarRoutineWords;
+        expected[sites[i]] = 0x14000000U | static_cast<u32>(routine - sites[i]);
+        expected[routine] = originals[i];
+        expected[routine + 1] = 0x1C000062; // ldr s2, #12
+        expected[routine + 2] = 0x1E220821; // fmul s1, s1, s2
+        expected[routine + 3] =
+            0x14000000U | (static_cast<u32>((sites[i] + 1) - (routine + 3)) & 0x3FFFFFFU);
+        expected[routine + 4] = 0x3DCCCCCD; // 0.1f
+    }
+    REQUIRE(text.words == expected);
+}
+
+TEST_CASE("Nx2DkQuality: the camera far needs all three places", "[core]") {
+    Text text;
+    text.words[FarC + 1] = Filler;
+    const std::vector<u32> before = text.words;
+    const Result result = Apply(text.Bytes(), TextSize, AlignedSize, Only(CameraFar, 10));
+    REQUIRE(result[CameraFar] == State::Missed);
+    REQUIRE(text.words == before);
 }
 
 TEST_CASE("Nx2DkQuality: the bloom scale, all three places", "[core]") {
