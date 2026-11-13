@@ -220,7 +220,7 @@ rem exit code 42 = reactive flushing on; anything else (0, or PowerShell not fou
 if errorlevel 43 exit /b 0
 if not errorlevel 42 exit /b 0
 echo  [Dozer] Note: reactive flushing is on in your sdl2-config.ini; this launcher was measured with
-echo            it off (README.md, "Reactive flushing"). The file was not changed.
+echo            it off. The file was not changed.
 exit /b 0
 :noini
 echo.

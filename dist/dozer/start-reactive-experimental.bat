@@ -13,7 +13,7 @@ rem The second choice next to start-balanced.bat. Reactive flushing copies GPU-w
 rem back to the game. On our PC (5 Nov, DK_DYN on, frame generation off) it traded the opening
 rem for open areas: with RX_RT_FIT=3, -7 percent FPS at the game's opening and +15 percent in
 rem the open area against the same build with it off. Not checked yet: together with frame
-rem generation, and the image with RX_RT_FIT=3 (README, "Reactive flushing"). If you see wrong
+rem generation, and the image with RX_RT_FIT=3. If you see wrong
 rem images, set RX_RT_FIT=1 below or use start-balanced.bat. Reactive flushing is a config
 rem setting, not a switch: with CONFIG empty this launcher uses config\sdl2-config-reactive.ini,
 rem made once as a copy of sdl2-config.ini with use_reactive_flushing=true and

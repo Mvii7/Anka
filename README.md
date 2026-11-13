@@ -63,7 +63,30 @@ Then add your game folder to the game list ("Add New Game Directory") and start 
 Game files: `.nsp`, `.xci`, `.nsz`, `.xcz`, **`.nup`** (see "NUP files") and **`.nx`** (see "NX
 files").
 
-### NUP files
+## Recommendations
+
+- **Use `.nx` instead of `.nup`.** It usually stutters less. Right-click a game in the list and
+  choose **Convert to NX...** (see "NX files"). Dozer also offers to convert a `.nup` the first
+  time you start it.
+- **Performance is the default preset.** It gives the most speed, but foliage is not drawn. To
+  get foliage back, open **Emulation > Configure... > Tuning** and pick **Balanced**, which costs
+  some performance.
+- **If your system is struggling, try handheld mode.** It trades resolution for performance. It
+  made little difference on the maintainer's machine, so it mainly helps weaker systems.
+- **Keep asynchronous presentation and asynchronous shader compilation on** (Graphics > Extras).
+  Both are on by default. Translating pipelines on worker threads keeps the game thread from
+  stalling on shader builds.
+- **Keep ASTC Recompression Method on BC3** (the default; Graphics > Advanced) and **VRAM Usage
+  Mode on Conservative** (the default). These games stream a lot of ASTC texture data, and stored
+  uncompressed it fills VRAM even on a 16 GB card, so the texture cache keeps evicting and
+  decoding textures again, which shows as stutter every few seconds. BC3 stores them about four
+  times smaller (opaque ones as BC1, about eight times) at a small loss in texture quality. If you
+  have plenty of VRAM and want the best quality, set it to Uncompressed. With BC3, Mario Kart
+  World stays under 7 GB of VRAM in total on the maintainer's machine. If you are still short of
+  VRAM and stutter, try BC1: it makes every texture BC1, including the ones with transparency, so
+  foliage and effects may lose their alpha. Not tested yet.
+
+## NUP files
 
 Dozer reads `.nup` files: NUP, the "Unencrypted (Archival) Package" of the Eglantine nx2
 project, one file that holds a game's program, its update and its metadata (name, icon,
@@ -78,7 +101,7 @@ Compressed parts are decompressed as far as the game reads them; a cache of 512 
 decompressed into `user\cache\nup` (removed when the game closes: it needs that much free
 disk space).
 
-### NX files
+## NX files
 
 Dozer reads and makes `.nx` files: NX archives of the nxformat project, one file that holds a
 game with its updates and DLC. Open one like any other game file. To make one, right-click a
@@ -104,7 +127,7 @@ GPU Mode (GPU accuracy) starts at **Fast** (Low), as in newer Eden versions (2.0
 Accurate, High, on desktop). If a game shows image errors, set
 Graphics > Advanced > GPU Mode to Accurate for that game (its Properties) or globally.
 
-### The Tuning tab
+## The Tuning tab
 
 At the top of the tab is a **Preset** box; a one-line description of the chosen preset is shown
 under it.
@@ -182,7 +205,7 @@ The tab's settings are kept in the `[Dozer]` group of `user\config\qt-config.ini
 **To uninstall,** delete the Dozer folder. **Move out what you want to keep first:** your game
 files in `Games`, and the `user` folder (your keys, firmware and saves).
 
-### The second way: dozer-cli and the launchers
+## The second way: dozer-cli and the launchers
 
 1. Put your game file (`.nsp`, `.xci`, `.nsz`, `.xcz`, `.nup` or `.nx`) in the `Games` folder (subfolders
    are fine), or drag it onto the launcher instead.
@@ -193,7 +216,7 @@ as `dozer.exe` (the one next to the programs): the same keys, firmware and saves
 settings in `user\config\sdl2-config.ini`, apart from the menu program's `qt-config.ini`. When
 `sdl2-config.ini` does not exist yet, the launcher makes it as a copy of `qt-config.ini`, so the
 controller and settings you set up in `dozer.exe` come along, and turns reactive flushing off in
-the copy (the recommended setup, see "Reactive flushing"). It never changes an existing
+the copy (the recommended setup). It never changes an existing
 `sdl2-config.ini`, nor `qt-config.ini`. The editing is done by `dozer-config.ps1` next to the
 launchers, a small, readable PowerShell script; without it the launchers skip this step and
 start the game. If neither file exists, the launcher stops with a message: start `dozer.exe`
@@ -203,29 +226,6 @@ in `Games`, the launcher lists them and asks for a number. The launchers' messag
 `%APPDATA%\eden` instead; keep the folder.)
 
 The game starts in full screen; dozer-cli has no menu. **Quit with Alt+F4.**
-
-## Recommendations
-
-- **Use `.nx` instead of `.nup`.** It usually stutters less. Right-click a game in the list and
-  choose **Convert to NX...** (see "NX files"). Dozer also offers to convert a `.nup` the first
-  time you start it.
-- **Performance is the default preset.** It gives the most speed, but foliage is not drawn. To
-  get foliage back, open **Emulation > Configure... > Tuning** and pick **Balanced**, which costs
-  some performance.
-- **If your system is struggling, try handheld mode.** It trades resolution for performance. It
-  made little difference on the maintainer's machine, so it mainly helps weaker systems.
-- **Keep asynchronous presentation and asynchronous shader compilation on** (Graphics > Extras).
-  Both are on by default. Translating pipelines on worker threads keeps the game thread from
-  stalling on shader builds.
-- **Keep ASTC Recompression Method on BC3** (the default; Graphics > Advanced) and **VRAM Usage
-  Mode on Conservative** (the default). These games stream a lot of ASTC texture data, and stored
-  uncompressed it fills VRAM even on a 16 GB card, so the texture cache keeps evicting and
-  decoding textures again, which shows as stutter every few seconds. BC3 stores them about four
-  times smaller (opaque ones as BC1, about eight times) at a small loss in texture quality. If you
-  have plenty of VRAM and want the best quality, set it to Uncompressed. With BC3, Mario Kart
-  World stays under 7 GB of VRAM in total on the maintainer's machine. If you are still short of
-  VRAM and stutter, try BC1: it makes every texture BC1, including the ones with transparency, so
-  foliage and effects may lose their alpha. Not tested yet.
 
 ## Launchers
 
@@ -266,7 +266,7 @@ error. Take the launchers from the release zip: they need Windows line endings (
   (`FG_TIMED=1`, only does something with frame generation on); the RTSS display (`OSD=1`). The
   Bananza-specific lines are marked; for other games use the safe launcher, or remove them. It
   is meant for reactive flushing **off**: it turns it off in an `sdl2-config.ini` it makes,
-  and only prints a note when an existing one has it on ("Reactive flushing"). Read traps stay
+  and only prints a note when an existing one has it on. Read traps stay
   on: the launcher clears `EDEN_NX2_READ_TRAPS`, and unset means on.
 - **`start-performance.bat`** - the default: the fastest settings, with read traps and reactive flushing off
   (`EDEN_NX2_READ_TRAPS=0`). Foliage is not rendered for a performance gain. The same other
@@ -286,8 +286,7 @@ error. Take the launchers from the release zip: they need Windows line endings (
   against the same build with reactive flushing off. Not checked yet: together with frame generation, and the
   image with `RX_RT_FIT=3`. Reactive flushing is a config setting, not a switch: with `CONFIG=`
   empty this launcher uses `config\sdl2-config-reactive.ini`, which it makes once as a copy of
-  `sdl2-config.ini` with reactive flushing and `barrier_feedback_loops` on ("Reactive flushing"
-  below). With a `CONFIG=` file that has reactive flushing off, `RX_RT_FIT=3` still acts, a
+  `sdl2-config.ini` with reactive flushing and `barrier_feedback_loops` on. With a `CONFIG=` file that has reactive flushing off, `RX_RT_FIT=3` still acts, a
   combination that was not tested.
 
 dozer-cli reads the switches only from its environment (the launchers); it does not read the
@@ -377,52 +376,6 @@ frame_gen_target_rate=120
 
 `frame_gen_target_rate` is the frame rate frame generation aims for (we use 120 on a 120 Hz+
 display; `0` uses `frame_gen_multiplier`, 2-4). `frame_gen_type=0` would pick LSFG.
-
-## Reactive flushing
-
-`use_reactive_flushing` (`[Renderer]`) copies data the GPU wrote back to game memory when the
-game reads it. **The program's default on desktop is on.** Dozer's recommended setup has it **off**: in earlier
-tests, turning it on helped in open areas and hurt at the game's opening. Look at your `sdl2-config.ini`:
-
-```ini
-use_reactive_flushing\default=false
-use_reactive_flushing=false
-```
-
-matches our recommended setup; `=true` (or no such lines) is reactive flushing on. In the menu
-program it is *Enable Reactive Flushing* under Graphics > Advanced: the Tuning tab's
-**Balanced** and **Performance** presets turn it off (Performance also on Dozer's first start),
-**Experimental** turns it on with barrier feedback loops (and `RX_RT_FIT=3`, read traps off),
-**Safe** leaves it as it is. The launchers take care of it for dozer-cli. `start-balanced.bat`
-and `start-performance.bat` write
-these two lines into the `sdl2-config.ini` each makes on the first start; neither changes an
-existing one, and each only prints a note when reactive flushing is on there (change the two lines by
-hand, with the program closed, for the recommended setup). `start-reactive-experimental.bat` uses
-its own copy, `config\sdl2-config-reactive.ini`, made once from `sdl2-config.ini` with
-`use_reactive_flushing=true` and `barrier_feedback_loops=true`. A setting changed later in one
-of the two files does not reach the other: delete `sdl2-config-reactive.ini` and the reactive
-launcher makes it again.
-
-This release adds switches for reactive flushing (all off by default; `nx2_switches_DOZER.txt`,
-"reactive flushing"). `RX_RT_FIT` targets the cost found at the game's opening: there Bananza
-renders into a 2112x1179 image while it samples the same memory as a 2095x1179 one, and with
-reactive flushing every draw copied one into the other. With the switch the two are one image,
-and a draw that reads it has to come after the draws that wrote it: `=1` ends the render pass
-before such a draw; `=3` records a barrier inside the render pass instead (color attachment
-writes before fragment shader reads, by region), so the render pass goes on. Both need
-`barrier_feedback_loops=true` under `[Renderer]` (the switch does nothing without it).
-
-In earlier tests `RX_RT_FIT=3` was clearly better than `=1` at the opening and the same in the
-open area. Against reactive flushing off it is a trade that depends on the scene. That is why there
-are three setups for play, as launchers and as presets of the Tuning tab: balanced (reactive
-flushing off, read traps on; foliage is rendered at a performance cost), performance (read traps and
-reactive flushing off; foliage is not rendered for a performance gain) and experimental (Reactive
-Flushing instead of read traps, with `RX_RT_FIT=3`). **Experimental:** reactive flushing was **never measured together with
-frame generation**, and the image with `RX_RT_FIT=3` has not been checked by eye yet (its barrier
-inside the render pass covers a fragment reading the pixel it renders, which is what the Vulkan
-spec defines for feedback loops). If you see wrong images with it, set `RX_RT_FIT=1` in the
-launcher or use the balanced one. Do not turn on `RX_MASKED_TARGETS` (known defect: a texture
-blit ignores the mask) or `RX_COALESCE_LOOSE` (diagnostic only).
 
 ## AI disclosure
 
