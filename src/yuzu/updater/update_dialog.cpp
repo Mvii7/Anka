@@ -116,8 +116,8 @@ bool UpdateDialog::DownloadTo(const QString& filename) {
     };
 
     bool write_failed = false;
-    auto content_receiver = [&](const char* data, size_t data_length) -> bool {
-        if (file.write(data, data_length) == -1) {
+    auto content_receiver = [&](const char* chunk, size_t data_length) -> bool {
+        if (file.write(chunk, data_length) == -1) {
             LOG_WARNING(Frontend, "Could not write {} bytes to file {}", data_length,
                         filename.toStdString());
             write_failed = true;
