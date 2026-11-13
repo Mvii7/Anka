@@ -43,12 +43,12 @@
       <widget class="QComboBox" name="preset">
        <item>
         <property name="text">
-         <string>Recommended</string>
+         <string>Performance</string>
         </property>
        </item>
        <item>
         <property name="text">
-         <string>Fast</string>
+         <string>Balanced</string>
         </property>
        </item>
        <item>

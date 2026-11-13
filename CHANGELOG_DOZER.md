@@ -8,6 +8,10 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- Tuning: the **Recommended** preset is renamed **Balanced** and **Fast** is renamed
+  **Performance**; the launchers are now `start-balanced.bat` and `start-performance.bat`.
+  Performance is the first start's preset. A `qt-config.ini` that never left the old default
+  moves to Performance; a preset chosen by hand is kept.
 - Consecutive NVN indexed indirect draws merge into one host multi-draw again (`INDIRECT_BATCH`,
   on). The terrain damage that had it off by default was not this merge. `=0` is one host draw
   per call.

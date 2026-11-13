@@ -1,4 +1,4 @@
-Put your game files (.nsp .xci .nsz .xcz .nup) in this folder, then double-click start-recommended.bat.
+Put your game files (.nsp .xci .nsz .xcz .nup) in this folder, then double-click start-performance.bat.
 Subfolders are searched too; with more than one game the launcher asks which one to start.
 This folder is for the launchers (dozer-cli.exe). The menu program dozer.exe has its own game
 list: add a game folder with "Add New Game Directory" in that list.
