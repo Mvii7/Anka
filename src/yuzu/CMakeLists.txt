@@ -252,11 +252,6 @@ add_custom_command(TARGET yuzu PRE_BUILD
         "${PROJECT_SOURCE_DIR}/dist/nx2_switches.txt" "$<TARGET_FILE_DIR:yuzu>/nx2_switches.txt"
     VERBATIM)
 
-# An empty "user" folder next to the executable makes the build portable.
-add_custom_command(TARGET yuzu POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:yuzu>/user"
-    VERBATIM)
-
 if (YUZU_CRASH_DUMPS)
     target_sources(yuzu PRIVATE
         breakpad.cpp
