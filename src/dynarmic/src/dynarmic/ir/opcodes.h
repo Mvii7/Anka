@@ -76,6 +76,7 @@ constexpr bool IsBarrier(const Opcode op) noexcept {
     case Opcode::A32DataSynchronizationBarrier:
     case Opcode::A32InstructionSynchronizationBarrier:
     case Opcode::A64DataMemoryBarrier:
+    case Opcode::A64DataMemoryBarrierLoadStore:
     case Opcode::A64DataSynchronizationBarrier:
     case Opcode::A64InstructionSynchronizationBarrier:
         return true;

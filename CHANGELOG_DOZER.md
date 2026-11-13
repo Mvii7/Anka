@@ -8,6 +8,9 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- CPU (x86 host): `LDAR`/`LDAPR`/`LDAXR`-style ordered loads are plain loads instead of `lock xadd`,
+  `DMB LD` and `DMB ST` emit no barrier, and each core's exclusive reservation sits on its own cache
+  line. From Lichii build 160 (PRs #1327, #1331, #1329); not built or run here.
 - Consecutive NVN indexed indirect draws merge into one host multi-draw again (`INDIRECT_BATCH`,
   on). The terrain damage that had it off by default was not this merge. `=0` is one host draw
   per call.

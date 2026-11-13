@@ -18,7 +18,7 @@ inline size_t GetExclusiveMonitorProcessorCount(ExclusiveMonitor* monitor) {
 }
 
 inline VAddr* GetExclusiveMonitorAddressPointer(ExclusiveMonitor* monitor, size_t index) {
-    return monitor->exclusive_addresses.data() + index;
+    return &monitor->exclusive_addresses[index].address;
 }
 
 inline Vector* GetExclusiveMonitorValuePointer(ExclusiveMonitor* monitor, size_t index) {

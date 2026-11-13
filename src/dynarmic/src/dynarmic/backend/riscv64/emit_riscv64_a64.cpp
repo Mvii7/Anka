@@ -161,6 +161,11 @@ void EmitIR<IR::Opcode::A64DataMemoryBarrier>(biscuit::Assembler&, EmitContext&,
 }
 
 template<>
+void EmitIR<IR::Opcode::A64DataMemoryBarrierLoadStore>(biscuit::Assembler&, EmitContext&, IR::Inst*) {
+    ASSERT(false && "Unimplemented instruction");
+}
+
+template<>
 void EmitIR<IR::Opcode::A64InstructionSynchronizationBarrier>(biscuit::Assembler&, EmitContext&, IR::Inst*) {
     ASSERT(false && "Unimplemented instruction");
 }

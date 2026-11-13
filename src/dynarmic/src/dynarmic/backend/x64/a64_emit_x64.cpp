@@ -543,6 +543,10 @@ void A64EmitX64::EmitA64DataMemoryBarrier(A64EmitContext&, IR::Inst*) {
     code.mfence();
 }
 
+void A64EmitX64::EmitA64DataMemoryBarrierLoadStore(A64EmitContext&, IR::Inst*) {
+    // x86 TSO already orders load-load, load-store and store-store.
+}
+
 void A64EmitX64::EmitA64InstructionSynchronizationBarrier(A64EmitContext& ctx, IR::Inst*) {
     if (!conf.hook_isb) {
         return;

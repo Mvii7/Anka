@@ -38,7 +38,7 @@ public:
         const VAddr masked_address = address & RESERVATION_GRANULE_MASK;
 
         Lock();
-        exclusive_addresses[processor_id] = masked_address;
+        exclusive_addresses[processor_id].address = masked_address;
         const T value = op();
         std::memcpy(exclusive_values[processor_id].data(), &value, sizeof(T));
         Unlock();
@@ -83,7 +83,11 @@ private:
     static constexpr VAddr RESERVATION_GRANULE_MASK = 0xFFFF'FFFF'FFFF'FFFFull;
     static constexpr VAddr INVALID_EXCLUSIVE_ADDRESS = 0xDEAD'DEAD'DEAD'DEADull;
     static constexpr size_t MAX_NUM_CPU_CORES = 6; // Sync with src/core/hardware_properties
-    boost::container::static_vector<VAddr, MAX_NUM_CPU_CORES> exclusive_addresses;
+    // One cache line per processor so cores don't false-share their reservations.
+    struct alignas(64) Reservation {
+        VAddr address;
+    };
+    boost::container::static_vector<Reservation, MAX_NUM_CPU_CORES> exclusive_addresses;
     boost::container::static_vector<Vector, MAX_NUM_CPU_CORES> exclusive_values;
     SpinLock lock;
 };

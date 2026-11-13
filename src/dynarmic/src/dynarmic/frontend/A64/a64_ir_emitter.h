@@ -89,6 +89,11 @@ public:
         Inst(Opcode::A64DataMemoryBarrier);
     }
 
+    /// DMB LD / DMB ST: strongly ordered hosts (x86) need no barrier for these.
+    void DataMemoryBarrierLoadStore() noexcept {
+        Inst(Opcode::A64DataMemoryBarrierLoadStore);
+    }
+
     void InstructionSynchronizationBarrier() noexcept {
         Inst(Opcode::A64InstructionSynchronizationBarrier);
     }

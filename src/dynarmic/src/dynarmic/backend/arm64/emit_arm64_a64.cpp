@@ -468,6 +468,11 @@ void EmitIR<IR::Opcode::A64DataMemoryBarrier>(oaknut::CodeGenerator& code, EmitC
 }
 
 template<>
+void EmitIR<IR::Opcode::A64DataMemoryBarrierLoadStore>(oaknut::CodeGenerator& code, EmitContext&, IR::Inst*) {
+    code.DMB(oaknut::BarrierOp::SY);
+}
+
+template<>
 void EmitIR<IR::Opcode::A64InstructionSynchronizationBarrier>(oaknut::CodeGenerator& code, EmitContext& ctx, IR::Inst*) {
     if (!ctx.conf.hook_isb) {
         return;

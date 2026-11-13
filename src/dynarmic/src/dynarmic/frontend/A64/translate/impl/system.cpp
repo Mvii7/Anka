@@ -86,8 +86,13 @@ bool TranslatorVisitor::DSB(Imm<4> /*CRm*/) {
     return true;
 }
 
-bool TranslatorVisitor::DMB(Imm<4> /*CRm*/) {
-    ir.DataMemoryBarrier();
+bool TranslatorVisitor::DMB(Imm<4> CRm) {
+    const u32 type = CRm.ZeroExtend<u32>() & 3;
+    if (type == 1 || type == 2) {
+        ir.DataMemoryBarrierLoadStore();
+    } else {
+        ir.DataMemoryBarrier();
+    }
     return true;
 }
 
