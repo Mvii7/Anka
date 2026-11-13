@@ -1014,7 +1014,10 @@ public:
         // every vblank (unless EDEN_NX2_PACE_ONE=0).
         const bool dk_dyn = Core::g_nx2_dk_dyn_applied.load(std::memory_order_relaxed);
         const u64 application = system.GetApplicationProcessProgramID();
-        m_pace_one = Nx2DkDynPace::PaceOne(dk_dyn, application, std::getenv("EDEN_NX2_PACE_ONE"));
+        const bool mkw_dyn = Core::g_nx2_mkw_dyn_applied.load(std::memory_order_relaxed);
+        const char* const pace_one = std::getenv("EDEN_NX2_PACE_ONE");
+        m_pace_one = Nx2DkDynPace::PaceOne(dk_dyn, application, pace_one) ||
+                     Nx2DkDynPace::PaceOneMkw(mkw_dyn, application, pace_one);
         m_dk_dyn_applied = Nx2DkDynPace::ReportVrr(dk_dyn, application);
         if (Nx2DkDynPace::ReportVrr(dk_dyn, application)) {
             if (GetReplies() == nullptr) {
@@ -1183,8 +1186,9 @@ private:
         if (m_pace_one) [[unlikely]] {
             if (!m_pace_one_logged) {
                 m_pace_one_logged = true;
-                LOG_INFO(Service, "nx2:vi2 dynamic FPS (EDEN_NX2_DK_DYN): presents paced to every "
-                                  "vblank; EDEN_NX2_MODE_PACE and the present interval set aside");
+                LOG_INFO(Service, "nx2:vi2 dynamic FPS (EDEN_NX2_DK_DYN, EDEN_NX2_MKW_DYN): "
+                                  "presents paced to every vblank; EDEN_NX2_MODE_PACE and the "
+                                  "present interval set aside");
                 if (VideoCommon::Nx2ModeGov::Enabled()) {
                     LOG_WARNING(Service, "nx2:vi2 EDEN_NX2_MODE_GOV stays on with EDEN_NX2_DK_DYN: "
                                          "its GPU timer steers the patched game too");
@@ -1248,7 +1252,7 @@ private:
                 m_stats.frame_us += frame;
                 m_stats.max_frame_us = (std::max)(m_stats.max_frame_us, frame);
                 m_stats.hitches += frame > 100'000 ? 1 : 0;
-                if (m_pace_one) {
+                if (m_pace_one && m_dk_dyn_applied) {
                     m_stats.dyn_step.Add(frame);
                 }
                 // EDEN_NX2_OSD: the game time this interval stepped, for the on-screen speed.
@@ -1300,7 +1304,7 @@ private:
                     m_vsync->vrr_delayed = 0;
                     m_vsync->vrr_bottom = 0;
                 }
-                if (m_pace_one) {
+                if (m_pace_one && m_dk_dyn_applied) {
                     extra += fmt::format(", dynamic FPS: {} frames over 2.5 vblanks, speed "
                                          "estimate {:.3f}x",
                                          m_stats.dyn_step.capped, m_stats.dyn_step.Speed());

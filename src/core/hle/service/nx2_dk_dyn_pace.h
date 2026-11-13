@@ -33,6 +33,15 @@ constexpr bool PaceOne(bool applied, u64 application, const char* pace_one) {
     return ReportVrr(applied, application) && !(pace_one != nullptr && pace_one[0] == '0');
 }
 
+/// EDEN_NX2_MKW_DYN on the vi2 side: Mario Kart World's patch (core/loader/nx2_mkw_dynamic_fps.h,
+/// Core::g_nx2_mkw_dyn_applied) went in and it is the application. Presents are paced to every
+/// vblank like Bananza's; VRR is not reported to it. EDEN_NX2_PACE_ONE=0 keeps the interval.
+constexpr u64 MkwProgramId = 0x0400C3F00006E000ULL;
+
+constexpr bool PaceOneMkw(bool applied, u64 application, const char* pace_one) {
+    return applied && application == MkwProgramId && !(pace_one != nullptr && pace_one[0] == '0');
+}
+
 /// The patched clock steps by the frame's time up to 2.5 vblanks (24 fps): a guess at the game's
 /// speed from the presents' intervals, for the 600 present stats line. A guess only: the step is
 /// the game's own, from its frame time.

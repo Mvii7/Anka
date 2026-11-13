@@ -26,6 +26,7 @@
 #include "core/hle/kernel/k_thread.h"
 #include "core/loader/nso.h"
 #include "core/loader/nx2_dk_dynamic_fps.h"
+#include "core/loader/nx2_mkw_dynamic_fps.h"
 #include "core/memory.h"
 
 #ifdef HAS_NCE
@@ -227,6 +228,35 @@ std::optional<VAddr> AppLoader_NSO::LoadModule(Kernel::KProcess& process, Core::
                             "EDEN_NX2_DK_DYN)",
                             dk_dyn->controller_matches, dk_dyn->sleep_matches,
                             dk_dyn->step_matches);
+            }
+        }
+    }
+
+    // EDEN_NX2_MKW_DYN=1 (off by default): Mario Kart World's dynamic frame rate
+    // (nx2_mkw_dynamic_fps.h). Off, no module is touched.
+    static const char* const mkw_dyn_switch = std::getenv("EDEN_NX2_MKW_DYN");
+    {
+        const auto& text = nso_header.segments[0];
+        const size_t text_start = module_start + text.location;
+        const std::span<u8> image{codeset.memory};
+        const auto mkw_dyn = Nx2MkwDynamicFps::ApplyIfEnabled(
+            mkw_dyn_switch, process.GetProgramId(), name,
+            text_start <= image.size() ? image.subspan(text_start) : std::span<u8>{}, text.size);
+        if (mkw_dyn) {
+            Core::g_nx2_mkw_dyn_applied.store(mkw_dyn->applied, std::memory_order_relaxed);
+            if (mkw_dyn->applied) {
+                LOG_INFO(Loader,
+                         "Mario Kart World: dynamic FPS on (main+{:#x}, main+{:#x}, main+{:#x}; "
+                         "EDEN_NX2_MKW_DYN)",
+                         text.location + mkw_dyn->mode * sizeof(u32),
+                         text.location + mkw_dyn->frame_time * sizeof(u32),
+                         text.location + mkw_dyn->vblank_wait * sizeof(u32));
+            } else {
+                LOG_WARNING(Loader,
+                            "Mario Kart World: dynamic FPS not applied (mode {}, frame time {}, "
+                            "vblank wait {} matches; EDEN_NX2_MKW_DYN)",
+                            mkw_dyn->mode_matches, mkw_dyn->frame_time_matches,
+                            mkw_dyn->vblank_wait_matches);
             }
         }
     }

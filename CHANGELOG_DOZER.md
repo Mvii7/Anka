@@ -8,6 +8,11 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- Mario Kart World dynamic frame rate (`MKW_DYN=1` / `EDEN_NX2_MKW_DYN=1`, off): its frame mode
+  choice is patched in memory so the game picks 1 or 2 vblanks a frame from its real frame time,
+  with presents paced to every vblank. After the Lichii fork's patch (zortos293/Lichii#1332),
+  which also skips the game's own wait for the second vblank that kept it at 30 fps. Not
+  measured on Dozer yet; no Tuning tab box yet.
 - Consecutive NVN indexed indirect draws merge into one host multi-draw again (`INDIRECT_BATCH`,
   on). The terrain damage that had it off by default was not this merge. `=0` is one host draw
   per call.

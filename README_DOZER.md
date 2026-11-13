@@ -204,6 +204,7 @@ changed:
 | `CONFIG=` | another `sdl2-config` .ini for this launcher; empty = automatic (above; the reactive launcher uses `sdl2-config-reactive.ini`) |
 | `FULLSCREEN=-f` | full screen; empty = window |
 | `DK_DYN=1` | Bananza dynamic frame rate patch (below); `0` = off |
+| `MKW_DYN=0` | Mario Kart World dynamic frame rate patch (below); `1` = on |
 | `OSD=1` | FPS / speed display through RTSS; `0` = off |
 
 (`DK_DYN=` and `OSD=` are in the recommended, fast and reactive launchers only.) If the path of your
@@ -293,6 +294,20 @@ program's Tuning tab (Dynamic frame rate, on in Recommended, Fast and Experiment
 only). With it the game's frame time varies by design (any rate between 40 and 60, in
 steps of 2); below 40 fps the game still drops to its 30 fps rule. While it is applied,
 `PRESENT_INTERVAL_WORD` and `MODE_PACE` are set aside and presents are paced to every vblank.
+
+## Mario Kart World dynamic frame rate (MKW-DYN)
+
+`EDEN_NX2_MKW_DYN=1` (`MKW_DYN=1` in `start-recommended.bat`, `start-fast.bat` and
+`start-reactive-experimental.bat`) applies a game-specific patch: when Mario Kart World's main
+module is loaded, three instructions of its frame mode choice are rewritten **in memory** so that
+the game picks 1 or 2 vblanks a frame from its real frame time instead of staying at 30 fps, and
+presents are paced to every vblank (`PACE_ONE=0` keeps the interval). It follows the Lichii
+fork's patch (zortos293/Lichii#1332, including its fix for the game's own wait for the second
+vblank, which kept the game at 30 fps). Nothing is written to disk, no game file is changed, and
+with the switch unset no module is touched. It only applies to Mario Kart World (title
+0400C3F00006E000) and only if each of the three instruction sequences is found exactly once;
+otherwise the log says which one was not. It is off by default and has no box in the Tuning tab
+yet. It was not measured on Dozer: the game may still not reach 60 fps where the CPU is the limit.
 
 ## Frame generation (optional)
 
