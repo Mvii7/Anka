@@ -22,7 +22,7 @@ constexpr u32 TextSize = 0x2f04;
 constexpr u32 AlignedSize = 0x3000;
 constexpr size_t Cave = 0xbc4 + CaveOffset;
 constexpr size_t MinNear = 0x100, MaxFar = 0x120, MaxNear = 0x140, MinFar = 0x160;
-constexpr size_t GpuGetter = 0x200, BlurScaleGetter = 0x220;
+constexpr size_t BlurScaleGetter = 0x220;
 constexpr size_t BlurSamplesGetter = 0x230, CubeMapGetter = 0x240;
 constexpr size_t BloomFirst = 0x300, BloomSecond = 0x310, BloomThird = 0x320;
 constexpr size_t DecalGetter = 0x260;
@@ -45,7 +45,6 @@ struct Text {
         words[MaxNear + 1] = LdrS(3, 8, ValueOffset);
         words[MaxFar] = LdrX(10, 10, MaxRateParam);
         words[MaxFar + 11] = LdrS(5, 10, ValueOffset);
-        PutGetter(GpuGetter, GpuTargetParam, true);
         PutGetter(BlurScaleGetter, RadialBlurScaleParam, true);
         PutGetter(BlurSamplesGetter, RadialBlurSamplesParam, false);
         PutGetter(CubeMapGetter, CubeMapIntervalParam, false);
@@ -149,17 +148,14 @@ TEST_CASE("Nx2DkQuality: the getters", "[core]") {
     Text text;
     std::vector<u32> expected = text.words;
     Values values{};
-    values[GpuTarget] = 75;
     values[RadialBlurScale] = 25;
     values[RadialBlurSamples] = 4;
     values[CubeMapInterval] = 30;
     const Result result = Apply(text.Bytes(), TextSize, AlignedSize, values);
-    for (const Id id : {GpuTarget, RadialBlurScale, RadialBlurSamples,
+    for (const Id id : {RadialBlurScale, RadialBlurSamples,
                         CubeMapInterval}) {
         REQUIRE(result[id] == State::Applied);
     }
-    expected[GpuGetter] = 0x52A852C8;         // movz w8, #0x4296, lsl #16 (75.0)
-    expected[GpuGetter + 1] = 0x1E270100;     // fmov s0, w8
     expected[BlurScaleGetter] = 0x52A7D008;   // movz w8, #0x3e80, lsl #16 (0.25)
     expected[BlurScaleGetter + 1] = 0x1E270100;
     expected[BlurSamplesGetter] = 0x52800080; // movz w0, #4
@@ -292,10 +288,10 @@ TEST_CASE("Nx2DkQuality: the terrain LOD needs its free space", "[core]") {
 
 TEST_CASE("Nx2DkQuality: a setting found twice is left alone", "[core]") {
     Text text;
-    text.PutGetter(0x500, GpuTargetParam, true);
+    text.PutGetter(0x500, RadialBlurScaleParam, true);
     const std::vector<u32> before = text.words;
-    const Result result = Apply(text.Bytes(), TextSize, AlignedSize, Only(GpuTarget, 75));
-    REQUIRE(result[GpuTarget] == State::Missed);
+    const Result result = Apply(text.Bytes(), TextSize, AlignedSize, Only(RadialBlurScale, 25));
+    REQUIRE(result[RadialBlurScale] == State::Missed);
     REQUIRE(text.words == before);
 }
 

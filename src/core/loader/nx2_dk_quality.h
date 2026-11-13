@@ -28,7 +28,6 @@ namespace Loader::Nx2DkQuality {
 enum Id : size_t {
     ResBest,           ///< highest render resolution, % of the output (NdsrUpscaleMinRate)
     ResWorst,          ///< lowest render resolution, % of the output (NdsrUpscaleMaxRate)
-    GpuTarget,         ///< GPU load the resolution control aims for, % (MaintainGpuPercentage)
     BloomScale,        ///< BloomBufferBaseScale, %
     CubeMapInterval,   ///< CubeMapShotInterval, frames
     RadialBlurScale,   ///< RadialBlurRenderScale, %
@@ -52,7 +51,6 @@ struct Knob {
 inline constexpr std::array<Knob, Count> Knobs{{
     {"res_best", "EDEN_NX2_DKQ_RES_BEST", 25, 100, 73},
     {"res_worst", "EDEN_NX2_DKQ_RES_WORST", 25, 100, 50},
-    {"gpu_target", "EDEN_NX2_DKQ_GPU_TARGET", 40, 100, 90},
     {"bloom_scale", "EDEN_NX2_DKQ_BLOOM_SCALE", 10, 100, 25},
     {"cubemap_interval", "EDEN_NX2_DKQ_CUBEMAP_INTERVAL", 1, 240, 8},
     {"radial_blur_scale", "EDEN_NX2_DKQ_RADIAL_BLUR_SCALE", 10, 100, 50},
@@ -81,7 +79,6 @@ constexpr Values PresetValues(Preset preset) {
     if (preset == Preset::Balanced) {
         values[ResBest] = 65;
         values[ResWorst] = 45;
-        values[GpuTarget] = 85;
         values[BloomScale] = 20;
         values[CubeMapInterval] = 12;
         values[RadialBlurScale] = 40;
@@ -92,7 +89,6 @@ constexpr Values PresetValues(Preset preset) {
     } else if (preset == Preset::Performance) {
         values[ResBest] = 50;
         values[ResWorst] = 35;
-        values[GpuTarget] = 80;
         values[BloomScale] = 12;
         values[CubeMapInterval] = 24;
         values[RadialBlurScale] = 25;
@@ -231,7 +227,6 @@ constexpr u32 Ret = 0xD65F03C0U;
 constexpr u32 ValueOffset = 0x64;
 constexpr u32 MinRateParam = 0x5c8;      // NdsrUpscaleMinRate
 constexpr u32 MaxRateParam = 0x5d0;      // NdsrUpscaleMaxRate
-constexpr u32 GpuTargetParam = 0x538;    // MaintainGpuPercentage
 constexpr u32 BloomScaleParam = 0x570;   // BloomBufferBaseScale
 constexpr u32 CubeMapIntervalParam = 0x220; // CubeMapShotInterval
 constexpr u32 RadialBlurScaleParam = 0x508; // RadialBlurRenderScale
@@ -360,7 +355,6 @@ inline Result Apply(std::span<u8> text, u32 text_size, u32 aligned_size, const V
             result[id] = State::Applied;
         }
     };
-    float_getter(GpuTarget, GpuTargetParam, static_cast<float>(set(GpuTarget)));
     float_getter(RadialBlurScale, RadialBlurScaleParam, percent(set(RadialBlurScale)));
     int_getter(RadialBlurSamples, RadialBlurSamplesParam);
     int_getter(CubeMapInterval, CubeMapIntervalParam);

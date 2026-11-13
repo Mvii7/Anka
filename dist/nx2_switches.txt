@@ -255,8 +255,6 @@
 # upscaler, per axis in % of the output (the game's: 73 and 50). Equal values fix it.
 #EDEN_NX2_DKQ_RES_BEST=73
 #EDEN_NX2_DKQ_RES_WORST=50
-# GPU_TARGET=<40-100>: the GPU load in % above which the game lowers its resolution (90).
-#EDEN_NX2_DKQ_GPU_TARGET=90
 # BLOOM_SCALE=<10-100>: the bloom buffers' size in % of the frame (25).
 #EDEN_NX2_DKQ_BLOOM_SCALE=25
 # CUBEMAP_INTERVAL=<1-240>: frames between reflection cube map captures (8).

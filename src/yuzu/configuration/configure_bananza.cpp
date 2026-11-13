@@ -111,9 +111,6 @@ void ConfigureBananza::RetranslateUI() {
         {tr("Worst render resolution"),
          tr("The lowest resolution the game's resolution control may drop to; the game's own is "
             "50% (1440x810). Set equal to the best one for a fixed resolution.")},
-        {tr("Resolution control: GPU load target"),
-         tr("The game lowers its resolution when its measured GPU load goes above this. Lower: "
-            "it drops sooner.")},
         {tr("Bloom buffer scale"), tr("The bloom buffers' size relative to the frame.")},
         {tr("Cube map update interval"),
          tr("Frames between two captures of the reflection cube maps. Higher is faster (the "

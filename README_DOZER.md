@@ -172,7 +172,6 @@ starts, so a change asks for a restart like the Tuning tab's boxes.
 | Row | The game's | What it changes |
 |---|---|---|
 | Best / worst render resolution | 73% / 50% | the range the game's resolution control moves in, per axis in % of the output; equal values fix the resolution |
-| Resolution control: GPU load target | 90% | the measured GPU load above which the game lowers its resolution |
 | Bloom buffer scale | 25% | the bloom buffers' size |
 | Cube map update interval | 8 frames | how often reflection cube maps are captured (the one row where higher is faster) |
 | Radial blur render scale / samples | 50% / 20 | the radial blur's buffer size and samples |
