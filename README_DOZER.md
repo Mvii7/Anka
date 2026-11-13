@@ -201,6 +201,26 @@ in `Games`, the launcher lists them and asks for a number. The launchers' messag
 
 The game starts in full screen; dozer-cli has no menu. **Quit with Alt+F4.**
 
+## Recommendations
+
+- **Use `.nx` instead of `.nup`.** It usually stutters less. Right-click a game in the list and
+  choose **Convert to NX...** (see "NX files"). Dozer also offers to convert a `.nup` the first
+  time you start it.
+- **Performance is the default preset.** It gives the most speed, but foliage is not drawn. To
+  get foliage back, open **Emulation > Configure... > Tuning** and pick **Balanced**, which costs
+  some performance.
+- **If your system is struggling, try handheld mode.** It trades resolution for performance. It
+  made little difference on the maintainer's machine, so it mainly helps weaker systems.
+- **Keep asynchronous presentation and asynchronous shader compilation on** (Graphics > Extras).
+  Both are on by default. Translating pipelines on worker threads keeps the game thread from
+  stalling on shader builds.
+- **Keep ASTC Recompression Method on BC3** (the default; Graphics > Advanced) and **VRAM Usage
+  Mode on Conservative** (the default). These games stream a lot of ASTC texture data, and stored
+  uncompressed it fills VRAM even on a 16 GB card, so the texture cache keeps evicting and
+  decoding textures again, which shows as stutter every few seconds. BC3 stores them about four
+  times smaller (opaque ones as BC1, about eight times) at a small loss in texture quality. If you
+  have plenty of VRAM and want the best quality, set it to Uncompressed.
+
 ## Launchers
 
 | Launcher | When to use it |
