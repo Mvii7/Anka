@@ -22,6 +22,8 @@ constexpr size_t MinNear = 0x100, MaxFar = 0x120, MaxNear = 0x140, MinFar = 0x16
 constexpr size_t GpuGetter = 0x200, FrameGetter = 0x210, BlurScaleGetter = 0x220;
 constexpr size_t BlurSamplesGetter = 0x230, CubeMapGetter = 0x240;
 constexpr size_t BloomFirst = 0x300, BloomSecond = 0x310, BloomThird = 0x320;
+constexpr size_t DecalGetter = 0x260, GgxGetter = 0x270, CubeOccGetter = 0x280;
+constexpr size_t DepthGetter = 0x290, RadiusGetter = 0x2a0, PolygonGetter = 0x2b0;
 constexpr size_t Voxel = 0x400;
 
 struct Text {
@@ -44,6 +46,16 @@ struct Text {
         PutGetter(BlurScaleGetter, RadialBlurScaleParam, true);
         PutGetter(BlurSamplesGetter, RadialBlurSamplesParam, false);
         PutGetter(CubeMapGetter, CubeMapIntervalParam, false);
+        PutGetter(DecalGetter, ColorDecalMaxParam, false);
+        PutGetter(DepthGetter, OcclusionDepthParam, true);
+        PutGetter(RadiusGetter, OcclusionRadiusParam, true);
+        PutGetter(PolygonGetter, OcclusionPolygonParam, false);
+        for (const auto& [at, offset] : {std::pair{GgxGetter, GgxFilterParam},
+                                          std::pair{CubeOccGetter, CubeMapOcclusionParam}}) {
+            words[at] = LdrX(8, 0, offset);
+            words[at + 1] = 0x39419100; // ldrb w0, [x8, #0x64]
+            words[at + 2] = Ret;
+        }
         words[BloomFirst] = LdrX(8, 8, BloomScaleParam);
         words[BloomFirst + 1] = LdrS(1, 8, ValueOffset);
         for (const size_t at : {BloomSecond, BloomThird}) {
@@ -110,11 +122,17 @@ TEST_CASE("Nx2DkQuality: the resolution range", "[core]") {
 
 TEST_CASE("Nx2DkQuality: a best resolution below the game's worst moves the worst too", "[core]") {
     Text text;
-    const Result result = Apply(text.Bytes(), TextSize, AlignedSize, Only(ResBest, 50));
+    const Result result = Apply(text.Bytes(), TextSize, AlignedSize, Only(ResBest, 40));
     REQUIRE(result[ResBest] == State::Applied);
     REQUIRE(result[ResWorst] == State::Unset);
-    REQUIRE(text.words[MinNear] == 0x52A80008);
-    REQUIRE(text.words[MaxNear] == 0x52A80008); // 2.0 as well: the game's 1.9 would be below
+    REQUIRE(text.words[MinNear] == 0x52A80408); // 2.5
+    REQUIRE(text.words[MaxNear] == 0x52A80408); // 2.5 as well: the game's 2.0 would be below
+}
+
+TEST_CASE("Nx2DkQuality: the game's own worst resolution is not moved by a best of 50", "[core]") {
+    Text text;
+    Apply(text.Bytes(), TextSize, AlignedSize, Only(ResBest, 50));
+    REQUIRE(text.words[MaxNear] == LdrX(8, 10, MaxRateParam));
 }
 
 TEST_CASE("Nx2DkQuality: a best resolution within the game's range leaves the worst", "[core]") {
@@ -149,6 +167,36 @@ TEST_CASE("Nx2DkQuality: the getters", "[core]") {
     expected[BlurSamplesGetter + 1] = Ret;
     expected[CubeMapGetter] = 0x528003C0;     // movz w0, #30
     expected[CubeMapGetter + 1] = Ret;
+    REQUIRE(text.words == expected);
+}
+
+TEST_CASE("Nx2DkQuality: the decal limit, the toggles and the occlusion thresholds", "[core]") {
+    Text text;
+    std::vector<u32> expected = text.words;
+    Values values{};
+    values[ColorDecalMax] = 32;
+    values[GgxFilterOff] = 1;
+    values[CubeMapOcclusionOff] = 1;
+    values[OcclusionDepth] = 200;   // 100.0
+    values[OcclusionRadius] = 50;   // 25.0
+    values[OcclusionPolygon] = 150; // 1500
+    const Result result = Apply(text.Bytes(), TextSize, AlignedSize, values);
+    for (const Id id : {ColorDecalMax, GgxFilterOff, CubeMapOcclusionOff, OcclusionDepth,
+                        OcclusionRadius, OcclusionPolygon}) {
+        REQUIRE(result[id] == State::Applied);
+    }
+    expected[DecalGetter] = 0x52800400;      // movz w0, #32
+    expected[DecalGetter + 1] = Ret;
+    for (const size_t at : {GgxGetter, CubeOccGetter}) {
+        expected[at] = 0x52800000;           // movz w0, #0
+        expected[at + 1] = Ret;
+    }
+    expected[DepthGetter] = 0x52A85908;      // movz w8, #0x42c8, lsl #16 (100.0)
+    expected[DepthGetter + 1] = 0x1E270100;
+    expected[RadiusGetter] = 0x52A83908;     // movz w8, #0x41c8, lsl #16 (25.0)
+    expected[RadiusGetter + 1] = 0x1E270100;
+    expected[PolygonGetter] = 0x5280BB80;    // movz w0, #1500
+    expected[PolygonGetter + 1] = Ret;
     REQUIRE(text.words == expected);
 }
 

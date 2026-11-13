@@ -171,13 +171,16 @@ starts, so a change asks for a restart like the Tuning tab's boxes.
 
 | Row | The game's | What it changes |
 |---|---|---|
-| Best / worst render resolution | 73% / 53% | the range the game's resolution control moves in, per axis in % of the output; equal values fix the resolution |
-| Resolution control: GPU load target | 88% | the measured GPU load above which the game lowers its resolution |
-| Frame buffer minimum scale | 60% | the lowest frame buffer scale |
-| Bloom buffer scale | 50% | the bloom buffers' size |
+| Best / worst render resolution | 73% / 50% | the range the game's resolution control moves in, per axis in % of the output; equal values fix the resolution |
+| Resolution control: GPU load target | 90% | the measured GPU load above which the game lowers its resolution |
+| Frame buffer minimum scale | 100% | the lowest frame buffer scale (the game's 100% may mean it does not use it; lower is untested) |
+| Bloom buffer scale | 25% | the bloom buffers' size |
 | Cube map update interval | 8 frames | how often reflection cube maps are captured (higher is faster) |
-| Radial blur render scale / samples | 50% / 10 | the radial blur's buffer size and samples |
+| Radial blur render scale / samples | 50% / 20 | the radial blur's buffer size and samples |
 | Terrain LOD distance / value | 100% | the two distances and values of the destructible terrain's LOD steps, relative to the game's data |
+| Colour decal limit | 660 | the most colour decals the game keeps |
+| Reflection filtering off, cube map occlusion check off | on | skips those two steps of the reflection cube maps |
+| Occlusion query depth / radius / polygons | 100% | scales the thresholds of the game's occlusion queries (effect not known yet) |
 
 The same settings as variables are `EDEN_NX2_DKQ_*` (`nx2_switches.txt`). The log
 (`user\log\eden_log.txt`) has a line "Donkey Kong Bananza: EDEN_NX2_DKQ_..." for each one that
