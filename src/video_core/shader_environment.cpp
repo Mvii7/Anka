@@ -317,9 +317,24 @@ std::optional<u64> GenericEnvironment::TryFindSize() {
 Tegra::Texture::TICEntry GenericEnvironment::ReadTextureInfo(GPUVAddr tic_addr, u32 tic_limit,
                                                              bool via_header_index, u32 raw) {
     const auto handle{Tegra::Texture::TexturePair(raw, via_header_index)};
-    ASSERT(handle.first <= tic_limit);
-    const GPUVAddr descriptor_addr{tic_addr + handle.first * sizeof(Tegra::Texture::TICEntry)};
     Tegra::Texture::TICEntry entry;
+    if (handle.first > tic_limit) {
+        // Past the pool the bytes are not a descriptor and gave the shader a random texture type
+        // and format (crashes and device losses on AMD). Compile for a plain 2D RGBA8 texture.
+        LOG_WARNING(HW_GPU, "Texture handle {:#x} indexes past the descriptor pool (index {} > "
+                            "limit {}); using a null 2D texture",
+                    raw, handle.first, tic_limit);
+        entry.raw.fill(0);
+        entry.format.Assign(Tegra::Texture::TextureFormat::A8B8G8R8);
+        entry.r_type.Assign(Tegra::Texture::ComponentType::UNORM);
+        entry.g_type.Assign(Tegra::Texture::ComponentType::UNORM);
+        entry.b_type.Assign(Tegra::Texture::ComponentType::UNORM);
+        entry.a_type.Assign(Tegra::Texture::ComponentType::UNORM);
+        entry.texture_type.Assign(Tegra::Texture::TextureType::Texture2D);
+        entry.normalized_coords.Assign(1);
+        return entry;
+    }
+    const GPUVAddr descriptor_addr{tic_addr + handle.first * sizeof(Tegra::Texture::TICEntry)};
     gpu_memory->ReadBlock(descriptor_addr, &entry, sizeof(entry));
     return entry;
 }
