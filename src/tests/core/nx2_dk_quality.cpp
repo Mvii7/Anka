@@ -184,6 +184,16 @@ TEST_CASE("Nx2DkQuality: the mesh simplification type", "[core]") {
     REQUIRE(text.words == expected);
 }
 
+TEST_CASE("Nx2DkQuality: the terrain LOD and the mesh simplification together", "[core]") {
+    Text text;
+    Values values{};
+    values[VoxelLodDist] = 50;
+    values[MeshSimplify] = 5;
+    const Result result = Apply(text.Bytes(), TextSize, AlignedSize, values);
+    REQUIRE(result[VoxelLodDist] == State::Applied);
+    REQUIRE(result[MeshSimplify] == State::Applied);
+}
+
 TEST_CASE("Nx2DkQuality: the bloom scale, all three places", "[core]") {
     Text text;
     std::vector<u32> expected = text.words;

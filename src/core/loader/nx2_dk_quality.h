@@ -280,9 +280,10 @@ inline Result Apply(std::span<u8> text, u32 text_size, u32 aligned_size, const V
     };
     const auto set = [&](Id id) { return Sanitize(values[id], Knobs[id]); };
     const size_t cave = (text_size + 15) / 16 * 4 + CaveOffset;
-    const auto CaveFree = [&] {
+    // Whether `words` words of the free space from word `first` on are unused.
+    const auto CaveFree = [&](size_t first, size_t words) {
         bool free = (cave + CaveWords) * sizeof(u32) <= aligned_size;
-        for (size_t i = 0; free && i < CaveWords; ++i) {
+        for (size_t i = first; free && i < first + words; ++i) {
             free = word(cave + i) == 0;
         }
         return free;
@@ -390,7 +391,7 @@ inline Result Apply(std::span<u8> text, u32 text_size, u32 aligned_size, const V
     if (const int dist = set(VoxelLodDist); dist != 0) {
         constexpr u32 MovX0X24 = 0xAA1803E0U;
         std::array<size_t, 1> at{};
-        const bool cave_free = CaveFree();
+        const bool cave_free = CaveFree(0, MeshRoutine);
         if (cave_free && find({{1, LdrS(8, 0, 0)},
                                {2, MovX0X24},
                                {4, LdrS(9, 0, 0)},
@@ -432,7 +433,7 @@ inline Result Apply(std::span<u8> text, u32 text_size, u32 aligned_size, const V
         constexpr u32 StrW8Sp94 = 0xB90097E8U;
         constexpr u32 LdrX0X19 = 0xF9403260U;
         std::array<size_t, 1> at{};
-        if (CaveFree() && find({{0, StrW8Sp94}, {1, LdrX0X19}}, at)) {
+        if (CaveFree(MeshRoutine, MeshRoutineWords) && find({{0, StrW8Sp94}, {1, LdrX0X19}}, at)) {
             const size_t routine = cave + MeshRoutine;
             const size_t from = at[0] + 1;
             put(routine, Movz(8, static_cast<u32>(type - 1)));
