@@ -135,7 +135,7 @@ Below the preset are the nine settings, in two groups:
 
 | Setting | Switches it sets (`EDEN_NX2_...`) | Group |
 |---|---|---|
-| Read traps | on: left unset (the default, on). Foliage is rendered at a performance cost. Off: `READ_TRAPS=0`. With Reactive Flushing off as well, foliage is not rendered. Does nothing while Reactive Flushing is on. Balanced ticks it; Performance and Experimental leave it unticked. Unticking it while Balanced is selected changes the preset to Custom | All games |
+| Read traps | on: left unset. Foliage is rendered at a performance cost. Off (the default, because the first start's Performance preset unticks it): `READ_TRAPS=0`. With Reactive Flushing off as well, foliage is not rendered. Does nothing while Reactive Flushing is on. Balanced ticks it; Performance and Experimental leave it unticked. Unticking it while Balanced is selected changes the preset to Custom | All games |
 | Split GPU thread | `BACK_STAGES=1`, `BACK_CUTS=a` | All games |
 | Acquire peek | `ACQUIRE_PEEK=1` | All games |
 | Same-value filter in the macro JIT | `JIT_SAME=1` | All games |
