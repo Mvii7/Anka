@@ -1556,7 +1556,7 @@ private:
     static u32 PresentInterval(const u32* w) {
         const IntervalSource& source = PresentIntervalSource();
         u32 vblanks = source.minimum;
-        if (source.word != 0) {
+        if (source.word != 0 && Tegra::Nx2IsBananza()) {
             const u32 value = (w[source.word] >> source.shift) & source.mask;
             vblanks = (std::max)(vblanks, std::clamp(value, 1U, 4U));
         }
