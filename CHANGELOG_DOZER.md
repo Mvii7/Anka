@@ -8,7 +8,7 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
-- Native HDR output (Graphics > HDR output: Off by default, Auto, On; Vulkan only), ported from
+- Native HDR output (Graphics > HDR output: Off, Auto (default), On; Vulkan only), ported from
   Lichii #1326. An HDR10 or scRGB swapchain while it is on; nx2:vi2 104/105 (HDR status, paper
   white) now answer SDR or HDR with the monitor's peak and SDR white instead of an empty success,
   and 10-bit and FP16 present images are shown. Anti-aliasing, post-processing, upscaling filters

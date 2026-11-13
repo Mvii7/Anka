@@ -6,12 +6,12 @@ Graphical enhancements and visual quality improvments. This doesn't cover textur
 
 ### Native HDR output
 
-**HDR output is Off by default.** Set Graphics > HDR output to Auto to present the native HDR
+**HDR output is Auto by default.** It presents the native HDR
 of Switch 2 games that have an HDR mode (Donkey Kong Bananza). It does not add HDR to SDR-only
 games. It needs Vulkan.
 
 - **Off**: the game is always told the display is SDR.
-- **Auto**: HDR while Windows HDR ("Use HDR") is on for the monitor that shows the game. Other
+- **Auto** (default): HDR while Windows HDR ("Use HDR") is on for the monitor that shows the game. Other
   hosts cannot tell, so Auto means SDR there.
 - **On**: HDR whenever the display driver offers an HDR swapchain format.
 

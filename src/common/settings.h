@@ -339,7 +339,7 @@ struct Values {
     // Off: the game always renders SDR. On: HDR whenever the surface offers an HDR format.
     // Auto: HDR while the monitor showing the game runs in HDR, where the host can tell (Windows;
     // elsewhere SDR). The game is told HDR only while the swapchain really presents HDR.
-    SwitchableSetting<HdrMode> hdr_mode{linkage, HdrMode::Off, "hdr_mode", Category::Renderer};
+    SwitchableSetting<HdrMode> hdr_mode{linkage, HdrMode::Auto, "hdr_mode", Category::Renderer};
     // HDR10: 10-bit PQ BT.2020 swapchain. scRGB: 16-bit float linear BT.709, for displays or
     // drivers that band with 10-bit (reported on NVIDIA in fullscreen).
     SwitchableSetting<HdrSwapchain> hdr_swapchain{linkage, HdrSwapchain::Hdr10, "hdr_swapchain",

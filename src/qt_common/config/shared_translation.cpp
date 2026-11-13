@@ -138,8 +138,8 @@ std::unique_ptr<TranslationMap> InitializeTranslations(QObject* parent) {
     // Renderer
     INSERT(Settings, hdr_mode, tr("HDR output:"),
            tr("HDR output for games with an HDR mode. Requires Vulkan.\n"
-              "Off (default): always SDR.\n"
-              "Auto: HDR while Windows HDR (\"Use HDR\") is on for the monitor that shows the "
+              "Off: always SDR.\n"
+              "Auto (default): HDR while Windows HDR (\"Use HDR\") is on for the monitor that shows the "
               "game, SDR otherwise and on hosts that cannot tell.\n"
               "On: HDR whenever the display driver offers an HDR format.\n"
               "The game is told the display is HDR only while Dozer really presents HDR. SDR "
