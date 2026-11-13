@@ -19,6 +19,8 @@ rem FULLSCREEN: -f starts in full screen; empty = window.
 set "FULLSCREEN=-f"
 rem DK_DYN: 1 = Bananza dynamic frame rate patch (in memory, README), 0 = off.
 set "DK_DYN=1"
+rem MKW_DYN: 1 = Mario Kart World dynamic frame rate patch (in memory, README), 0 = off.
+set "MKW_DYN=1"
 rem OSD: 1 = FPS / speed overlay through RivaTuner Statistics Server (if running).
 set "OSD=1"
 rem ---------------------------------------------------------------------------------------
@@ -87,6 +89,8 @@ set EDEN_NX2_MODE_PACE=2
 set EDEN_NX2_PACE_SPIN_US=1500
 rem Donkey Kong Bananza dynamic frame rate (DK_DYN above; 0 = the game's own 60/30 rule).
 set EDEN_NX2_DK_DYN=%DK_DYN%
+rem Mario Kart World dynamic frame rate (MKW_DYN above).
+set EDEN_NX2_MKW_DYN=%MKW_DYN%
 rem FSR3 frame generation: generated frames blended for the time they are shown (only
 rem does something when frame generation is on in the config, README).
 set EDEN_NX2_FG_TIMED=1

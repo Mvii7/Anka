@@ -120,6 +120,7 @@ ConfigureDialog::ConfigureDialog(QWidget* parent, HotkeyRegistry& registry_,
     }
 
     adjustSize();
+    resize(size() * 1.2);
     ui->selectorList->setCurrentRow(0);
 
     // Selects the leftmost button on the bottom bar (Cancel as of writing)

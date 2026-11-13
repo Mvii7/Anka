@@ -235,6 +235,10 @@ void Fsr3FrameGen::Process(const Device& device, Scheduler& scheduler, VkImage c
                            VkImageView current_view, u32 frame_index, u64 frame_count) {
     const size_t next = m_newest ^ 1;
 
+    if (frame_count == 0) {
+        m_has_history = false;
+        m_flow_valid = false;
+    }
     if (!m_has_history) {
         // First frame: nothing to compare it with yet
         scheduler.Record([this, current_frame, next](vk::CommandBuffer cmdbuf) {

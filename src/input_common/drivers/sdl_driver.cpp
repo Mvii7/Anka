@@ -14,6 +14,7 @@
 #include "common/vector_math.h"
 #include "input_common/drivers/sdl_driver.h"
 #include "input_common/helpers/dualsense_haptics.h"
+#include "input_common/helpers/rumble_mapping.h"
 
 namespace InputCommon {
 
@@ -202,37 +203,20 @@ public:
         return motion;
     }
 
-    bool RumblePlay(const Common::Input::VibrationStatus vibration) {
+    bool RumblePlay(const Common::Input::VibrationStatus& vibration, f32 curve_factor) {
         constexpr u32 rumble_max_duration_ms = 2000;
-        constexpr f32 low_start_sensitivity_limit = 140.0f;
-        constexpr f32 low_width_sensitivity_limit = 400.0f;
-        constexpr f32 high_start_sensitivity_limit = 200.0f;
-        constexpr f32 high_width_sensitivity_limit = 700.0f;
-        // Try to provide some feeling of the frequency by reducing the amplitude depending on it.
-        f32 low_frequency_scale = 1.0f;
-        if (vibration.low_frequency > low_start_sensitivity_limit) {
-            low_frequency_scale =
-                (std::max)(1.0f - (vibration.low_frequency - low_start_sensitivity_limit) /
-                                    low_width_sensitivity_limit,
-                         0.3f);
-        }
-        f32 low_amplitude = vibration.low_amplitude * low_frequency_scale;
-
-        f32 high_frequency_scale = 1.0f;
-        if (vibration.high_frequency > high_start_sensitivity_limit) {
-            high_frequency_scale =
-                (std::max)(1.0f - (vibration.high_frequency - high_start_sensitivity_limit) /
-                                    high_width_sensitivity_limit,
-                         0.3f);
-        }
-        f32 high_amplitude = vibration.high_amplitude * high_frequency_scale;
+        const auto map = Settings::values.rumble_frequency_mapping.GetValue()
+                             ? MapRumbleByFrequency
+                             : MapRumbleByBand;
+        const MotorStrengths strengths = map(vibration, curve_factor);
+        const auto low_amplitude = static_cast<u16>(strengths.low * 0xFFFF);
+        const auto high_amplitude = static_cast<u16>(strengths.high * 0xFFFF);
 
         if (sdl_controller) {
-            return SDL_RumbleGamepad(sdl_controller.get(), static_cast<u16>(low_amplitude),
-                                     static_cast<u16>(high_amplitude), rumble_max_duration_ms);
+            return SDL_RumbleGamepad(sdl_controller.get(), low_amplitude, high_amplitude,
+                                     rumble_max_duration_ms);
         } else if (sdl_joystick) {
-            return SDL_RumbleJoystick(sdl_joystick.get(), static_cast<u16>(low_amplitude),
-                                      static_cast<u16>(high_amplitude),
+            return SDL_RumbleJoystick(sdl_joystick.get(), low_amplitude, high_amplitude,
                                       rumble_max_duration_ms);
         }
 
@@ -885,10 +869,6 @@ Common::Input::DriverResult SDLDriver::SetVibration(
         return Common::Input::DriverResult::Success;
     }
 
-    const auto process_amplitude_exp = [](f32 amplitude, f32 factor) {
-        return (amplitude + std::pow(amplitude, factor)) * 0.5f * 0xFFFF;
-    };
-
     // Default exponential curve for rumble
     f32 factor = 0.35f;
 
@@ -902,15 +882,7 @@ Common::Input::DriverResult SDLDriver::SetVibration(
         factor = 1.0f;
     }
 
-    const Common::Input::VibrationStatus new_vibration{
-        .low_amplitude = process_amplitude_exp(vibration.low_amplitude, factor),
-        .low_frequency = vibration.low_frequency,
-        .high_amplitude = process_amplitude_exp(vibration.high_amplitude, factor),
-        .high_frequency = vibration.high_frequency,
-        .type = Common::Input::VibrationAmplificationType::Exponential,
-    };
-
-    joystick->RumblePlay(new_vibration);
+    joystick->RumblePlay(vibration, factor);
 
     return Common::Input::DriverResult::Success;
 }
@@ -920,9 +892,9 @@ bool SDLDriver::IsVibrationEnabled(const PadIdentifier& identifier) {
         GetSDLJoystickByGUID(identifier.guid.RawString(), static_cast<int>(identifier.port));
 
     static constexpr Common::Input::VibrationStatus test_vibration{
-        .low_amplitude = 1,
+        .low_amplitude = 1.0f / 0xFFFF,
         .low_frequency = 160.0f,
-        .high_amplitude = 1,
+        .high_amplitude = 1.0f / 0xFFFF,
         .high_frequency = 320.0f,
         .type = Common::Input::VibrationAmplificationType::Exponential,
     };
@@ -940,12 +912,12 @@ bool SDLDriver::IsVibrationEnabled(const PadIdentifier& identifier) {
     }
 
     // First vibration might fail
-    joystick->RumblePlay(test_vibration);
+    joystick->RumblePlay(test_vibration, 1.0f);
 
     // Wait for about 15ms to ensure the controller is ready for the stop command
     std::this_thread::sleep_for(std::chrono::milliseconds(15));
 
-    if (!joystick->RumblePlay(zero_vibration)) {
+    if (!joystick->RumblePlay(zero_vibration, 1.0f)) {
         joystick->EnableVibration(false);
         return false;
     }

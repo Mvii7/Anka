@@ -25,6 +25,7 @@ add_executable(tests
     core/nx2_dk_dyn_pace.cpp
     core/nx2_frame_stats.cpp
     core/nx2_dk_dynamic_fps.cpp
+    core/nx2_mkw_dynamic_fps.cpp
     core/nx2_ipc_trace.cpp
     core/nx2_osd_speed.cpp
     core/nx2_perf_settings.cpp
@@ -53,6 +54,8 @@ add_executable(tests
     video_core/nx2_root.cpp
     video_core/nx2_desc_secondary.cpp
     video_core/frame_gen_pacer.cpp
+    video_core/hdr_output.cpp
+    common/display_hdr.cpp
     video_core/nx2_fg_timing.cpp
     video_core/nx2_stage_bind.cpp
     video_core/nx2_stage_contract.cpp
@@ -61,6 +64,7 @@ add_executable(tests
     video_core/native_macro_fifo.cpp
     video_core/nx2_write_history.cpp
     input_common/calibration_configuration_job.cpp
+    input_common/rumble_mapping.cpp
     yuzu_cmd/nx2_auto_script.cpp
     ../yuzu_cmd/nx2_auto_script.cpp
 )

@@ -49,8 +49,11 @@ ConfigureVibration::ConfigureVibration(QWidget* parent, Core::HID::HIDCore& hid_
     ui->labelDualSenseHapticsStrengthValue->setText(
         QStringLiteral("%1%").arg(ui->sliderDualSenseHapticsStrength->value()));
 
+    ui->checkBoxFrequencyRumble->setChecked(Settings::values.rumble_frequency_mapping.GetValue());
+
     if (!Settings::IsConfiguringGlobal()) {
         ui->checkBoxAccurateVibration->setDisabled(true);
+        ui->checkBoxFrequencyRumble->setDisabled(true);
         ui->checkBoxDualSenseHaptics->setDisabled(true);
         ui->sliderDualSenseHapticsStrength->setDisabled(true);
     }
@@ -80,6 +83,7 @@ void ConfigureVibration::ApplyConfiguration() {
     Settings::values.enable_dualsense_haptics.SetValue(ui->checkBoxDualSenseHaptics->isChecked());
     Settings::values.dualsense_haptics_strength.SetValue(
         ui->sliderDualSenseHapticsStrength->value());
+    Settings::values.rumble_frequency_mapping.SetValue(ui->checkBoxFrequencyRumble->isChecked());
 }
 
 void ConfigureVibration::changeEvent(QEvent* event) {
