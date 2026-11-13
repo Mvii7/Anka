@@ -8,6 +8,12 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- ASTC recompression now defaults to BC3 instead of Uncompressed. In Mario Kart World on a 16 GB
+  card, uncompressed ASTC kept device memory at the collector's critical line (12.6-13.7 GiB),
+  evicting and decoding textures again every few seconds; with BC3 it stays flat at about
+  9.5 GiB with no evictions. Only configs without a saved value change; set ASTC Recompression
+  Method (advanced graphics settings) to Uncompressed for the best quality.
+
 ## Dozer 0.1.0 (`v0.1.0`)
 
 - Mario Kart World dynamic frame rate (`MKW_DYN=1` / `EDEN_NX2_MKW_DYN=1`): its frame mode
