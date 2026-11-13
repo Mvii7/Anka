@@ -23,6 +23,7 @@ add_executable(tests
     core/nx2_dk_dyn_pace.cpp
     core/nx2_frame_stats.cpp
     core/nx2_dk_dynamic_fps.cpp
+    core/nx2_dk_quality.cpp
     core/nx2_ipc_trace.cpp
     core/nx2_osd_speed.cpp
     core/nx2_perf_settings.cpp

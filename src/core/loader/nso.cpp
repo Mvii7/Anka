@@ -26,6 +26,7 @@
 #include "core/hle/kernel/k_thread.h"
 #include "core/loader/nso.h"
 #include "core/loader/nx2_dk_dynamic_fps.h"
+#include "core/loader/nx2_dk_quality.h"
 #include "core/memory.h"
 
 #ifdef HAS_NCE
@@ -227,6 +228,29 @@ std::optional<VAddr> AppLoader_NSO::LoadModule(Kernel::KProcess& process, Core::
                             "EDEN_NX2_DK_DYN)",
                             dk_dyn->controller_matches, dk_dyn->sleep_matches,
                             dk_dyn->step_matches);
+            }
+        }
+        // EDEN_NX2_DKQ_* (all unset by default): Donkey Kong Bananza's quality settings
+        // (nx2_dk_quality.h).
+        if (Nx2DkQuality::IsTarget(process.GetProgramId(), name) && text_start <= image.size()) {
+            const auto values = Nx2DkQuality::FromEnvironment(
+                [](std::string_view variable) { return std::getenv(variable.data()); },
+                [](const Nx2DkQuality::Knob& knob, const char* value) {
+                    LOG_WARNING(Loader, "{}=\"{}\": not a whole number of {}-{}, left out",
+                                knob.env, value, knob.min, knob.max);
+                });
+            const auto states = Nx2DkQuality::Apply(image.subspan(text_start), text.size,
+                                                    PageAlignSize(text.size), values);
+            for (size_t i = 0; i < states.size(); ++i) {
+                const auto& knob = Nx2DkQuality::Knobs[i];
+                if (states[i] == Nx2DkQuality::State::Applied) {
+                    LOG_INFO(Loader, "Donkey Kong Bananza: {}={} (the game's: {})", knob.env,
+                             values[i], knob.game);
+                } else if (states[i] == Nx2DkQuality::State::Missed) {
+                    LOG_WARNING(Loader, "Donkey Kong Bananza: {}={} not applied: its "
+                                        "instructions are not where expected",
+                                knob.env, values[i]);
+                }
             }
         }
     }

@@ -119,6 +119,8 @@ add_executable(yuzu
     configuration/configure_ringcon.cpp
     configuration/configure_ringcon.h
     configuration/configure_ringcon.ui
+    configuration/configure_bananza.cpp
+    configuration/configure_bananza.h
     configuration/configure_nx2perf.cpp
     configuration/configure_nx2perf.h
     configuration/configure_nx2perf.ui

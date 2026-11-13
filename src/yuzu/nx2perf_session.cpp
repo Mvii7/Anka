@@ -18,6 +18,7 @@
 
 #include "common/logging.h"
 #include "common/settings.h"
+#include "core/loader/nx2_dk_quality.h"
 #include "core/nx2_perf_settings.h"
 #include "qt_common/config/uisettings.h"
 
@@ -74,6 +75,18 @@ QString Describe(const std::vector<Perf::Var>& plan) {
     return lines.isEmpty() ? QStringLiteral("none") : lines.join(QLatin1Char(' '));
 }
 
+
+/// The tuning switches and the Bananza tab's settings, but those set outside.
+std::vector<Perf::Var> FullPlan(bool bananza) {
+    auto plan = Perf::Plan(UISettings::values.nx2perf, bananza, SetOutside);
+    for (const auto& var : Loader::Nx2DkQuality::Wanted(UISettings::values.nx2dkq, bananza)) {
+        if (!SetOutside(var.name)) {
+            plan.push_back(var);
+        }
+    }
+    return plan;
+}
+
 } // Anonymous namespace
 
 void CaptureStartEnvironment() {
@@ -104,6 +117,11 @@ void CaptureOutsideSwitches() {
             g_set_outside.push_back(name);
         }
     });
+    for (const auto& knob : Loader::Nx2DkQuality::Knobs) {
+        if (std::getenv(knob.env.data()) != nullptr) {
+            g_set_outside.push_back(knob.env);
+        }
+    }
 }
 
 bool SetOutside(std::string_view name) {
@@ -118,7 +136,7 @@ bool SetOutside(std::string_view name) {
 Boot Prepare(QWidget* parent, u64 program_id, const QString& game, bool fullscreen,
              bool applet) {
     const bool bananza = Perf::IsBananza(program_id);
-    auto plan = Perf::Plan(UISettings::values.nx2perf, bananza, SetOutside);
+    auto plan = FullPlan(bananza);
     if (!g_applied) {
         for (const auto& var : plan) {
             SetVariable(var);
@@ -183,7 +201,7 @@ bool OfferRestart(QWidget* parent, const QString& running_game, bool fullscreen)
         applied = g_applied->plan;
         bananza = g_applied->bananza;
     }
-    const auto plan = Perf::Plan(UISettings::values.nx2perf, bananza, SetOutside);
+    const auto plan = FullPlan(bananza);
     const bool pending = HasPendingGraphics();
     const bool pending_new = std::exchange(g_pending_unasked, false);
     if (!Perf::NeedsRestart(applied, plan) && !(applied && pending_new)) {

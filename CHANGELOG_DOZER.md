@@ -8,6 +8,12 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- Tuning has a second tab, **Bananza**: experimental quality sliders for Donkey Kong Bananza
+  (render resolution range, the resolution control's GPU load target, frame buffer minimum scale,
+  bloom and radial blur buffers, cube map update interval, terrain LOD distance and value). A
+  ticked row replaces one value the game reads from its graphics parameters while it loads
+  (`EDEN_NX2_DKQ_*`, `core/loader/nx2_dk_quality.h`); all unticked by default. Found by reading
+  the game's executable; which ones help, and which break something, is still being tried.
 - Consecutive NVN indexed indirect draws merge into one host multi-draw again (`INDIRECT_BATCH`,
   on). The terrain damage that had it off by default was not this merge. `=0` is one host draw
   per call.

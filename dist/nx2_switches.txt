@@ -245,6 +245,32 @@
 # worse on our machine).
 #EDEN_NX2_DK_DYN_MIN_FPS=40
 
+# --- Donkey Kong Bananza quality settings (core/loader/nx2_dk_quality.h) ---
+# The Bananza tab's sliders. All unset by default; each replaces one value the game reads from
+# its graphics parameters while its main module loads (nothing is written to disk). A value
+# outside its range is refused, a setting whose instructions are not found is left out; the log
+# says which were applied. Experimental: found by reading the 1.0.0 executable, not all tried
+# in the game yet.
+# RES_BEST / RES_WORST=<25-100>: the highest / lowest render resolution before the game's
+# upscaler, per axis in % of the output (the game's: 73 and 53). Equal values fix it.
+#EDEN_NX2_DKQ_RES_BEST=73
+#EDEN_NX2_DKQ_RES_WORST=53
+# GPU_TARGET=<40-100>: the GPU load in % above which the game lowers its resolution (88).
+#EDEN_NX2_DKQ_GPU_TARGET=88
+# FRAME_MIN_SCALE=<25-100>: the lowest frame buffer scale in % (60).
+#EDEN_NX2_DKQ_FRAME_MIN_SCALE=60
+# BLOOM_SCALE=<10-100>: the bloom buffers' size in % of the frame (50).
+#EDEN_NX2_DKQ_BLOOM_SCALE=50
+# CUBEMAP_INTERVAL=<1-240>: frames between reflection cube map captures (8).
+#EDEN_NX2_DKQ_CUBEMAP_INTERVAL=8
+# RADIAL_BLUR_SCALE=<10-100> in % (50), RADIAL_BLUR_SAMPLES=<1-16> (10).
+#EDEN_NX2_DKQ_RADIAL_BLUR_SCALE=50
+#EDEN_NX2_DKQ_RADIAL_BLUR_SAMPLES=10
+# VOXEL_LOD_DIST / VOXEL_LOD_VALUE=<10-400>: the terrain's two LOD distances / LOD values in %
+# of the game's (100). Lower distances: coarser terrain closer to the camera.
+#EDEN_NX2_DKQ_VOXEL_LOD_DIST=100
+#EDEN_NX2_DKQ_VOXEL_LOD_VALUE=100
+
 # --- read traps (core/memory/read_traps.h; ported from the ZendNevs fork) ---
 # On by default with use_reactive_flushing=false (Switch 2 titles, fastmem, not NCE): a buffer
 # page the GPU writes is read-protected until the guest CPU's first read, which flushes it and

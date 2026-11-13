@@ -162,6 +162,28 @@ The tab's settings are kept in the `[Dozer]` group of `user\config\qt-config.ini
 **To uninstall,** delete the Dozer folder. **Move out what you want to keep first:** your game
 files in `Games`, and the `user` folder (your keys, firmware and saves).
 
+### The Bananza tab
+
+Next to the Tuning tab (Emulation > Configure... > Tuning > **Bananza**): experimental quality
+sliders for Donkey Kong Bananza. Tick a row to replace the game's own value by the slider's;
+unticked rows leave the game as it is, and all are unticked at first. They are read when the game
+starts, so a change asks for a restart like the Tuning tab's boxes.
+
+| Row | The game's | What it changes |
+|---|---|---|
+| Best / worst render resolution | 73% / 53% | the range the game's resolution control moves in, per axis in % of the output; equal values fix the resolution |
+| Resolution control: GPU load target | 88% | the measured GPU load above which the game lowers its resolution |
+| Frame buffer minimum scale | 60% | the lowest frame buffer scale |
+| Bloom buffer scale | 50% | the bloom buffers' size |
+| Cube map update interval | 8 frames | how often reflection cube maps are captured (higher is faster) |
+| Radial blur render scale / samples | 50% / 10 | the radial blur's buffer size and samples |
+| Terrain LOD distance / value | 100% | the two distances and values of the destructible terrain's LOD steps, relative to the game's data |
+
+The same settings as variables are `EDEN_NX2_DKQ_*` (`nx2_switches.txt`). The log
+(`user\log\eden_log.txt`) has a line "Donkey Kong Bananza: EDEN_NX2_DKQ_..." for each one that
+was put in, and a warning for one that was not. The terrain's own resolution (its cell size) is
+part of the game's data and has no setting.
+
 ### The second way: dozer-cli and the launchers
 
 1. Put your game file (`.nsp`, `.xci`, `.nsz`, `.xcz` or `.nup`) in the `Games` folder (subfolders

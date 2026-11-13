@@ -375,6 +375,12 @@ void QtConfig::ReadNx2PerfValues() {
     if (first_start && reactive) {
         Settings::values.use_reactive_flushing.SetValue(*reactive);
     }
+    BeginGroup("Bananza");
+    UISettings::values.nx2dkq = Loader::Nx2DkQuality::Load([this](std::string_view key, int def) {
+        return static_cast<int>(
+            ReadIntegerSetting(std::string{key}, std::make_optional(static_cast<s64>(def))));
+    });
+    EndGroup();
 }
 
 void QtConfig::SaveNx2PerfValues() {
@@ -387,6 +393,13 @@ void QtConfig::SaveNx2PerfValues() {
         [this](std::string_view key, int value, int def) {
             WriteIntegerSetting(std::string{key}, value, std::make_optional(def));
         });
+    EndGroup();
+    BeginGroup("Bananza");
+    Loader::Nx2DkQuality::Save(UISettings::values.nx2dkq,
+                               [this](std::string_view key, int value, int def) {
+                                   WriteIntegerSetting(std::string{key}, value,
+                                                       std::make_optional(def));
+                               });
     EndGroup();
 }
 

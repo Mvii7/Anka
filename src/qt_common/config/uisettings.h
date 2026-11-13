@@ -18,6 +18,7 @@
 #include "common/common_types.h"
 #include "common/settings.h"
 #include "common/settings_enums.h"
+#include "core/loader/nx2_dk_quality.h"
 #include "core/nx2_perf_settings.h"
 #include "qt_common/config/qt_config.h"
 
@@ -234,6 +235,8 @@ struct Values {
 
     // Anka: the [Anka] group (core/nx2_perf_settings.h), global only.
     Core::Nx2PerfSettings::Switches nx2perf{};
+    // The [Bananza] group (core/loader/nx2_dk_quality.h), global only.
+    Loader::Nx2DkQuality::Values nx2dkq{};
 
     bool configuration_applied;
     bool reset_to_defaults;
