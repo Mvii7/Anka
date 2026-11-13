@@ -21,6 +21,9 @@ and `=0` brings back the 2.0.0 code path.
   the Recycle Bin at the end. This part uses the prebuilt nxformat 1.0.3 library, downloaded and
   hash-checked at configure time (`CMakeModules/NxFormat.cmake`); a build without it still reads
   `.nx`. From Lichii.
+- Starting a `.nup` for the first time offers to convert it to NX (usually less stutter, the file
+  may be slightly larger): Convert, Not Now, or Don't Ask Again (`suggestNxForNup` in
+  `qt-config.ini`).
 - NUP reading, from Lichii: compressed parts are decoded only as far as the game reads instead
   of whole on first use; DLC inside a `.nup` is found; an update installed in Dozer no longer
   replaces the program of a `.nup` (it carries its own); the name and icon come from the base

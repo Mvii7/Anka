@@ -1921,6 +1921,12 @@ void MainWindow::BootGame(const QString& filename, Service::AM::FrontendAppletPa
         return;
     }
 
+#ifdef YUZU_NX_TOOLS
+    if (SuggestNxConversion(filename)) {
+        return;
+    }
+#endif
+
     if (params.program_id == 0 ||
         params.program_id > static_cast<u64>(Service::AM::AppletProgramId::MaxProgramId)) {
         StoreRecentFile(filename); // Put the filename on top of the list
@@ -2736,6 +2742,30 @@ void MainWindow::OnGameListEditNxMetadata(const std::string& game_path) {
         QtCommon::provider->ClearAllEntries();
         return true;
     });
+}
+
+bool MainWindow::SuggestNxConversion(const QString& filename) {
+    if (!UISettings::values.suggest_nx_for_nup.GetValue() || emulation_running ||
+        !filename.endsWith(QStringLiteral(".nup"), Qt::CaseInsensitive) ||
+        !NxTools::CanConvert(filename.toStdString())) {
+        return false;
+    }
+    QMessageBox box(QMessageBox::Question, tr("Convert to NX?"),
+                    tr("NX archives usually read faster than NUP, which can reduce stutter. The "
+                       "NX file may be slightly larger. Convert this game to NX?"),
+                    QMessageBox::NoButton, this);
+    auto* convert = box.addButton(tr("Convert"), QMessageBox::AcceptRole);
+    box.addButton(tr("Not Now"), QMessageBox::RejectRole);
+    auto* never = box.addButton(tr("Don't Ask Again"), QMessageBox::DestructiveRole);
+    box.exec();
+    if (box.clickedButton() == convert) {
+        nx_tools->ConvertToNx(filename.toStdString());
+        return true;
+    }
+    if (box.clickedButton() == never) {
+        UISettings::values.suggest_nx_for_nup.SetValue(false);
+    }
+    return false;
 }
 
 void MainWindow::OnGameListNxTool(const std::string& game_path,
