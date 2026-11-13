@@ -219,9 +219,10 @@ The game starts in full screen; dozer-cli has no menu. **Quit with Alt+F4.**
   uncompressed it fills VRAM even on a 16 GB card, so the texture cache keeps evicting and
   decoding textures again, which shows as stutter every few seconds. BC3 stores them about four
   times smaller (opaque ones as BC1, about eight times) at a small loss in texture quality. If you
-  have plenty of VRAM and want the best quality, set it to Uncompressed. If you are short of VRAM
-  (for example an 8 GB card) and still stutter, try BC1: it makes every texture BC1, including
-  the ones with transparency, so foliage and effects may lose their alpha. Not tested yet.
+  have plenty of VRAM and want the best quality, set it to Uncompressed. With BC3, Mario Kart
+  World stays under 7 GB of VRAM in total on the maintainer's machine. If you are still short of
+  VRAM and stutter, try BC1: it makes every texture BC1, including the ones with transparency, so
+  foliage and effects may lose their alpha. Not tested yet.
 
 ## Launchers
 
