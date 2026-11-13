@@ -184,8 +184,6 @@ starts, so a change asks for a restart like the Tuning tab's boxes.
 | Colour decal limit | 660 | the most colour decals the game keeps |
 | Reflection filtering off, cube map occlusion check off | on | skips those two steps of the reflection cube maps (for testing) |
 | Occlusion query depth / radius / polygons | 100% | scales the thresholds of the game's occlusion queries (effect not known; for testing) |
-| Reflection filtering off, cube map occlusion check off | on | skips those two steps of the reflection cube maps (for testing) |
-| Occlusion query depth / radius / polygons | 100% | scales the thresholds of the game's occlusion queries (effect not known; for testing) |
 
 Rows marked "for testing" have an effect nobody has measured yet, and none of them is in the presets.
 
