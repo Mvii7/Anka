@@ -17,7 +17,7 @@ Dozer runs on its own: unzip it into a new, empty folder (see "Install"). It shi
 - **`dozer.exe`**, the menu program: a Qt front end (game list, menus, settings) with Dozer's
   settings built in and a **Tuning** tab in its settings. This is the easy way.
 - **`dozer-cli.exe`**, the program without menus (SDL), with launchers (`start-*.bat`) that start
-  it with the recommended settings.
+  it with the same settings.
 
 - This is a preview build with no version number yet: the commit is in the window title and the
   log.
@@ -57,7 +57,8 @@ This is an experimental build with no warranty (see "License").
 
 Then add your game folder to the game list ("Add New Game Directory") and start a game.
 
-Game files: `.nsp`, `.xci`, `.nsz`, `.xcz` and **`.nup`** (see "NUP files").
+Game files: `.nsp`, `.xci`, `.nsz`, `.xcz`, **`.nup`** (see "NUP files") and **`.nx`** (see "NX
+files").
 
 ### NUP files
 
@@ -69,10 +70,21 @@ shows its name, icon and version), or put it in the `Games` folder for the launc
 that game like any other format. Dozer only reads NUP: it does not make, edit or extract one.
 Only use NUP files made from your own dumps.
 
-Compressed parts are decompressed on use; a cache of 512 MiB keeps them
+Compressed parts are decompressed as far as the game reads them; a cache of 512 MiB keeps them
 (`EDEN_NUP_CACHE_MIB=<n>`, 64 or more, sets another size), and a part larger than half of it is
-decompressed once into `user\cache\nup` (removed when the game closes: it needs that much free
+decompressed into `user\cache\nup` (removed when the game closes: it needs that much free
 disk space).
+
+### NX files
+
+Dozer reads and makes `.nx` files: NX archives of the nxformat project, one file that holds a
+game with its updates and DLC. Open one like any other game file. To make one, right-click a
+game in the game list and choose **Convert to NX...**: it takes an NSP or XCI (with the updates
+and DLC of the same game found in its folder, if you tick them), a `.nup` or a dump folder. An
+NSP or XCI is decrypted with your keys while it is read, so the `.nx` needs no keys afterwards.
+**Manage NX Archive** on an `.nx` adds or removes an update or DLC and edits the title,
+publisher and icon shown in the list. `dozer-cli.exe` opens an `.nx` path but does not convert.
+Only convert your own dumps.
 
 The zip holds `dozer.exe`, `dozer-cli.exe`, the Qt DLLs and plugins `dozer.exe` needs, the Visual
 C++ runtime DLLs, the launchers and an empty `user\` folder. Because of that `user\` folder Dozer
@@ -82,7 +94,7 @@ saves (`user\nand`), shader caches and log (`user\log\eden_log.txt`) in it, and 
 `nx2_switches.txt` in `%APPDATA%\eden`, if you made one; see "Switches set outside win").
 
 Settings: **Emulation > Configure... > Tuning**. On the first start the preset is
-**Recommended**, and Dozer also turns *Enable Reactive Flushing* off in
+**Performance**, and Dozer also turns *Enable Reactive Flushing* off in
 its `qt-config.ini` (Graphics > Advanced).
 
 GPU Mode (GPU accuracy) starts at **Fast** (Low), as in newer Eden versions (2.0.0 started at
@@ -96,9 +108,9 @@ under it.
 
 | Preset | What it sets | Same as |
 |---|---|---|
-| **Recommended** (the first start's choice) | all nine settings below on, *Enable Reactive Flushing* off (Graphics > Advanced). Foliage is rendered at a performance cost. Dozer's first start also turns Reactive Flushing off in `qt-config.ini` by itself; choosing Recommended later turns it off too | `start-recommended.bat` |
-| **Fast** | the fastest settings with read traps and Reactive Flushing off (`EDEN_NX2_READ_TRAPS=0`). Foliage is not rendered for a performance gain | `start-fast.bat` |
-| **Experimental** | the recommended settings with Reactive Flushing instead of read traps: barrier feedback loops on (Graphics > Advanced; Reactive Flushing needs it) and `EDEN_NX2_RX_RT_FIT=3` | `start-reactive-experimental.bat` |
+| **Performance** (the first start's choice) | the fastest settings with read traps and Reactive Flushing off (`EDEN_NX2_READ_TRAPS=0`). Foliage is not rendered for a performance gain. Dozer's first start also turns Reactive Flushing off in `qt-config.ini` by itself; choosing Performance or Balanced later turns it off too | `start-performance.bat` |
+| **Balanced** | all nine settings below on, *Enable Reactive Flushing* off (Graphics > Advanced). Foliage is rendered at a performance cost | `start-balanced.bat` |
+| **Experimental** | the balanced settings with Reactive Flushing instead of read traps: barrier feedback loops on (Graphics > Advanced; Reactive Flushing needs it) and `EDEN_NX2_RX_RT_FIT=3` | `start-reactive-experimental.bat` |
 | **Safe** | all nine off, Frame generation off, and the GPU shortcuts Dozer keeps on by default off too (`EDEN_NX2_LIGHT_DRAW=0` and the rest of `start-safe.bat`'s list), in every game. Other graphics settings such as Reactive Flushing stay as they are; Dozer's fixes and its changes without a switch stay in | `start-safe.bat` |
 | **Custom** | chosen by itself when you change a box by hand | - |
 
@@ -120,7 +132,7 @@ Below the preset are the nine settings, in two groups:
 
 | Setting | Switches it sets (`EDEN_NX2_...`) | Group |
 |---|---|---|
-| Read traps | on: left unset (the default, on). Foliage is rendered at a performance cost. Off: `READ_TRAPS=0`. With Reactive Flushing off as well, foliage is not rendered. Does nothing while Reactive Flushing is on. Recommended ticks it; Fast and Experimental leave it unticked. Unticking it while Recommended is selected changes the preset to Custom | All games |
+| Read traps | on: left unset (the default, on). Foliage is rendered at a performance cost. Off: `READ_TRAPS=0`. With Reactive Flushing off as well, foliage is not rendered. Does nothing while Reactive Flushing is on. Balanced ticks it; Performance and Experimental leave it unticked. Unticking it while Balanced is selected changes the preset to Custom | All games |
 | Split GPU thread | `BACK_STAGES=1`, `BACK_CUTS=a` | All games |
 | Acquire peek | `ACQUIRE_PEEK=1` | All games |
 | Same-value filter in the macro JIT | `JIT_SAME=1` | All games |
@@ -130,7 +142,7 @@ Below the preset are the nine settings, in two groups:
 | Dynamic frame rate | `DK_DYN=1` | Donkey Kong Bananza only (off in other games) |
 | Frame pacing | `PRESENT_INTERVAL_WORD=12:16:4`, `MODE_PACE=2`, `PACE_SPIN_US=1500` | Donkey Kong Bananza only (off in other games) |
 
-These are the switches `start-recommended.bat` sets ("Launchers", "Main switches"). The program
+These are the switches `start-balanced.bat` sets ("Launchers", "Main switches"). The program
 sets them in its own environment just before a game starts. The two Bananza settings are set
 only when the game's title id is 040074A01BF12000 (the one the dynamic frame rate patch checks);
 for any other game they stay off. The log says which were set ("Dozer settings for <title id>
@@ -164,9 +176,9 @@ files in `Games`, and the `user` folder (your keys, firmware and saves).
 
 ### The second way: dozer-cli and the launchers
 
-1. Put your game file (`.nsp`, `.xci`, `.nsz`, `.xcz` or `.nup`) in the `Games` folder (subfolders
+1. Put your game file (`.nsp`, `.xci`, `.nsz`, `.xcz`, `.nup` or `.nx`) in the `Games` folder (subfolders
    are fine), or drag it onto the launcher instead.
-2. Double-click `start-recommended.bat`.
+2. Double-click `start-performance.bat`.
 
 **On the first start** the launcher prepares the settings. dozer-cli uses the same `user\` folder
 as `dozer.exe` (the one next to the programs): the same keys, firmware and saves. It keeps its
@@ -188,9 +200,9 @@ The game starts in full screen; dozer-cli has no menu. **Quit with Alt+F4.**
 
 | Launcher | When to use it |
 |---|---|
-| `start-recommended.bat` | **Recommended.** The recommended settings. Foliage is rendered at a performance cost. |
-| `start-fast.bat` | **Fast.** The fastest settings with read traps and reactive flushing off. Foliage is not rendered for a performance gain. |
-| `start-reactive-experimental.bat` | **Experimental.** The recommended settings with Reactive Flushing instead of read traps. |
+| `start-performance.bat` | **Performance (the default).** The fastest settings with read traps and reactive flushing off. Foliage is not rendered for a performance gain. |
+| `start-balanced.bat` | **Balanced.** The performance settings with read traps on. Foliage is rendered at a performance cost. |
+| `start-reactive-experimental.bat` | **Experimental.** The balanced settings with Reactive Flushing instead of read traps. |
 | `start-safe.bat` | The GPU shortcuts Dozer keeps on by default off, read traps off, the opt-in switches that change play cleared; Dozer's fixes and its changes without a switch stay in: for troubleshooting and for games other than Bananza. |
 
 A launcher starts, in this order: a game file dragged onto it, the `GAME=` line, or the game in
@@ -206,14 +218,14 @@ changed:
 | `DK_DYN=1` | Bananza dynamic frame rate patch (below); `0` = off |
 | `OSD=1` | FPS / speed display through RTSS; `0` = off |
 
-(`DK_DYN=` and `OSD=` are in the recommended, fast and reactive launchers only.) If the path of your
+(`DK_DYN=` and `OSD=` are in the balanced, performance and reactive launchers only.) If the path of your
 game contains `&`, `^`, `,`, `;` or `=` but no space, Windows passes a dragged file badly: put
 the game in `Games` or write it in the `GAME=` line instead.
 A launcher stops with a message when its `CONFIG=` file does not exist (dozer-cli would quietly
 make a new one with default settings), and keeps its window open when the emulator exits with an
 error. Take the launchers from the release zip: they need Windows line endings (CRLF).
 
-- **`start-recommended.bat`** - the recommended settings. Foliage is rendered at a performance cost:
+- **`start-balanced.bat`** - the balanced settings. Foliage is rendered at a performance cost:
   the GPU thread's back as stages (`BACK_STAGES=1`, `BACK_CUTS=a`), `ACQUIRE_PEEK=1`,
   `JIT_SAME=1`, `FRONT_MACRO_LEAN=1`; Bananza's own 60/30/20 fps choice followed at the right
   speed (`PRESENT_INTERVAL_WORD=12:16:4`, `MODE_PACE=2`, `PACE_SPIN_US=1500`); the dynamic
@@ -224,9 +236,9 @@ error. Take the launchers from the release zip: they need Windows line endings (
   is meant for reactive flushing **off**: it turns it off in an `sdl2-config.ini` it makes,
   and only prints a note when an existing one has it on ("Reactive flushing"). Read traps stay
   on: the launcher clears `EDEN_NX2_READ_TRAPS`, and unset means on.
-- **`start-fast.bat`** - the fastest settings, with read traps and reactive flushing off
+- **`start-performance.bat`** - the default: the fastest settings, with read traps and reactive flushing off
   (`EDEN_NX2_READ_TRAPS=0`). Foliage is not rendered for a performance gain. The same other
-  switches as `start-recommended.bat`, including Bananza's dynamic frame rate and frame
+  switches as `start-balanced.bat`, including Bananza's dynamic frame rate and frame
   pacing, and the same handling of reactive flushing (off in an `sdl2-config.ini` it makes, a
   note when an existing one has it on).
 - **`start-safe.bat`** - for troubleshooting and for games other than Bananza: Dozer's shortcut
@@ -235,7 +247,7 @@ error. Take the launchers from the release zip: they need Windows line endings (
   your system environment). Use it to see whether a problem comes from these switches. Dozer's
   fixes and its changes without a switch (the accuracy fixes and upstream picks in the
   changelog) stay in. Read traps are off (`EDEN_NX2_READ_TRAPS=0`).
-- **`start-reactive-experimental.bat`** - EXPERIMENTAL: the recommended settings with Reactive
+- **`start-reactive-experimental.bat`** - EXPERIMENTAL: the balanced settings with Reactive
   Flushing instead of read traps (`EDEN_NX2_READ_TRAPS=0`, reactive flushing on), plus `RX_RT_FIT=3` (one
   image for Bananza's opening render target instead of a copy per draw). In Anka's author's
   tests it trades the opening for open areas: slower at the game's opening, faster in open areas,
@@ -259,7 +271,7 @@ without a launcher; the menu program sets the recommended ones from its Tuning t
 
 | Switch | Default | What it does |
 |---|---|---|
-| `READ_TRAPS=0` | **on** (unset) | read traps: a buffer page the GPU writes stays protected until the game's first read. Foliage is rendered at a performance cost. `=0` turns them off; with reactive flushing off as well, foliage is not rendered. With reactive flushing on they do nothing. Recommended leaves this unset; Fast, Experimental and Safe set `0` |
+| `READ_TRAPS=0` | **on** (unset) | read traps: a buffer page the GPU writes stays protected until the game's first read. Foliage is rendered at a performance cost. `=0` turns them off; with reactive flushing off as well, foliage is not rendered. With reactive flushing on they do nothing. Balanced leaves this unset; Performance, Experimental and Safe set `0` |
 | `BACK_STAGES=1`, `BACK_CUTS=a` | off | the split GPU thread's back runs as a pipeline of stages |
 | `ACQUIRE_PEEK=1` | off | a GPU semaphore wait already met goes on without draining the back |
 | `JIT_SAME=1`, `FRONT_MACRO_LEAN=1` | off | the front's macro JIT drops writes that change nothing |
@@ -287,9 +299,9 @@ changed, and with the switch unset no module is touched. It only applies to Bana
 040074A01BF12000) and only if the expected instructions are found. `DK_DYN_MIN_FPS=<1-60>`
 moves the 40 fps limit.
 
-It is off by default in dozer-cli; `start-recommended.bat`, `start-fast.bat` and
+It is off by default in dozer-cli; `start-balanced.bat`, `start-performance.bat` and
 `start-reactive-experimental.bat` turn it on (`DK_DYN=1` at the top), and so does the menu
-program's Tuning tab (Dynamic frame rate, on in Recommended, Fast and Experimental, Bananza
+program's Tuning tab (Dynamic frame rate, on in Balanced, Performance and Experimental, Bananza
 only). With it the game's frame time varies by design (any rate between 40 and 60, in
 steps of 2); below 40 fps the game still drops to its 30 fps rule. While it is applied,
 `PRESENT_INTERVAL_WORD` and `MODE_PACE` are set aside and presents are paced to every vblank.
@@ -333,10 +345,10 @@ use_reactive_flushing=false
 
 matches our recommended setup; `=true` (or no such lines) is reactive flushing on. In the menu
 program it is *Enable Reactive Flushing* under Graphics > Advanced: the Tuning tab's
-**Recommended** and **Fast** presets turn it off (Recommended also on Dozer's first start),
+**Balanced** and **Performance** presets turn it off (Performance also on Dozer's first start),
 **Experimental** turns it on with barrier feedback loops (and `RX_RT_FIT=3`, read traps off),
-**Safe** leaves it as it is. The launchers take care of it for dozer-cli. `start-recommended.bat`
-and `start-fast.bat` write
+**Safe** leaves it as it is. The launchers take care of it for dozer-cli. `start-balanced.bat`
+and `start-performance.bat` write
 these two lines into the `sdl2-config.ini` each makes on the first start; neither changes an
 existing one, and each only prints a note when reactive flushing is on there (change the two lines by
 hand, with the program closed, for the recommended setup). `start-reactive-experimental.bat` uses
@@ -356,14 +368,14 @@ writes before fragment shader reads, by region), so the render pass goes on. Bot
 
 In Anka's author's tests `RX_RT_FIT=3` was clearly better than `=1` at the opening and the same in the
 open area. Against reactive flushing off it is a trade that depends on the scene. That is why there
-are three setups for play, as launchers and as presets of the Tuning tab: recommended (reactive
-flushing off, read traps on; foliage is rendered at a performance cost), fast (read traps and
+are three setups for play, as launchers and as presets of the Tuning tab: balanced (reactive
+flushing off, read traps on; foliage is rendered at a performance cost), performance (read traps and
 reactive flushing off; foliage is not rendered for a performance gain) and experimental (Reactive
 Flushing instead of read traps, with `RX_RT_FIT=3`). **Experimental:** reactive flushing was **never measured together with
 frame generation**, and the image with `RX_RT_FIT=3` has not been checked by eye yet (its barrier
 inside the render pass covers a fragment reading the pixel it renders, which is what the Vulkan
 spec defines for feedback loops). If you see wrong images with it, set `RX_RT_FIT=1` in the
-launcher or use the recommended one. Do not turn on `RX_MASKED_TARGETS` (known defect: a texture
+launcher or use the balanced one. Do not turn on `RX_MASKED_TARGETS` (known defect: a texture
 blit ignores the mask) or `RX_COALESCE_LOOSE` (diagnostic only).
 
 ## Known issues
@@ -379,8 +391,8 @@ blit ignores the mask) or `RX_COALESCE_LOOSE` (diagnostic only).
   this game (also reported for upstream), not frame generation, but it is not settled. If you
   see them, note whether they stay in place in the world, try without frame generation and with
   `start-safe.bat` (or the Safe preset), and report where.
-- **Reactive flushing** (the program's default; the recommended launcher turns it off only in a
-  `sdl2-config.ini` it makes, the Recommended preset, also on Dozer's first start, in
+- **Reactive flushing** (the program's default; the balanced and performance launchers turn it off only in a
+  `sdl2-config.ini` they make, the Performance preset, also on Dozer's first start, in
   `qt-config.ini`) can cost FPS at the game's opening; its new switches were not tried
   with frame generation.
 - **AMD and Intel GPUs were not tried**; neither were other games. The Bananza switches

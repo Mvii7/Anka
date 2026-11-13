@@ -13,7 +13,7 @@
 
 // Anka's settings in the Qt program (anka.exe): the EDEN_NX2_* switches of the launchers
 // (dist/dozer/start-*.bat), as a preset and on / off settings kept in the [Anka] group of
-// qt-config.ini, the Recommended preset until changed. The program sets the variables in its own
+// qt-config.ini, the Performance preset until changed. The program sets the variables in its own
 // environment before a game boots (yuzu/nx2perf_session.h); anka-cli and the launchers don't read
 // these settings.
 //
@@ -26,19 +26,19 @@
 namespace Core::Nx2PerfSettings {
 
 /// The launchers' setups, and Custom: a box changed by hand. The stored numbers stay as they
-/// were (Fast is 4) so an existing qt-config.ini keeps its preset. The tab calls Reactive
+/// were (Performance is 4) so an existing qt-config.ini keeps its preset. The tab calls Reactive
 /// "Experimental".
 enum class Preset : u8 {
-    Recommended = 0, ///< start-recommended.bat: all on, read traps on, Reactive Flushing off
+    Balanced = 0,    ///< start-balanced.bat: all on, read traps on, Reactive Flushing off
     Reactive = 1,    ///< start-reactive-experimental.bat: read traps off, Reactive Flushing on, RX_RT_FIT=3
     Safe = 2,        ///< start-safe.bat: all off, and the shortcuts Dozer keeps on set to 0
     Custom = 3,      ///< the boxes as set, nothing else
-    Fast = 4,        ///< start-fast.bat: Recommended with read traps off
+    Performance = 4, ///< start-performance.bat: Balanced with read traps off
 };
 
 /// Combo order in the Tuning tab. Not the stored numbers.
 inline constexpr std::array<Preset, 5> PresetOrder{
-    Preset::Recommended, Preset::Fast, Preset::Reactive, Preset::Safe, Preset::Custom,
+    Preset::Performance, Preset::Balanced, Preset::Reactive, Preset::Safe, Preset::Custom,
 };
 
 /// The combo index of a preset (Custom when it is not one of these).
@@ -52,7 +52,7 @@ constexpr int IndexOf(Preset preset) {
 }
 
 struct Switches {
-    bool read_traps = true;        ///< on leaves EDEN_NX2_READ_TRAPS unset; off sets it to 0
+    bool read_traps = false;       ///< on leaves EDEN_NX2_READ_TRAPS unset; off sets it to 0
     bool split_gpu_thread = true;  ///< EDEN_NX2_BACK_STAGES=1 + EDEN_NX2_BACK_CUTS=a
     bool acquire_peek = true;      ///< EDEN_NX2_ACQUIRE_PEEK=1
     bool jit_same = true;          ///< EDEN_NX2_JIT_SAME=1
@@ -61,14 +61,22 @@ struct Switches {
     bool osd = true;               ///< EDEN_NX2_OSD=1
     bool dk_dyn = true;            ///< EDEN_NX2_DK_DYN=1, Bananza only
     bool dk_pacing = true;         ///< PRESENT_INTERVAL_WORD + MODE_PACE + PACE_SPIN_US, Bananza only
-    Preset preset = Preset::Recommended;
+    Preset preset = Preset::Performance;
 
     bool operator==(const Switches&) const = default;
 };
 
-/// What the recommended launcher sets (and the first start's settings).
-constexpr Switches Recommended() {
+/// What the performance launcher sets (and the first start's settings).
+constexpr Switches Performance() {
     return Switches{};
+}
+
+/// What the balanced launcher sets: Performance with read traps on.
+constexpr Switches Balanced() {
+    Switches switches{};
+    switches.read_traps = true;
+    switches.preset = Preset::Balanced;
+    return switches;
 }
 
 /// start-safe.bat's setup: none of the switches, and the per-draw shortcuts off.
@@ -107,11 +115,11 @@ inline constexpr std::array<Key, 9> Keys{{
 /// A stored preset number. Anything else is Custom (a file edited by hand).
 constexpr Preset PresetFromInt(int value) {
     switch (value) {
-    case static_cast<int>(Preset::Recommended):
+    case static_cast<int>(Preset::Balanced):
     case static_cast<int>(Preset::Reactive):
     case static_cast<int>(Preset::Safe):
     case static_cast<int>(Preset::Custom):
-    case static_cast<int>(Preset::Fast):
+    case static_cast<int>(Preset::Performance):
         return static_cast<Preset>(value);
     default:
         return Preset::Custom;
@@ -119,15 +127,15 @@ constexpr Preset PresetFromInt(int value) {
 }
 
 /// The boxes of a preset (Custom: `current` as it is), with the preset set.
-/// Fast and Experimental (Reactive) are Recommended's boxes with read traps off.
+/// Performance and Experimental (Reactive) are Balanced's boxes with read traps off.
 constexpr Switches FromPreset(Preset preset, const Switches& current) {
     if (preset == Preset::Custom) {
         Switches switches = current;
         switches.preset = Preset::Custom;
         return switches;
     }
-    Switches switches = preset == Preset::Safe ? AllOff() : Recommended();
-    if (preset == Preset::Fast || preset == Preset::Reactive) {
+    Switches switches = preset == Preset::Safe ? AllOff() : Balanced();
+    if (preset == Preset::Performance || preset == Preset::Reactive) {
         switches.read_traps = false;
     }
     switches.preset = preset;
@@ -231,8 +239,8 @@ constexpr std::optional<bool> BarrierFeedbackLoops(Preset preset) {
 /// (the launchers' safe one leaves the .ini as it is).
 constexpr std::optional<bool> ReactiveFlushing(Preset preset) {
     switch (preset) {
-    case Preset::Recommended:
-    case Preset::Fast:
+    case Preset::Balanced:
+    case Preset::Performance:
         return false;
     case Preset::Reactive:
         return true;
@@ -242,20 +250,20 @@ constexpr std::optional<bool> ReactiveFlushing(Preset preset) {
 }
 
 /// Reads every setting through `read(key, default)` and the preset through
-/// `read_preset(key, default)`; missing keys give the first start's (Recommended). Boxes that are
+/// `read_preset(key, default)`; missing keys give the first start's (Performance). Boxes that are
 /// not their preset's (the file edited by hand) make it Custom.
 template <typename Read, typename ReadPreset>
 Switches Load(Read&& read, ReadPreset&& read_preset) {
     const Preset preset =
-        PresetFromInt(read_preset("preset", static_cast<int>(Preset::Recommended)));
+        PresetFromInt(read_preset("preset", static_cast<int>(Preset::Performance)));
     // read_traps was added after the other boxes. A file without the key keeps the preset's
-    // own value (Recommended on, Fast / Experimental / Safe off, Custom on) instead of being
+    // own value (Balanced on, Performance / Experimental / Safe off, Custom on) instead of being
     // read as Custom.
-    const bool read_traps_fallback = FromPreset(preset, Recommended()).read_traps;
+    const bool read_traps_fallback = FromPreset(preset, Balanced()).read_traps;
     Switches switches{};
     for (const Key& key : Keys) {
         const bool fallback =
-            key.name == "read_traps" ? read_traps_fallback : Recommended().*key.field;
+            key.name == "read_traps" ? read_traps_fallback : Balanced().*key.field;
         switches.*key.field = read(key.name, fallback);
     }
     switches.preset = preset;
@@ -267,10 +275,10 @@ Switches Load(Read&& read, ReadPreset&& read_preset) {
 template <typename Write, typename WritePreset>
 void Save(const Switches& switches, Write&& write, WritePreset&& write_preset) {
     for (const Key& key : Keys) {
-        write(key.name, switches.*key.field, Recommended().*key.field);
+        write(key.name, switches.*key.field, Balanced().*key.field);
     }
     write_preset("preset", static_cast<int>(switches.preset),
-                 static_cast<int>(Preset::Recommended));
+                 static_cast<int>(Preset::Performance));
 }
 
 /// The settings for Donkey Kong Bananza only take its title: the program id EDEN_NX2_DK_DYN's

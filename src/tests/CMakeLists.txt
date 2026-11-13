@@ -20,6 +20,8 @@ add_executable(tests
     common/unique_function.cpp
     core/core_timing.cpp
     core/internal_network/network.cpp
+    core/nup_validation.cpp
+    core/nup_zstd_read.cpp
     core/nx2_dk_dyn_pace.cpp
     core/nx2_frame_stats.cpp
     core/nx2_dk_dynamic_fps.cpp
@@ -29,7 +31,10 @@ add_executable(tests
     core/nx2_present_rate.cpp
     core/nx2_vi2_reply.cpp
     core/nx2_vi2_events.cpp
+    core/nx_archive.cpp
     core/read_traps.cpp
+    core/system_test_context.h
+    frontend_common/nx_archive.cpp
     video_core/memory_tracker.cpp
     video_core/native_qmd.cpp
     video_core/ampere_returns.cpp
@@ -64,8 +69,11 @@ add_executable(tests
 
 create_target_directory_groups(tests)
 
-target_link_libraries(tests PRIVATE common core input_common video_core)
+target_link_libraries(tests PRIVATE common core frontend_common input_common video_core)
 target_link_libraries(tests PRIVATE ${PLATFORM_LIBRARIES} Catch2::Catch2WithMain Threads::Threads)
+
+target_compile_definitions(tests PRIVATE
+    YUZU_NX_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/core/nx_fixtures")
 
 add_test(NAME tests COMMAND tests)
 

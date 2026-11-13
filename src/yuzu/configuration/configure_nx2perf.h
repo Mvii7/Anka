@@ -62,7 +62,7 @@ private:
 
     std::unique_ptr<Ui::ConfigureNx2Perf> ui;
     std::vector<Row> rows;
-    Core::Nx2PerfSettings::Preset preset = Core::Nx2PerfSettings::Preset::Recommended;
+    Core::Nx2PerfSettings::Preset preset = Core::Nx2PerfSettings::Preset::Performance;
     std::function<bool(bool, bool)> reactive_flushing;
     bool game_running = false;
     Core::Nx2PerfSettings::FrameGen frame_gen_shown = Core::Nx2PerfSettings::FrameGen::Off;
