@@ -29,6 +29,7 @@
 #include "core/file_sys/registered_cache.h"
 #include "core/file_sys/submission_package.h"
 #include "core/loader/loader.h"
+#include "core/loader/nx.h"
 
 #include "qt_common/config/uisettings.h"
 #include "qt_common/qt_common.h"
@@ -206,7 +207,7 @@ QString FormatPatchNameVersions(const FileSys::PatchManager& patch_manager,
     FileSys::VirtualFile update_raw;
     loader.ReadUpdateRaw(update_raw);
     for (const auto& patch : patch_manager.GetPatches(update_raw)) {
-        const bool is_update = patch.name == "Update";
+        const bool is_update = patch.type == FileSys::PatchType::Update;
         if (!updatable && is_update) {
             continue;
         }
@@ -246,7 +247,9 @@ QList<QStandardItem*> MakeGameListEntry(const std::string& path, const std::stri
         });
 
     FileSys::NACP nacp{};
-    if (file_type == Loader::FileType::NUP &&
+    // An NX tree snapshot, like a NUP, is already the updated game: no patch manager update.
+    if ((file_type == Loader::FileType::NUP ||
+         (file_type == Loader::FileType::NX && !loader.IsRomFSUpdatable())) &&
         loader.ReadControlData(nacp) == Loader::ResultStatus::Success) {
         const std::string version_string = nacp.GetVersionString();
         if (!version_string.empty()) {
@@ -400,7 +403,7 @@ void GameListWorker::ScanFileSystem(ScanTarget target, const std::string& dir_pa
         if (target == ScanTarget::PopulateGameList &&
             (file_type == Loader::FileType::XCI || file_type == Loader::FileType::XCZ ||
              file_type == Loader::FileType::NSP || file_type == Loader::FileType::NSZ ||
-             file_type == Loader::FileType::NUP) &&
+             file_type == Loader::FileType::NUP || file_type == Loader::FileType::NX) &&
             !Loader::IsBootableGameContainer(file, file_type)) {
             return;
         }
@@ -413,11 +416,15 @@ void GameListWorker::ScanFileSystem(ScanTarget target, const std::string& dir_pa
                 provider->AddEntry(FileSys::TitleType::Application,
                                    FileSys::GetCRTypeFromNCAType(FileSys::NCA{file}.GetType()),
                                    program_id, file);
+            } else if (file_type == Loader::FileType::NX) {
+                // An archive brings its own updates and add-ons, whatever the setting.
+                static_cast<Loader::AppLoader_NX&>(*loader).RegisterContent(*provider);
             } else if (Settings::values.ext_content_from_game_dirs.GetValue() &&
                        (file_type == Loader::FileType::XCI ||
                         file_type == Loader::FileType::XCZ ||
                         file_type == Loader::FileType::NSP ||
-                        file_type == Loader::FileType::NSZ)) {
+                        file_type == Loader::FileType::NSZ ||
+                        file_type == Loader::FileType::NUP)) {
                 void(provider->AddEntriesFromContainer(file));
             }
         } else {
@@ -437,6 +444,14 @@ void GameListWorker::ScanFileSystem(ScanTarget target, const std::string& dir_pa
                     if (const QString loose = LooseExeFSName(physical_name); !loose.isEmpty()) {
                         name = loose.toStdString();
                     }
+                }
+                if ((res3 != Loader::ResultStatus::Success || name.empty() || name == " ") &&
+                    (app_loader->GetFileType() == Loader::FileType::NX ||
+                     app_loader->GetFileType() == Loader::FileType::NUP)) {
+                    // A dump without control data has no title: show the file name.
+                    name = QFileInfo(QString::fromStdString(physical_name))
+                               .completeBaseName()
+                               .toStdString();
                 }
 
                 const FileSys::PatchManager patch{id, system.GetFileSystemController(),

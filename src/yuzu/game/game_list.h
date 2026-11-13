@@ -91,6 +91,7 @@ public slots:
     void RefreshGameDirectory();
     void RefreshExternalContent();
     void UpdateIconSizes();
+    void SetNxToolRunning(bool running);
     void OnPopulate();
 
 signals:
@@ -107,6 +108,10 @@ signals:
     void DumpRomFSRequested(u64 program_id, const std::string& game_path, DumpRomFSTarget target);
     void VerifyIntegrityRequested(const std::string& game_path);
     void CopyTIDRequested(u64 program_id);
+    void ConvertToNxRequested(const std::string& game_path);
+    void AddToNxRequested(const std::string& game_path);
+    void RemoveFromNxRequested(const std::string& game_path);
+    void EditNxMetadataRequested(const std::string& game_path);
     void CreateShortcut(u64 program_id, const std::string& game_path,
                         const QtCommon::Game::ShortcutTarget target);
     void OpenPerGameGeneralRequested(const std::string& file);
@@ -165,6 +170,7 @@ private:
     Core::System& system;
 
     bool m_isTreeMode = true;
+    bool nx_tool_running{};
     QAbstractItemView* m_currentView = nullptr;
 };
 

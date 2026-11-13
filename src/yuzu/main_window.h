@@ -57,6 +57,7 @@ class QSlider;
 class QHBoxLayout;
 class WaitTreeWidget;
 class PerformanceOverlay;
+class NxTools;
 #ifdef HAS_RESHADE
 class ConfigurePostProcessing;
 #endif
@@ -439,6 +440,10 @@ private slots:
 #endif
 
 private:
+    void OnGameListNxTool(const std::string& game_path, void (NxTools::*tool)(const std::string&));
+    void OnGameListEditNxMetadata(const std::string& game_path);
+    /// Offers to convert a NUP to NX before it starts. True when the game must not start now.
+    bool SuggestNxConversion(const QString& filename);
     void RemovePlayTimeData(u64 program_id);
     bool SelectRomFSDumpTarget(const FileSys::ContentProvider&, u64 program_id,
                                u64* selected_title_id, u8* selected_content_record_type);
@@ -588,6 +593,9 @@ private:
 
     // True if load file select is visible
     bool is_load_file_select_active{};
+
+    NxTools* nx_tools = nullptr;
+    bool nx_metadata_write_in_progress = false;
 
     // True if TAS recording dialog is visible
     bool is_tas_recording_dialog_active{};

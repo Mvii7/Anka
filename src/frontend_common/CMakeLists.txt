@@ -15,6 +15,7 @@ add_library(frontend_common STATIC
     play_time_manager.h
     settings_generator.h settings_generator.cpp
     mod_manager.h mod_manager.cpp
+    nx_archive.h nx_archive.cpp
     nx2_osd.cpp
     nx2_osd.h)
 

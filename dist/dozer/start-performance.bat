@@ -3,7 +3,7 @@ setlocal DisableDelayedExpansion
 rem Dozer - PERFORMANCE (the default): the fastest settings, read traps and reactive flushing off. Foliage is not rendered.
 rem Dozer launcher for dozer-cli.exe (Dozer's program without menus).
 rem Put this file next to dozer-cli.exe.
-rem Start: put your game (.nsp .xci .nsz .xcz .nup) in the Games folder next to this file and double-click
+rem Start: put your game (.nsp .xci .nsz .xcz .nup .nx) in the Games folder next to this file and double-click
 rem this file; or drag a game file onto it; or write the game's path in GAME below.
 rem First start: when the user folder has no config\sdl2-config.ini yet, it is made as a copy of
 rem config\qt-config.ini (the controller and settings of the menu program, dozer.exe). An existing
@@ -106,7 +106,7 @@ if not "%errorlevel%"=="0" pause
 goto end
 :nogame
 echo.
-echo  No game found. Put your game file (.nsp .xci .nsz .xcz .nup) in the Games folder next to
+echo  No game found. Put your game file (.nsp .xci .nsz .xcz .nup .nx) in the Games folder next to
 echo  this file, or drag it onto this .bat.
 echo.
 pause
@@ -138,7 +138,7 @@ rem ---- the game list: the Games folder next to this file, subfolders too -----
 :findgames
 set "NGAMES=0"
 if not exist "%HERE%Games\" exit /b 0
-for /r "%HERE%Games" %%F in (*.nsp *.xci *.nsz *.xcz *.nup) do (
+for /r "%HERE%Games" %%F in (*.nsp *.xci *.nsz *.xcz *.nup *.nx) do (
   set "F=%%~fF"
   call :addgame
 )
@@ -151,7 +151,7 @@ exit /b 0
 echo.
 echo  Games in the Games folder:
 set "I=0"
-for /r "%HERE%Games" %%F in (*.nsp *.xci *.nsz *.xcz *.nup) do (
+for /r "%HERE%Games" %%F in (*.nsp *.xci *.nsz *.xcz *.nup *.nx) do (
   set "F=%%~nxF"
   call :showgame
 )
@@ -165,7 +165,7 @@ set "PICK="
 for /l %%I in (1,1,%NGAMES%) do if "%SEL%"=="%%I" set "PICK=%%I"
 if not defined PICK goto ask
 set "I=0"
-for /r "%HERE%Games" %%F in (*.nsp *.xci *.nsz *.xcz *.nup) do (
+for /r "%HERE%Games" %%F in (*.nsp *.xci *.nsz *.xcz *.nup *.nx) do (
   set "F=%%~fF"
   call :pickgame
 )
