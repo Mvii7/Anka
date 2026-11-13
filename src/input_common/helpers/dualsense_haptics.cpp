@@ -28,9 +28,6 @@ constexpr std::size_t RightActuator = 1;
 // Targets are picked up in fixed blocks so the feel doesn't depend on the host buffer size
 constexpr int UpdateFrames = 256;
 
-// Keeps sustained output away from the level where the coils heat up and distort
-constexpr f32 OutputGain = 1.0f;
-
 // One pole smoothing with a 4ms time constant on amplitude and frequency changes
 const f32 SmoothingFactor = static_cast<f32>(1.0 - std::exp(-1000.0 / (SampleRate * 4.0)));
 
@@ -218,6 +215,7 @@ void DualSenseHaptics::UpdateTargets() {
 
 void DualSenseHaptics::Render(int frames) {
     constexpr f64 TwoPi = 2.0 * std::numbers::pi;
+    const f64 gain = strength.load();
     buffer.assign(static_cast<std::size_t>(frames) * Channels, 0.0f);
 
     for (int i = 0; i < frames; ++i) {
@@ -234,8 +232,7 @@ void DualSenseHaptics::Render(int frames) {
 
             const f64 value = actuator.low.amplitude * std::sin(TwoPi * actuator.low.phase) +
                               actuator.high.amplitude * std::sin(TwoPi * actuator.high.phase);
-            frame[FirstActuatorChannel + a] =
-                static_cast<f32>(std::clamp(value, -1.0, 1.0)) * OutputGain;
+            frame[FirstActuatorChannel + a] = static_cast<f32>(std::clamp(value * gain, -1.0, 1.0));
         }
     }
 }

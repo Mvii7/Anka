@@ -47,6 +47,11 @@ public:
     // Amplitudes are in the range [0, 1], frequencies in Hz.
     void SetVibration(const Common::Input::VibrationStatus& vibration);
 
+    // Output multiplier applied on top of the requested amplitudes
+    void SetStrength(f32 value) {
+        strength = value;
+    }
+
 private:
     struct Band {
         f32 amplitude{};
@@ -81,6 +86,7 @@ private:
 
     std::array<Target, 2> targets;
     std::atomic<u64> last_update_ms{};
+    std::atomic<f32> strength{1.0f};
 
     std::array<Actuator, 2> actuators;
     int frames_until_update{};

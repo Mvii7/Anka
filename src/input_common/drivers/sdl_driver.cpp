@@ -245,6 +245,8 @@ public:
         if (!UseDualSenseHaptics()) {
             return false;
         }
+        haptics.SetStrength(
+            static_cast<f32>(Settings::values.dualsense_haptics_strength.GetValue()) / 100.0f);
         haptics.SetVibration(vibration);
         return true;
     }

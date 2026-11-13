@@ -812,6 +812,8 @@ struct Values {
                                            false,
 #endif
                                            "enable_dualsense_haptics", Category::Controls};
+    Setting<int, true> dualsense_haptics_strength{
+        linkage, 90, 50, 150, "dualsense_haptics_strength", Category::Controls};
 
     SwitchableSetting<bool> motion_enabled{linkage, true, "motion_enabled", Category::Controls};
     Setting<std::string> udp_input_servers{linkage, "127.0.0.1:26760", "udp_input_servers",
