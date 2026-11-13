@@ -19,9 +19,8 @@ struct MotorStrengths {
 // still be felt. curve_factor shapes the amplitude, 1 being linear.
 MotorStrengths MapRumbleByBand(const Common::Input::VibrationStatus& vibration, f32 curve_factor);
 
-// Each band keeps its strength (curve and frequency attenuation as in MapRumbleByBand) but is
-// routed to the motor that matches its frequency: the heavy motor at or below 113 Hz, the light
-// one at or above 452 Hz, and split on a log scale in between. The total is preserved.
+// Each band's energy goes to the motor that matches its frequency: the heavy motor at or below
+// 120 Hz, the light one at or above 480 Hz, and split on a log scale in between.
 MotorStrengths MapRumbleByFrequency(const Common::Input::VibrationStatus& vibration,
                                     f32 curve_factor);
 
