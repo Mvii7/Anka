@@ -165,7 +165,7 @@ files in `Games`, and the `user` folder (your keys, firmware and saves).
 ### The Bananza tab
 
 Next to the Tuning tab (Emulation > Configure... > Tuning > **Bananza**): experimental quality
-sliders for Donkey Kong Bananza. Tick a row to replace the game's own value by the slider's;
+sliders for Donkey Kong Bananza. A **Preset** box at the top sets every row at once: Default (nothing changed), Balanced (a moderate cut), Performance (a hard cut, the picture gets visibly softer); it reads Custom when you change a row yourself. Tick a row to replace the game's own value by the slider's;
 unticked rows leave the game as it is, and all are unticked at first. They are read when the game
 starts, so a change asks for a restart like the Tuning tab's boxes.
 

@@ -4,6 +4,7 @@
 #include "yuzu/configuration/configure_bananza.h"
 
 #include <QCheckBox>
+#include <QComboBox>
 #include <QEvent>
 #include <QGridLayout>
 #include <QLabel>
@@ -23,6 +24,22 @@ ConfigureBananza::ConfigureBananza(QWidget* parent) : QWidget(parent) {
     intro->setWordWrap(true);
     layout->addWidget(intro, 0, 0, 1, 3);
 
+    preset = new QComboBox(this);
+    for (int i = 0; i < 4; ++i) {
+        preset->addItem(QString{});
+    }
+    layout->addWidget(preset, 1, 0);
+    preset_text = new QLabel(this);
+    preset_text->setWordWrap(true);
+    layout->addWidget(preset_text, 1, 1, 1, 2);
+    connect(preset, &QComboBox::activated, this, [this](int index) {
+        const auto chosen = static_cast<Quality::Preset>(index);
+        if (chosen != Quality::Preset::Custom) {
+            Show(Quality::PresetValues(chosen));
+        }
+        ShowPreset();
+    });
+
     for (std::size_t i = 0; i < rows.size(); ++i) {
         const Quality::Knob& knob = Quality::Knobs[i];
         Row& row = rows[i];
@@ -33,15 +50,21 @@ ConfigureBananza::ConfigureBananza(QWidget* parent) : QWidget(parent) {
         row.value = new QLabel(this);
         row.value->setMinimumWidth(
             row.value->fontMetrics().horizontalAdvance(QStringLiteral("000 frames (game)")));
-        const int line = static_cast<int>(i) + 1;
+        const int line = static_cast<int>(i) + 2;
         layout->addWidget(row.box, line, 0);
         layout->addWidget(row.slider, line, 1);
         layout->addWidget(row.value, line, 2);
-        connect(row.box, &QCheckBox::toggled, this, [this, i] { ShowValue(i); });
-        connect(row.slider, &QSlider::valueChanged, this, [this, i] { ShowValue(i); });
+        connect(row.box, &QCheckBox::toggled, this, [this, i] {
+            ShowValue(i);
+            ShowPreset();
+        });
+        connect(row.slider, &QSlider::valueChanged, this, [this, i] {
+            ShowValue(i);
+            ShowPreset();
+        });
     }
 
-    const int after = static_cast<int>(rows.size()) + 1;
+    const int after = static_cast<int>(rows.size()) + 2;
     auto* const reset = new QPushButton(this);
     reset->setObjectName(QStringLiteral("reset"));
     layout->addWidget(reset, after, 0);
@@ -75,6 +98,11 @@ void ConfigureBananza::RetranslateUI() {
                      "faster. The terrain's own resolution is fixed by the game's data and has "
                      "no setting."));
     findChild<QPushButton*>(QStringLiteral("reset"))->setText(tr("Reset to the Game's"));
+    preset->setItemText(static_cast<int>(Quality::Preset::Default), tr("Default"));
+    preset->setItemText(static_cast<int>(Quality::Preset::Balanced), tr("Balanced"));
+    preset->setItemText(static_cast<int>(Quality::Preset::Performance), tr("Performance"));
+    preset->setItemText(static_cast<int>(Quality::Preset::Custom), tr("Custom"));
+    ShowPreset();
 
     const std::array<std::pair<QString, QString>, Quality::Count> texts{{
         {tr("Best render resolution"),
@@ -128,6 +156,7 @@ void ConfigureBananza::Show(const Quality::Values& values) {
         rows[i].slider->setValue(values[i] != 0 ? values[i] : Quality::Knobs[i].game);
         ShowValue(i);
     }
+    ShowPreset();
 }
 
 void ConfigureBananza::ShowValue(std::size_t index) {
@@ -157,10 +186,39 @@ void ConfigureBananza::ShowValue(std::size_t index) {
     row.value->setText(on ? text : tr("%1 (game)").arg(text));
 }
 
-void ConfigureBananza::ApplyConfiguration() {
+Quality::Values ConfigureBananza::Current() const {
     Quality::Values values{};
     for (std::size_t i = 0; i < rows.size(); ++i) {
         values[i] = rows[i].box->isChecked() ? rows[i].slider->value() : 0;
     }
-    UISettings::values.nx2dkq = values;
+    return values;
+}
+
+void ConfigureBananza::ShowPreset() {
+    const Quality::Preset now = Quality::PresetOf(Current());
+    {
+        const QSignalBlocker blocker{preset};
+        preset->setCurrentIndex(static_cast<int>(now));
+    }
+    switch (now) {
+    case Quality::Preset::Default:
+        preset_text->setText(tr("The game's own values: nothing is changed."));
+        break;
+    case Quality::Preset::Balanced:
+        preset_text->setText(tr("A moderate cut: render resolution 65% at best and 45% at "
+                                "worst, smaller bloom and blur, terrain LOD distance 75%."));
+        break;
+    case Quality::Preset::Performance:
+        preset_text->setText(tr("A hard cut: render resolution 50% at best and 35% at worst, "
+                                "terrain LOD distance 50%, Low terrain mesh simplification. "
+                                "The picture gets visibly softer."));
+        break;
+    case Quality::Preset::Custom:
+        preset_text->setText(tr("Your own choice of the rows below."));
+        break;
+    }
+}
+
+void ConfigureBananza::ApplyConfiguration() {
+    UISettings::values.nx2dkq = Current();
 }

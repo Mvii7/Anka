@@ -64,6 +64,53 @@ inline constexpr std::array<Knob, Count> Knobs{{
 /// One number per knob; 0 leaves the game's own.
 using Values = std::array<int, Count>;
 
+/// The presets of the Bananza tab. Default leaves every setting to the game; Custom is whatever
+/// else the rows hold.
+enum class Preset : u8 {
+    Default,
+    Balanced,
+    Performance,
+    Custom,
+};
+
+/// A preset's values (0: the game's). Custom has none of its own: nothing set.
+constexpr Values PresetValues(Preset preset) {
+    Values values{};
+    if (preset == Preset::Balanced) {
+        values[ResBest] = 65;
+        values[ResWorst] = 45;
+        values[GpuTarget] = 85;
+        values[BloomScale] = 20;
+        values[CubeMapInterval] = 12;
+        values[RadialBlurScale] = 40;
+        values[RadialBlurSamples] = 12;
+        values[VoxelLodDist] = 75;
+        values[ColorDecalMax] = 400;
+    } else if (preset == Preset::Performance) {
+        values[ResBest] = 50;
+        values[ResWorst] = 35;
+        values[GpuTarget] = 80;
+        values[BloomScale] = 12;
+        values[CubeMapInterval] = 24;
+        values[RadialBlurScale] = 25;
+        values[RadialBlurSamples] = 8;
+        values[VoxelLodDist] = 50;
+        values[MeshSimplify] = 5;
+        values[ColorDecalMax] = 200;
+    }
+    return values;
+}
+
+/// The preset the values are (Custom when none).
+constexpr Preset PresetOf(const Values& values) {
+    for (const Preset preset : {Preset::Default, Preset::Balanced, Preset::Performance}) {
+        if (values == PresetValues(preset)) {
+            return preset;
+        }
+    }
+    return Preset::Custom;
+}
+
 /// A stored or given number: 0 unless it is within the knob's range.
 constexpr int Sanitize(int value, const Knob& knob) {
     return value >= knob.min && value <= knob.max ? value : 0;

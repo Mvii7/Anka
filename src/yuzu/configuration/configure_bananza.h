@@ -10,6 +10,7 @@
 #include "core/loader/nx2_dk_quality.h"
 
 class QCheckBox;
+class QComboBox;
 class QLabel;
 class QSlider;
 
@@ -36,8 +37,12 @@ private:
     void RetranslateUI();
     void Show(const Loader::Nx2DkQuality::Values& values);
     void ShowValue(std::size_t index);
+    void ShowPreset();
+    Loader::Nx2DkQuality::Values Current() const;
 
     QLabel* intro;
+    QComboBox* preset;
+    QLabel* preset_text;
     QLabel* note;
     std::array<Row, Loader::Nx2DkQuality::Count> rows{};
 };

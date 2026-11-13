@@ -270,3 +270,21 @@ TEST_CASE("Nx2DkQuality: values and variables", "[core]") {
     REQUIRE(vars[1].name == "EDEN_NX2_DKQ_VOXEL_LOD_DIST");
     REQUIRE(vars[1].value == "400");
 }
+
+TEST_CASE("Nx2DkQuality: the presets", "[core]") {
+    REQUIRE(PresetOf(Values{}) == Preset::Default);
+    for (const Preset preset : {Preset::Balanced, Preset::Performance}) {
+        const Values values = PresetValues(preset);
+        REQUIRE(PresetOf(values) == preset);
+        REQUIRE(values != Values{});
+        for (size_t i = 0; i < Count; ++i) {
+            REQUIRE(values[i] == Sanitize(values[i], Knobs[i]));
+        }
+        // The best resolution is not below the worst one
+        REQUIRE(values[ResBest] >= values[ResWorst]);
+    }
+    Values changed = PresetValues(Preset::Balanced);
+    changed[BloomScale] = 11;
+    REQUIRE(PresetOf(changed) == Preset::Custom);
+    REQUIRE(PresetOf(Only(ResBest, 60)) == Preset::Custom);
+}

@@ -8,7 +8,7 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
-- Tuning has a second tab, **Bananza**: experimental quality sliders for Donkey Kong Bananza
+- Tuning has a second tab, **Bananza**: a Default / Balanced / Performance / Custom preset box and experimental quality sliders for Donkey Kong Bananza
   (render resolution range, the resolution control's GPU load target,
   bloom and radial blur buffers, cube map update interval, terrain LOD distance, terrain mesh simplification, colour decal
   limit; only settings where less is faster). A
