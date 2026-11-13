@@ -2505,8 +2505,17 @@ void RasterizerVulkan::WaitForIdleRecord() {
         return;
     }
     scheduler.RequestOutsideRenderPassOperationContext();
+    const VkDriverId driver_id = device.GetDriverID();
+    if (driver_id != VK_DRIVER_ID_AMD_PROPRIETARY && driver_id != VK_DRIVER_ID_AMD_OPEN_SOURCE &&
+        driver_id != VK_DRIVER_ID_MESA_RADV) {
+        scheduler.Record([event = *wfi_event, flags](vk::CommandBuffer cmdbuf) {
+            cmdbuf.SetEvent(event, flags);
+            cmdbuf.WaitEvents(event, flags, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, {}, {}, {});
+        });
+        return;
+    }
     scheduler.Record([flags](vk::CommandBuffer cmdbuf) {
-        // Later work waits for the earlier work and sees its writes.
+        // AMD: later work waits for the earlier work and sees its writes.
         static constexpr VkMemoryBarrier WFI_BARRIER{
             .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
             .pNext = nullptr,
