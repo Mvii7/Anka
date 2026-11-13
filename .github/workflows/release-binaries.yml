@@ -127,6 +127,9 @@ jobs:
             }
           }
           windeployqt --release --no-translations build/release/bin/dozer.exe
+          # upload-artifact drops empty folders, so the portable user folder carries a placeholder.
+          New-Item -ItemType Directory -Force build/release/bin/user | Out-Null
+          New-Item -ItemType File -Force build/release/bin/user/.keep | Out-Null
 
       # The artifact is the bin folder itself: GitHub zips artifacts on download, and uploading a
       # zip gave a zip inside a zip. The publish job zips it once for the release.
@@ -427,7 +430,7 @@ jobs:
           cp -r dist/dozer/Games "$win/Games"
           cp README_DOZER.md LICENSE.txt "$win/"
           cp -r LICENSES "$win/LICENSES"
-          mkdir "$win/user"
+          mkdir -p "$win/user"
           test -f "$win/dozer.exe" && test -f "$win/dozer-cli.exe"
           zip -qr "release/$win.zip" "$win"
           cp dl/dozer-linux-x86_64-*/*.AppImage "release/Dozer-$VERSION-linux-x86_64.AppImage"
