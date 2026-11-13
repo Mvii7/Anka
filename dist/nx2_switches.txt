@@ -26,6 +26,9 @@
 #EDEN_NX2_INLINE_DEFER=0
 #EDEN_NX2_SPLIT_SKIP=1
 #EDEN_NX2_AUTO_STUB=1
+# UNDEF_ZERO=0: shader registers read before any write are OpUndef again instead of zero
+# (zero is what NVIDIA gives; AMD showed garbage, e.g. green patches near glowing objects).
+#EDEN_NX2_UNDEF_ZERO=0
 
 # --- GPU thread shortcuts (on by default; =0 as before; added by Dozer) ---
 # =2 keeps them on and logs what they would get wrong: VERTEX_CLEAN, LIGHT_SYNC_SKIP,
