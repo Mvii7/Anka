@@ -57,7 +57,8 @@ This is an experimental build with no warranty (see "License").
 
 Then add your game folder to the game list ("Add New Game Directory") and start a game.
 
-Game files: `.nsp`, `.xci`, `.nsz`, `.xcz` and **`.nup`** (see "NUP files").
+Game files: `.nsp`, `.xci`, `.nsz`, `.xcz`, **`.nup`** (see "NUP files") and **`.nx`** (see "NX
+files").
 
 ### NUP files
 
@@ -69,10 +70,21 @@ shows its name, icon and version), or put it in the `Games` folder for the launc
 that game like any other format. Dozer only reads NUP: it does not make, edit or extract one.
 Only use NUP files made from your own dumps.
 
-Compressed parts are decompressed on use; a cache of 512 MiB keeps them
+Compressed parts are decompressed as far as the game reads them; a cache of 512 MiB keeps them
 (`EDEN_NUP_CACHE_MIB=<n>`, 64 or more, sets another size), and a part larger than half of it is
-decompressed once into `user\cache\nup` (removed when the game closes: it needs that much free
+decompressed into `user\cache\nup` (removed when the game closes: it needs that much free
 disk space).
+
+### NX files
+
+Dozer reads and makes `.nx` files: NX archives of the nxformat project, one file that holds a
+game with its updates and DLC. Open one like any other game file. To make one, right-click a
+game in the game list and choose **Convert to NX...**: it takes an NSP or XCI (with the updates
+and DLC of the same game found in its folder, if you tick them), a `.nup` or a dump folder. An
+NSP or XCI is decrypted with your keys while it is read, so the `.nx` needs no keys afterwards.
+**Manage NX Archive** on an `.nx` adds or removes an update or DLC and edits the title,
+publisher and icon shown in the list. `dozer-cli.exe` opens an `.nx` path but does not convert.
+Only convert your own dumps.
 
 The zip holds `dozer.exe`, `dozer-cli.exe`, the Qt DLLs and plugins `dozer.exe` needs, the Visual
 C++ runtime DLLs, the launchers and an empty `user\` folder. Because of that `user\` folder Dozer
@@ -164,7 +176,7 @@ files in `Games`, and the `user` folder (your keys, firmware and saves).
 
 ### The second way: dozer-cli and the launchers
 
-1. Put your game file (`.nsp`, `.xci`, `.nsz`, `.xcz` or `.nup`) in the `Games` folder (subfolders
+1. Put your game file (`.nsp`, `.xci`, `.nsz`, `.xcz`, `.nup` or `.nx`) in the `Games` folder (subfolders
    are fine), or drag it onto the launcher instead.
 2. Double-click `start-recommended.bat`.
 

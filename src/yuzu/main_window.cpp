@@ -48,6 +48,10 @@
 #include "applets/qt_controller.h"
 #include "applets/qt_error.h"
 #include "applets/qt_profile_select.h"
+#ifdef YUZU_NX_TOOLS
+#include "core/file_sys/registered_cache.h"
+#include "yuzu/nx_tools.h"
+#endif
 #include "applets/qt_software_keyboard.h"
 #include "applets/qt_web_browser.h"
 
@@ -148,6 +152,7 @@ static FileSys::VirtualFile VfsDirectoryCreateFileWrapper(const FileSys::Virtual
 #include "core/file_sys/common_funcs.h"
 #include "core/file_sys/romfs.h"
 #include "core/file_sys/savedata_factory.h"
+#include "core/loader/nx.h"
 
 #include "core/tools/renderdoc.h"
 
@@ -1451,6 +1456,23 @@ void MainWindow::ConnectWidgetEvents() {
     connect(game_list, &GameList::VerifyIntegrityRequested, this,
             &MainWindow::OnGameListVerifyIntegrity);
     connect(game_list, &GameList::CopyTIDRequested, this, &MainWindow::OnGameListCopyTID);
+#ifdef YUZU_NX_TOOLS
+    nx_tools = new NxTools(QtCommon::vfs, this);
+    connect(nx_tools, &NxTools::RunningChanged, game_list, &GameList::SetNxToolRunning);
+    connect(nx_tools, &NxTools::ArchivesChanged, this, &MainWindow::OnGameListRefresh);
+    connect(nx_tools, &NxTools::MetadataWriteFinished, this, [this] {
+        nx_metadata_write_in_progress = false;
+        OnGameListRefresh();
+    });
+    connect(game_list, &GameList::ConvertToNxRequested, this,
+            [this](const std::string& path) { OnGameListNxTool(path, &NxTools::ConvertToNx); });
+    connect(game_list, &GameList::AddToNxRequested, this,
+            [this](const std::string& path) { OnGameListNxTool(path, &NxTools::AddToNx); });
+    connect(game_list, &GameList::RemoveFromNxRequested, this,
+            [this](const std::string& path) { OnGameListNxTool(path, &NxTools::RemoveFromNx); });
+    connect(game_list, &GameList::EditNxMetadataRequested, this,
+            &MainWindow::OnGameListEditNxMetadata);
+#endif
     connect(game_list, &GameList::CreateShortcut, this, &MainWindow::OnGameListCreateShortcut);
     connect(game_list, &GameList::AddDirectory, this, &MainWindow::OnGameListAddDirectory);
     connect(game_list_placeholder, &GameListPlaceholder::AddDirectory, this,
@@ -1891,6 +1913,13 @@ bool MainWindow::SelectAndSetCurrentUser(
 void MainWindow::BootGame(const QString& filename, Service::AM::FrontendAppletParameters params,
                           StartGameType type) {
     LOG_INFO(Frontend, "Dozer starting...");
+
+    if (nx_metadata_write_in_progress) {
+        QMessageBox::information(
+            this, tr("NX Archive"),
+            tr("Wait for the NX metadata edit to finish before starting a game."));
+        return;
+    }
 
     if (params.program_id == 0 ||
         params.program_id > static_cast<u64>(Service::AM::AppletProgramId::MaxProgramId)) {
@@ -2564,33 +2593,49 @@ void MainWindow::OnGameListDumpRomFS(u64 program_id, const std::string& game_pat
         return;
     }
 
-    FileSys::VirtualFile packed_update_raw{};
-    loader->ReadUpdateRaw(packed_update_raw);
-
     const auto& installed = QtCommon::system->GetContentProvider();
 
     u64 title_id{};
-    u8 raw_type{};
-    if (!SelectRomFSDumpTarget(installed, program_id, &title_id, &raw_type)) {
-        failed();
-        return;
+    FileSys::VirtualFile romfs;
+    if (loader->GetFileType() == Loader::FileType::NX) {
+        // An NX archive is never installed: it gives its own RomFS, update applied.
+        Loader::AppLoader_NX nx_loader{*QtCommon::system,
+                                       QtCommon::vfs->OpenFile(game_path, FileSys::OpenMode::Read),
+                                       program_id};
+        title_id = program_id;
+        if (nx_loader.ReadPatchedRomFS(romfs) != Loader::ResultStatus::Success) {
+            failed();
+            return;
+        }
+    } else {
+        FileSys::VirtualFile packed_update_raw{};
+        loader->ReadUpdateRaw(packed_update_raw);
+
+        u8 raw_type{};
+        if (!SelectRomFSDumpTarget(installed, program_id, &title_id, &raw_type)) {
+            failed();
+            return;
+        }
+
+        const auto type = static_cast<FileSys::ContentRecordType>(raw_type);
+        const auto base_nca = installed.GetEntry(title_id, type);
+        if (!base_nca) {
+            failed();
+            return;
+        }
+
+        const FileSys::NCA update_nca{packed_update_raw, nullptr};
+        if (type != FileSys::ContentRecordType::Program ||
+            update_nca.GetStatus() != Loader::ResultStatus::ErrorMissingBKTRBaseRomFS ||
+            update_nca.GetTitleId() != FileSys::GetUpdateTitleID(title_id)) {
+            packed_update_raw = {};
+        }
+
+        const FileSys::PatchManager pm{title_id, QtCommon::system->GetFileSystemController(),
+                                       installed};
+        romfs = pm.PatchRomFS(base_nca.get(), base_nca->GetRomFS(), type, packed_update_raw, false);
     }
 
-    const auto type = static_cast<FileSys::ContentRecordType>(raw_type);
-    const auto base_nca = installed.GetEntry(title_id, type);
-    if (!base_nca) {
-        failed();
-        return;
-    }
-
-    const FileSys::NCA update_nca{packed_update_raw, nullptr};
-    if (type != FileSys::ContentRecordType::Program ||
-        update_nca.GetStatus() != Loader::ResultStatus::ErrorMissingBKTRBaseRomFS ||
-        update_nca.GetTitleId() != FileSys::GetUpdateTitleID(title_id)) {
-        packed_update_raw = {};
-    }
-
-    const auto base_romfs = base_nca->GetRomFS();
     const auto dump_dir =
         target == DumpRomFSTarget::Normal
             ? Common::FS::GetEdenPath(Common::FS::EdenPath::DumpDir)
@@ -2598,10 +2643,6 @@ void MainWindow::OnGameListDumpRomFS(u64 program_id, const std::string& game_pat
     const auto romfs_dir = fmt::format("{:016X}/romfs", title_id);
 
     const auto path = Common::FS::PathToUTF8String(dump_dir / romfs_dir);
-
-    const FileSys::PatchManager pm{title_id, QtCommon::system->GetFileSystemController(),
-                                   installed};
-    auto romfs = pm.PatchRomFS(base_nca.get(), base_romfs, type, packed_update_raw, false);
 
     const auto out = VfsFilesystemCreateDirectoryWrapper(path, FileSys::OpenMode::ReadWrite);
 
@@ -2669,6 +2710,46 @@ void MainWindow::OnGameListDumpRomFS(u64 program_id, const std::string& game_pat
 void MainWindow::OnGameListVerifyIntegrity(const std::string& game_path) {
     QtCommon::Content::VerifyGameContents(game_path);
 }
+
+#ifdef YUZU_NX_TOOLS
+void MainWindow::OnGameListEditNxMetadata(const std::string& game_path) {
+    const auto can_edit = [this] {
+        if (nx_metadata_write_in_progress) {
+            return false;
+        }
+        if (emulation_running || QtCommon::system->IsPoweredOn()) {
+            QMessageBox::information(this, tr("NX Archive"),
+                                     tr("Stop emulation before editing NX metadata."));
+            return false;
+        }
+        return true;
+    };
+    if (!can_edit()) {
+        return;
+    }
+    nx_tools->EditNxMetadata(game_path, [this, &can_edit] {
+        if (!can_edit()) {
+            return false;
+        }
+        nx_metadata_write_in_progress = true;
+        // The manual provider keeps NX sessions alive through registered updates and DLC.
+        QtCommon::provider->ClearAllEntries();
+        return true;
+    });
+}
+
+void MainWindow::OnGameListNxTool(const std::string& game_path,
+                                  void (NxTools::*tool)(const std::string&)) {
+    // An archive edited in place must not be read by a running game.
+    if (emulation_running && tool != &NxTools::ConvertToNx &&
+        current_game_path == QString::fromStdString(game_path)) {
+        QMessageBox::information(this, tr("NX Archive"),
+                                 tr("Stop the game before changing its NX archive."));
+        return;
+    }
+    (nx_tools->*tool)(game_path);
+}
+#endif
 
 void MainWindow::OnGameListCopyTID(u64 program_id) {
     QClipboard* clipboard = QGuiApplication::clipboard();

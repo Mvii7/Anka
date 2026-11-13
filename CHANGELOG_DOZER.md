@@ -8,6 +8,25 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- Reads **`.nx`** files (NX archives, the nxformat project of fab918): File > Load File, the game
+  list and `dozer-cli.exe`. An archive holds a game with its updates and DLC, either as extracted
+  trees (made from a NUP or a dump folder) or as decrypted NCAs (made from an NSP or XCI). The
+  newest update in the archive is started, updates can be turned off per game like installed
+  ones, and Dump RomFS works on it. From Lichii (zortos293 and Bruno; the reader in
+  `externals/nxformat` is fab918's, MIT).
+- **Convert to NX...** in the game list's menu (right-click a game): makes an `.nx` from an NSP or
+  XCI (decrypted with your keys while it is read; updates and DLC of the same game in the folder
+  can go in), from a `.nup`, or from a dump folder. **Manage NX Archive** on an `.nx` adds or
+  removes an update or DLC and edits the title, publisher and icon. The original can be moved to
+  the Recycle Bin at the end. This part uses the prebuilt nxformat 1.0.3 library, downloaded and
+  hash-checked at configure time (`CMakeModules/NxFormat.cmake`); a build without it still reads
+  `.nx`. From Lichii.
+- NUP reading, from Lichii: compressed parts are decoded only as far as the game reads instead
+  of whole on first use; DLC inside a `.nup` is found; an update installed in Dozer no longer
+  replaces the program of a `.nup` (it carries its own); the name and icon come from the base
+  when the update has none, the en-us name is preferred, and a file without a name shows its
+  file name; a damaged `.zs` texture (no zstd header) is replaced by a neighbouring one with a
+  warning in the log. Still read only.
 - Consecutive NVN indexed indirect draws merge into one host multi-draw again (`INDIRECT_BATCH`,
   on). The terrain damage that had it off by default was not this merge. `=0` is one host draw
   per call.
