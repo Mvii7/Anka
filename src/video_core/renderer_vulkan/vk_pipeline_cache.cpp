@@ -356,10 +356,10 @@ void SetTransformFeedback(Shader::RuntimeInfo& info, const ShaderTranslationKey&
 // skipped where it can't tell (legacy, indexed, XFB) and for passthrough shaders the host runs
 // natively.
 void PruneUnreadGeometryOutputs(Shader::IR::Program& geometry, const Shader::IR::Program& fragment,
-                                const GraphicsPipelineCacheKey& key, bool native_passthrough) {
+                                const ShaderTranslationKey& key, bool native_passthrough) {
     const Shader::Info& fs{fragment.info};
     Shader::VaryingState& stores{geometry.info.stores};
-    if (fragment.stage != Shader::Stage::Fragment || key.state.xfb_enabled ||
+    if (fragment.stage != Shader::Stage::Fragment || key.xfb_enabled ||
         (geometry.is_geometry_passthrough && native_passthrough) || fs.loads_indexed_attributes ||
         fs.loads.Legacy() || stores.Legacy()) {
         return;
