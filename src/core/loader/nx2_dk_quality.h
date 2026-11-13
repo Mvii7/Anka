@@ -35,6 +35,7 @@ enum Id : size_t {
     RadialBlurSamples, ///< RadialBlurSamplingNum
     VoxelLodDist,      ///< terrain Lod1Dist and Lod2Dist, % of the game's
     ColorDecalMax,     ///< ColorDecalMaxNum
+    MeshSimplify,      ///< terrain MeshSimplifyType: 1 Normal, 2 High, 3 SuperHigh, 4 NoSimplify, 5 Low
     Count,
 };
 
@@ -57,6 +58,7 @@ inline constexpr std::array<Knob, Count> Knobs{{
     {"radial_blur_samples", "EDEN_NX2_DKQ_RADIAL_BLUR_SAMPLES", 1, 32, 20},
     {"voxel_lod_dist", "EDEN_NX2_DKQ_VOXEL_LOD_DIST", 10, 400, 100},
     {"color_decal_max", "EDEN_NX2_DKQ_COLOR_DECAL_MAX", 1, 660, 660},
+    {"mesh_simplify", "EDEN_NX2_DKQ_MESH_SIMPLIFY", 1, 5, 1},
 }};
 
 /// One number per knob; 0 leaves the game's own.
@@ -143,7 +145,9 @@ constexpr float GameMaxRate = 2.0f;
 /// the terrain LOD routines start at word 32.
 constexpr size_t CaveOffset = 32;
 constexpr size_t CaveRoutineWords = 5;
-constexpr size_t CaveWords = 2 * CaveRoutineWords;
+constexpr size_t MeshRoutine = 2 * CaveRoutineWords; ///< after the terrain LOD routines
+constexpr size_t MeshRoutineWords = 4;
+constexpr size_t CaveWords = MeshRoutine + MeshRoutineWords;
 
 /// The upper half of a float, rounded: the constants are put in with one `movz wN, #x, lsl #16`.
 constexpr u32 FloatHigh(float value) {
@@ -228,6 +232,14 @@ inline Result Apply(std::span<u8> text, u32 text_size, u32 aligned_size, const V
         return found == out.size();
     };
     const auto set = [&](Id id) { return Sanitize(values[id], Knobs[id]); };
+    const size_t cave = (text_size + 15) / 16 * 4 + CaveOffset;
+    const auto CaveFree = [&] {
+        bool free = (cave + CaveWords) * sizeof(u32) <= aligned_size;
+        for (size_t i = 0; free && i < CaveWords; ++i) {
+            free = word(cave + i) == 0;
+        }
+        return free;
+    };
     const auto percent = [](int value) { return static_cast<float>(value) / 100.0f; };
 
     // The resolution control steps the upscale rate between NdsrUpscaleMinRate and
@@ -331,11 +343,7 @@ inline Result Apply(std::span<u8> text, u32 text_size, u32 aligned_size, const V
     if (const int dist = set(VoxelLodDist); dist != 0) {
         constexpr u32 MovX0X24 = 0xAA1803E0U;
         std::array<size_t, 1> at{};
-        const size_t cave = (text_size + 15) / 16 * 4 + CaveOffset;
-        bool cave_free = (cave + CaveWords) * sizeof(u32) <= aligned_size;
-        for (size_t i = 0; cave_free && i < CaveWords; ++i) {
-            cave_free = word(cave + i) == 0;
-        }
+        const bool cave_free = CaveFree();
         if (cave_free && find({{1, LdrS(8, 0, 0)},
                                {2, MovX0X24},
                                {4, LdrS(9, 0, 0)},
@@ -363,6 +371,30 @@ inline Result Apply(std::span<u8> text, u32 text_size, u32 aligned_size, const V
                 put(from, 0x94000000U | (static_cast<u32>(routine - from) & 0x3FFFFFFU)); // bl
             }
             result[VoxelLodDist] = State::Applied;
+        }
+    }
+
+    // The terrain's mesh simplification type (VoxelMeshLodParam's MeshSimplifyType: Normal 0,
+    // High 1, SuperHigh 2, NoSimplify 3, Low 4) is stored in the loader and read after the one
+    // place all of its paths meet:
+    //   str w8, [sp, #0x94]; ldr x0, [x19, #0x60]
+    // The load becomes a jump to a routine that stores the chosen type first (w8 is loaded
+    // again right after):
+    //   movz w8, #type; str w8, [sp, #0x94]; ldr x0, [x19, #0x60]; b back
+    if (const int type = set(MeshSimplify); type != 0) {
+        constexpr u32 StrW8Sp94 = 0xB90097E8U;
+        constexpr u32 LdrX0X19 = 0xF9403260U;
+        std::array<size_t, 1> at{};
+        if (CaveFree() && find({{0, StrW8Sp94}, {1, LdrX0X19}}, at)) {
+            const size_t routine = cave + MeshRoutine;
+            const size_t from = at[0] + 1;
+            put(routine, Movz(8, static_cast<u32>(type - 1)));
+            put(routine + 1, StrW8Sp94);
+            put(routine + 2, LdrX0X19);
+            put(routine + 3,
+                0x14000000U | (static_cast<u32>((from + 1) - (routine + 3)) & 0x3FFFFFFU));
+            put(from, 0x14000000U | (static_cast<u32>(routine - from) & 0x3FFFFFFU));
+            result[MeshSimplify] = State::Applied;
         }
     }
     return result;

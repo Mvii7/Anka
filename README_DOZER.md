@@ -177,6 +177,7 @@ starts, so a change asks for a restart like the Tuning tab's boxes.
 | Cube map update interval | 8 frames | how often reflection cube maps are captured (the one row where higher is faster) |
 | Radial blur render scale / samples | 50% / 20 | the radial blur's buffer size and samples |
 | Terrain LOD distance | 100% | the two distances at which the destructible terrain switches to coarser meshes, relative to the game's data |
+| Terrain mesh simplification | Normal | the type of mesh simplification the game's terrain fields use (Normal, High, SuperHigh, NoSimplify, Low); Low should cost less, and it is applied to every field |
 | Colour decal limit | 660 | the most colour decals the game keeps |
 
 Only settings where less means faster are in. Others found in the executable (frame buffer

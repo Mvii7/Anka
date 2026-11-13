@@ -267,6 +267,9 @@
 # VOXEL_LOD_DIST=<10-400>: the terrain's two LOD distances in % of the game's (100). Lower:
 # coarser terrain closer to the camera.
 #EDEN_NX2_DKQ_VOXEL_LOD_DIST=100
+# MESH_SIMPLIFY=<1-5>: the terrain's mesh simplification type for every field: 1 Normal (the
+# game's usual), 2 High, 3 SuperHigh, 4 NoSimplify, 5 Low.
+#EDEN_NX2_DKQ_MESH_SIMPLIFY=5
 # COLOR_DECAL_MAX=<1-660>: the most colour decals (660).
 #EDEN_NX2_DKQ_COLOR_DECAL_MAX=660
 

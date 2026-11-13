@@ -23,6 +23,7 @@ constexpr size_t GpuGetter = 0x200, BlurScaleGetter = 0x220;
 constexpr size_t BlurSamplesGetter = 0x230, CubeMapGetter = 0x240;
 constexpr size_t BloomFirst = 0x300, BloomSecond = 0x310, BloomThird = 0x320;
 constexpr size_t DecalGetter = 0x260;
+constexpr size_t MeshStore = 0x500;
 constexpr size_t Voxel = 0x400;
 
 struct Text {
@@ -45,6 +46,8 @@ struct Text {
         PutGetter(BlurSamplesGetter, RadialBlurSamplesParam, false);
         PutGetter(CubeMapGetter, CubeMapIntervalParam, false);
         PutGetter(DecalGetter, ColorDecalMaxParam, false);
+        words[MeshStore] = 0xB90097E8;     // str w8, [sp, #0x94]
+        words[MeshStore + 1] = 0xF9403260; // ldr x0, [x19, #0x60]
         words[BloomFirst] = LdrX(8, 8, BloomScaleParam);
         words[BloomFirst + 1] = LdrS(1, 8, ValueOffset);
         for (const size_t at : {BloomSecond, BloomThird}) {
@@ -163,6 +166,21 @@ TEST_CASE("Nx2DkQuality: the decal limit", "[core]") {
     REQUIRE(result[ColorDecalMax] == State::Applied);
     expected[DecalGetter] = 0x52800400; // movz w0, #32
     expected[DecalGetter + 1] = Ret;
+    REQUIRE(text.words == expected);
+}
+
+TEST_CASE("Nx2DkQuality: the mesh simplification type", "[core]") {
+    Text text;
+    std::vector<u32> expected = text.words;
+    const Result result = Apply(text.Bytes(), TextSize, AlignedSize, Only(MeshSimplify, 5));
+    REQUIRE(result[MeshSimplify] == State::Applied);
+    const size_t routine = Cave + MeshRoutine;
+    expected[MeshStore + 1] = 0x14000000U | static_cast<u32>(routine - (MeshStore + 1));
+    expected[routine] = 0x52800088;     // movz w8, #4 (Low)
+    expected[routine + 1] = 0xB90097E8; // str w8, [sp, #0x94]
+    expected[routine + 2] = 0xF9403260; // ldr x0, [x19, #0x60]
+    expected[routine + 3] =
+        0x14000000U | (static_cast<u32>((MeshStore + 2) - (routine + 3)) & 0x3FFFFFFU);
     REQUIRE(text.words == expected);
 }
 

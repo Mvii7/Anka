@@ -10,6 +10,7 @@
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QSlider>
+#include <QStringList>
 
 #include "qt_common/config/uisettings.h"
 #include "yuzu/nx2perf_session.h"
@@ -95,6 +96,10 @@ void ConfigureBananza::RetranslateUI() {
         {tr("Terrain LOD distance"),
          tr("Scales the two distances at which the destructible terrain switches to its "
             "coarser meshes. Lower: coarser terrain closer to the camera, fewer triangles.")},
+        {tr("Terrain mesh simplification"),
+         tr("How the game simplifies the destructible terrain's meshes: 1 Normal (the game's "
+            "usual), 2 High, 3 SuperHigh, 4 NoSimplify, 5 Low. Low is the one that should cost "
+            "less. Applies to every terrain field, including ones the game keeps unsimplified.")},
         {tr("Colour decal limit"),
          tr("The most colour decals (paint marks) the game keeps; its own is 660.")},
     }};
@@ -135,6 +140,12 @@ void ConfigureBananza::ShowValue(std::size_t index) {
     case Quality::CubeMapInterval:
         text = tr("%n frame(s)", nullptr, value);
         break;
+    case Quality::MeshSimplify: {
+        const QStringList names{tr("Normal"), tr("High"), tr("SuperHigh"), tr("NoSimplify"),
+                                tr("Low")};
+        text = names.value(value - 1);
+        break;
+    }
     case Quality::RadialBlurSamples:
     case Quality::ColorDecalMax:
         text = QString::number(value);
