@@ -255,7 +255,6 @@ public:
         // AMD's drivers wait on each query of a WAIT_BIT copy separately. Queries complete in
         // order on the queue, so waiting for the newest one is enough before copying the range
         // without the wait.
-        const VkDriverId driver_id = device.GetDriverID();
         const bool wait_on_last =
             driver_id == VK_DRIVER_ID_AMD_PROPRIETARY || driver_id == VK_DRIVER_ID_AMD_OPEN_SOURCE;
 
