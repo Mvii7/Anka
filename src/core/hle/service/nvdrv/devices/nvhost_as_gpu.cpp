@@ -5,7 +5,10 @@
 // SPDX-FileCopyrightText: 2021 Skyline Team and Contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <atomic>
+#include <cstdlib>
 #include <cstring>
+#include <memory>
 #include <utility>
 
 #include "common/alignment.h"
@@ -13,6 +16,7 @@
 #include "common/common_types.h"
 #include "common/logging.h"
 #include "core/core.h"
+#include "core/hle/kernel/k_process.h"
 #include "core/hle/service/nvdrv/core/container.h"
 #include "core/hle/service/nvdrv/core/heap_mapper.h"
 #include "core/hle/service/nvdrv/core/nvmap.h"
@@ -21,6 +25,7 @@
 #include "core/hle/service/nvdrv/devices/nvhost_gpu.h"
 #include "core/hle/service/nvdrv/devices/nx2_stub_device.h"
 #include "core/hle/service/nvdrv/nvdrv.h"
+#include "core/memory.h"
 #include "video_core/control/channel_state.h"
 #include "video_core/gpu.h"
 #include "video_core/host1x/host1x.h"
@@ -28,6 +33,49 @@
 #include "video_core/rasterizer_interface.h"
 
 namespace Service::Nvidia::Devices {
+
+namespace {
+
+/// A reused device range may still point at the pages its CPU range had when it was first mapped.
+/// Maps it to the pages the range has now.
+void Nx2RefreshBacking(Tegra::MaxwellDeviceMemoryManager& smmu, Core::Memory::Memory& memory,
+                       Core::Asid asid, DAddr device_address, u64 cpu_address, u64 size) {
+    constexpr u64 PageSize = Core::Memory::YUZU_PAGESIZE;
+    constexpr uintptr_t PageMask = static_cast<uintptr_t>(Core::Memory::YUZU_PAGEMASK);
+    if ((cpu_address & Core::Memory::YUZU_PAGEMASK) != 0 ||
+        (device_address & Core::Memory::YUZU_PAGEMASK) != 0) {
+        return;
+    }
+    u64 stale_pages = 0;
+    u64 first_stale = 0;
+    for (u64 offset = 0; offset < size; offset += PageSize) {
+        const auto device_page =
+            reinterpret_cast<uintptr_t>(smmu.GetPointer<u8>(device_address + offset));
+        const auto cpu_page = reinterpret_cast<uintptr_t>(
+            memory.GetPointerSilent(Common::ProcessAddress{cpu_address + offset}));
+        if ((device_page & ~PageMask) != (cpu_page & ~PageMask)) {
+            if (stale_pages++ == 0) {
+                first_stale = offset;
+            }
+        }
+    }
+    if (stale_pages == 0) {
+        return;
+    }
+    static std::atomic<u32> reports{};
+    if (reports.fetch_add(1, std::memory_order_relaxed) < 256) {
+        LOG_WARNING(Service_NVDRV,
+                    "Switch 2 device range {:#x} of CPU {:#x}+{:#x}: {} of {} pages point at old "
+                    "memory (first at +{:#x}), mapped again",
+                    device_address, cpu_address, size, stale_pages,
+                    (size + PageSize - 1) / PageSize, first_stale);
+    }
+    // Unmapping drops the old pages from the reverse map and invalidates the caches over the range.
+    smmu.Unmap(device_address, size);
+    smmu.Map(device_address, cpu_address, size, asid, true);
+}
+
+} // Anonymous namespace
 
 nvhost_as_gpu::nvhost_as_gpu(Core::System& system_, Module& module_, NvCore::Container& core)
     : nvdevice{system_}, module{module_}, container{core}, nvmap{core.GetNvMapFile()}, vm{},
@@ -140,12 +188,15 @@ void nvhost_as_gpu::Nx2Map(u64 gpu_address, u64 cpu_address, u64 size) {
     // reuse its SMMU mapping.
     DAddr device_address{};
     bool heap = false;
+    bool reused = false;
     if (const auto it = nx2_device_ranges.find({cpu_address, size}); it != nx2_device_ranges.end()) {
         device_address = it->second.address;
         heap = it->second.heap;
+        reused = true;
     } else if (session->has_preallocated_area && session->mapper->IsInBounds(cpu_address, size)) {
         device_address = session->mapper->Map(cpu_address, size);
         heap = true;
+        reused = true;
     } else {
         auto& smmu = system.Host1x().MemoryManager();
         device_address = smmu.Allocate(Common::AlignUp(size, 0x20000));
@@ -158,7 +209,26 @@ void nvhost_as_gpu::Nx2Map(u64 gpu_address, u64 cpu_address, u64 size) {
     }
     nx2_device_ranges[{cpu_address, size}] = {device_address, heap};
     Nx2GpuMemoryRegistry::Get().RecordDeviceRange(cpu_address, size, device_address);
-    gmmu->Map(gpu_address, device_address, size, Tegra::PTEKind::PITCH, false);
+    // In GPU-thread order, as the unmaps are: applied at once, a queued unmap of the same
+    // address would run afterwards and remove this mapping.
+    // EDEN_NX2_REFRESH_BACKING=0: reuse a device range without checking its pages.
+    static const bool refresh = [] {
+        const char* value = std::getenv("EDEN_NX2_REFRESH_BACKING");
+        return value == nullptr || value[0] != '0';
+    }();
+    auto process = reused && refresh
+                       ? std::make_shared<Kernel::KScopedAutoObject<Kernel::KProcess>>(
+                             system.Kernel(), session->process)
+                       : nullptr;
+    system.GPU().RunInOrder(
+        [gmmu = gmmu.get(), &smmu = system.Host1x().MemoryManager(), process = std::move(process),
+         asid = session->asid, gpu_address, cpu_address, device_address, size] {
+            if (process) {
+                Nx2RefreshBacking(smmu, process->GetPointerUnsafe()->GetMemory(), asid,
+                                  device_address, cpu_address, size);
+            }
+            gmmu->Map(gpu_address, device_address, size, Tegra::PTEKind::PITCH, false);
+        });
     LOG_DEBUG(Service_NVDRV, "Switch 2 GPU mapping {:#x}+{:#x} -> CPU {:#x}", gpu_address, size,
               cpu_address);
 }
@@ -228,7 +298,9 @@ void nvhost_as_gpu::Nx2Sparse(u64 gpu_address, u64 size, bool create) {
         return;
     }
     nx2_sparse_ranges[gpu_address] = {size, device_address};
-    gmmu->Map(gpu_address, device_address, size, Tegra::PTEKind::PITCH, false);
+    system.GPU().RunInOrder([gmmu = gmmu.get(), gpu_address, device_address, size] {
+        gmmu->Map(gpu_address, device_address, size, Tegra::PTEKind::PITCH, false);
+    });
     LOG_DEBUG(Service_NVDRV, "Switch 2 sparse region {:#x}+{:#x} -> device {:#x}", gpu_address,
               size, device_address);
 }

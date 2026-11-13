@@ -111,6 +111,7 @@ struct Values {
                                                            true};
 
     Setting<bool> first_start{linkage, true, "firstStart", Category::Ui};
+    Setting<bool> suggest_nx_for_nup{linkage, true, "suggestNxForNup", Category::Ui};
     Setting<bool> pause_when_in_background{linkage,
                                            false,
                                            "pauseWhenInBackground",

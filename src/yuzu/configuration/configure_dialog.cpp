@@ -104,7 +104,7 @@ ConfigureDialog::ConfigureDialog(QWidget* parent, HotkeyRegistry& registry_,
     connect(ui_tab.get(), &ConfigureUi::LanguageChanged, this, &ConfigureDialog::OnLanguageChanged);
     connect(general_tab.get(), &ConfigureGeneral::ExternalContentDirsChanged, this,
             &ConfigureDialog::ExternalContentDirsChanged);
-    // Tuning presets: Recommended and Fast turn Reactive Flushing off, Experimental turns it on
+    // Tuning presets: Balanced and Performance turn Reactive Flushing off, Experimental turns it on
     // (with barrier feedback loops).
     nx2perf_tab->SetReactiveFlushing([this](bool on, bool barrier_on) {
         return graphics_advanced_tab->SetReactiveFlushing(on, barrier_on);
@@ -120,6 +120,7 @@ ConfigureDialog::ConfigureDialog(QWidget* parent, HotkeyRegistry& registry_,
     }
 
     adjustSize();
+    resize(size() * 1.2);
     ui->selectorList->setCurrentRow(0);
 
     // Selects the leftmost button on the bottom bar (Cancel as of writing)

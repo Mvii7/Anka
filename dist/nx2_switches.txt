@@ -259,7 +259,7 @@
 # notes it, so later GPU writes there are copied back at fences. Bananza's foliage comes from such
 # GPU-written data: rendered at a performance cost with this on, and not rendered when this and
 # reactive flushing are both off. With reactive flushing on they do nothing. 0 turns them off.
-# Recommended leaves this unset. Fast, Experimental and Safe set 0 (start-fast.bat,
+# Balanced leaves this unset. Performance, Experimental and Safe set 0 (start-performance.bat,
 # start-reactive-experimental.bat, start-safe.bat).
 #EDEN_NX2_READ_TRAPS=0
 

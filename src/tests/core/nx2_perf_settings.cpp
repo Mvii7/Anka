@@ -20,8 +20,8 @@ constexpr u64 Bananza = 0x040074A01BF12000ULL;
 constexpr u64 OtherGame = 0x0100000000010000ULL;
 constexpr u64 MarioKartWorld = 0x0400C3F00006E000ULL;
 
-// start-recommended.bat's lines (dist/dozer), DK_DYN and OSD at their defaults (1).
-const std::vector<Var> RecommendedBananza{
+// start-balanced.bat's lines (dist/dozer), DK_DYN and OSD at their defaults (1).
+const std::vector<Var> BalancedBananza{
     {"EDEN_NX2_BACK_STAGES", "1"},
     {"EDEN_NX2_BACK_CUTS", "a"},
     {"EDEN_NX2_ACQUIRE_PEEK", "1"},
@@ -101,16 +101,17 @@ Switches Custom(Switches switches) {
 
 } // Anonymous namespace
 
-TEST_CASE("Nx2PerfSettings: the first start is the recommended setup", "[core]") {
+TEST_CASE("Nx2PerfSettings: the first start is the performance setup", "[core]") {
     const Ini empty;
-    REQUIRE(empty.Read() == Recommended());
-    REQUIRE(empty.Read().preset == Preset::Recommended);
-    REQUIRE(Wanted(Recommended(), Game::Bananza) == RecommendedBananza);
+    REQUIRE(empty.Read() == Performance());
+    REQUIRE(empty.Read() == FromPreset(Preset::Performance, Balanced()));
+    REQUIRE(empty.Read().preset == Preset::Performance);
+    REQUIRE(Wanted(Balanced(), Game::Bananza) == BalancedBananza);
 }
 
 TEST_CASE("Nx2PerfSettings: every setting reads back what was written", "[core]") {
     for (const Key& key : Keys) {
-        Switches switches = Recommended();
+        Switches switches = Balanced();
         switches.*key.field = false;
         switches = AfterBoxChange(switches);
         REQUIRE(switches.preset == Preset::Custom);
@@ -123,8 +124,8 @@ TEST_CASE("Nx2PerfSettings: every setting reads back what was written", "[core]"
     // The game-specific settings are stored like the others, but are no part of any preset.
     for (const Key& key : GameKeys) {
         for (const Preset preset :
-             {Preset::Recommended, Preset::Fast, Preset::Reactive, Preset::Safe}) {
-            Switches switches = FromPreset(preset, Recommended());
+             {Preset::Balanced, Preset::Performance, Preset::Reactive, Preset::Safe}) {
+            Switches switches = FromPreset(preset, Balanced());
             switches.*key.field = false;
             REQUIRE(AfterBoxChange(switches).preset == preset);
             REQUIRE(FromPreset(preset, switches).*key.field == false);
@@ -136,58 +137,58 @@ TEST_CASE("Nx2PerfSettings: every setting reads back what was written", "[core]"
         }
         // Missing from the file (before the setting existed): on.
         Ini old;
-        old.Write(Recommended());
+        old.Write(Balanced());
         old.values.erase(std::string{key.name});
-        REQUIRE(old.Read() == Recommended());
+        REQUIRE(old.Read() == Balanced());
     }
     for (const Preset preset :
-         {Preset::Recommended, Preset::Fast, Preset::Reactive, Preset::Safe}) {
+         {Preset::Balanced, Preset::Performance, Preset::Reactive, Preset::Safe}) {
         Ini ini;
-        ini.Write(FromPreset(preset, Recommended()));
-        REQUIRE(ini.Read() == FromPreset(preset, Recommended()));
+        ini.Write(FromPreset(preset, Balanced()));
+        REQUIRE(ini.Read() == FromPreset(preset, Balanced()));
     }
 }
 
 TEST_CASE("Nx2PerfSettings: presets set the launchers' boxes", "[core]") {
-    for (const Preset preset : {Preset::Recommended, Preset::Fast, Preset::Reactive}) {
+    for (const Preset preset : {Preset::Balanced, Preset::Performance, Preset::Reactive}) {
         const Switches switches = FromPreset(preset, AllOff());
         REQUIRE(switches.preset == preset);
         for (const Key& key : Keys) {
-            const bool on = key.name != "read_traps" || preset == Preset::Recommended;
+            const bool on = key.name != "read_traps" || preset == Preset::Balanced;
             REQUIRE(switches.*key.field == on);
         }
     }
-    REQUIRE(FromPreset(Preset::Recommended, AllOff()).read_traps);
-    REQUIRE(!FromPreset(Preset::Fast, AllOff()).read_traps);
+    REQUIRE(FromPreset(Preset::Balanced, AllOff()).read_traps);
+    REQUIRE(!FromPreset(Preset::Performance, AllOff()).read_traps);
     REQUIRE(!FromPreset(Preset::Reactive, AllOff()).read_traps);
-    const Switches safe = FromPreset(Preset::Safe, Recommended());
+    const Switches safe = FromPreset(Preset::Safe, Balanced());
     REQUIRE(safe == AllOff());
     for (const Key& key : Keys) {
         REQUIRE(!(safe.*key.field));
     }
     // Custom keeps the boxes as they are.
-    Switches mine = Recommended();
+    Switches mine = Balanced();
     mine.osd = false;
     REQUIRE(FromPreset(Preset::Custom, mine) == Custom(mine));
-    // Reactive Flushing: Recommended and Fast off, Experimental (Reactive) on, Safe and Custom
+    // Reactive Flushing: Balanced and Performance off, Experimental (Reactive) on, Safe and Custom
     // leave it.
-    REQUIRE(ReactiveFlushing(Preset::Recommended) == false);
-    REQUIRE(ReactiveFlushing(Preset::Fast) == false);
+    REQUIRE(ReactiveFlushing(Preset::Balanced) == false);
+    REQUIRE(ReactiveFlushing(Preset::Performance) == false);
     REQUIRE(ReactiveFlushing(Preset::Reactive) == true);
     REQUIRE(!ReactiveFlushing(Preset::Safe).has_value());
     REQUIRE(!ReactiveFlushing(Preset::Custom).has_value());
     // Barrier feedback loops: on with Reactive (it needs them), the others leave it.
     REQUIRE(BarrierFeedbackLoops(Preset::Reactive) == true);
-    REQUIRE(!BarrierFeedbackLoops(Preset::Recommended).has_value());
+    REQUIRE(!BarrierFeedbackLoops(Preset::Balanced).has_value());
     REQUIRE(!BarrierFeedbackLoops(Preset::Safe).has_value());
     REQUIRE(!BarrierFeedbackLoops(Preset::Custom).has_value());
 }
 
 TEST_CASE("Nx2PerfSettings: a box changed by hand makes it Custom", "[core]") {
     for (const Preset preset :
-         {Preset::Recommended, Preset::Fast, Preset::Reactive, Preset::Safe}) {
+         {Preset::Balanced, Preset::Performance, Preset::Reactive, Preset::Safe}) {
         for (const Key& key : Keys) {
-            Switches switches = FromPreset(preset, Recommended());
+            Switches switches = FromPreset(preset, Balanced());
             REQUIRE(AfterBoxChange(switches).preset == preset);
             switches.*key.field = !(switches.*key.field);
             REQUIRE(AfterBoxChange(switches).preset == Preset::Custom);
@@ -197,40 +198,41 @@ TEST_CASE("Nx2PerfSettings: a box changed by hand makes it Custom", "[core]") {
         }
     }
     // Custom stays Custom whatever the boxes.
-    REQUIRE(AfterBoxChange(Custom(Recommended())).preset == Preset::Custom);
+    REQUIRE(AfterBoxChange(Custom(Balanced())).preset == Preset::Custom);
     // A file edited by hand: boxes not the stored preset's read as Custom; a bad preset too.
     Ini ini;
-    ini.Write(Recommended());
+    ini.Write(Balanced());
     ini.values["osd"] = false;
     REQUIRE(ini.Read().preset == Preset::Custom);
     Ini bad;
     bad.preset = 9;
     REQUIRE(bad.Read().preset == Preset::Custom);
-    // A file from before read_traps: the key is missing, the preset stays, and Fast / Experimental
+    // A file from before read_traps: the key is missing, the preset stays, and Performance / Experimental
     // / Safe keep read traps off.
     for (const Preset preset :
-         {Preset::Recommended, Preset::Fast, Preset::Reactive, Preset::Safe}) {
+         {Preset::Balanced, Preset::Performance, Preset::Reactive, Preset::Safe}) {
         Ini old;
-        old.Write(FromPreset(preset, Recommended()));
+        old.Write(FromPreset(preset, Balanced()));
         old.values.erase("read_traps");
-        REQUIRE(old.Read() == FromPreset(preset, Recommended()));
+        REQUIRE(old.Read() == FromPreset(preset, Balanced()));
     }
-    Ini stored_fast;
-    stored_fast.preset = static_cast<int>(Preset::Fast);
-    REQUIRE(stored_fast.Read() == FromPreset(Preset::Fast, Recommended()));
-    REQUIRE(IndexOf(Preset::Fast) == 1);
+    Ini stored_performance;
+    stored_performance.preset = static_cast<int>(Preset::Performance);
+    REQUIRE(stored_performance.Read() == FromPreset(Preset::Performance, Balanced()));
+    REQUIRE(IndexOf(Preset::Performance) == 0);
+    REQUIRE(IndexOf(Preset::Balanced) == 1);
     REQUIRE(PresetOrder[static_cast<std::size_t>(IndexOf(Preset::Reactive))] == Preset::Reactive);
 }
 
 TEST_CASE("Nx2PerfSettings: presets set the launchers' variables", "[core]") {
-    // Fast: Recommended's, and read traps off (start-fast.bat).
-    auto fast = RecommendedBananza;
-    fast.push_back({"EDEN_NX2_READ_TRAPS", "0"});
-    REQUIRE(Wanted(FromPreset(Preset::Fast, Recommended()), Game::Bananza) == fast);
-    // Experimental: Fast's and RX_RT_FIT=3 (start-reactive-experimental.bat).
-    auto reactive = fast;
+    // Performance: Balanced's, and read traps off (start-performance.bat).
+    auto performance = BalancedBananza;
+    performance.push_back({"EDEN_NX2_READ_TRAPS", "0"});
+    REQUIRE(Wanted(FromPreset(Preset::Performance, Balanced()), Game::Bananza) == performance);
+    // Experimental: Performance's and RX_RT_FIT=3 (start-reactive-experimental.bat).
+    auto reactive = performance;
     reactive.push_back({"EDEN_NX2_RX_RT_FIT", "3"});
-    REQUIRE(Wanted(FromPreset(Preset::Reactive, Recommended()), Game::Bananza) == reactive);
+    REQUIRE(Wanted(FromPreset(Preset::Reactive, Balanced()), Game::Bananza) == reactive);
     // Safe: none of the boxes, read traps off, every per-draw shortcut =0 (start-safe.bat).
     // The game-specific settings are not Safe's to change: a game's own variables stay.
     for (const Game game : {Game::Bananza, Game::MarioKartWorld, Game::Other}) {
@@ -248,7 +250,7 @@ TEST_CASE("Nx2PerfSettings: presets set the launchers' variables", "[core]") {
     auto only_traps = BananzaVars;
     only_traps.push_back({"EDEN_NX2_READ_TRAPS", "0"});
     REQUIRE(Wanted(Custom(AllOff()), Game::Bananza) == only_traps);
-    REQUIRE(Wanted(Custom(Recommended()), Game::Bananza) == RecommendedBananza);
+    REQUIRE(Wanted(Custom(Balanced()), Game::Bananza) == BalancedBananza);
 }
 
 TEST_CASE("Nx2PerfSettings: keys are distinct and cover every field", "[core]") {
@@ -261,15 +263,15 @@ TEST_CASE("Nx2PerfSettings: keys are distinct and cover every field", "[core]") 
     }
     for (const Key& key : GameKeys) {
         names.insert(key.name);
-        Switches one = Recommended();
+        Switches one = Balanced();
         one.*key.field = false;
-        REQUIRE(one != Recommended());
+        REQUIRE(one != Balanced());
     }
     REQUIRE(names.size() == Keys.size() + GameKeys.size());
     REQUIRE(names.count("preset") == 0);
     for (const Key& key : Keys) {
         REQUIRE(!(AllOff().*key.field));
-        REQUIRE(Recommended().*key.field);
+        REQUIRE(Balanced().*key.field);
     }
 }
 
@@ -287,51 +289,51 @@ TEST_CASE("Nx2PerfSettings: a game by the patch's own program id", "[core]") {
 
 TEST_CASE("Nx2PerfSettings: a game's settings never reach another game", "[core]") {
     for (const Preset preset :
-         {Preset::Recommended, Preset::Fast, Preset::Reactive, Preset::Safe}) {
-        for (const Var& var : Wanted(FromPreset(preset, Recommended()), Game::Other)) {
+         {Preset::Balanced, Preset::Performance, Preset::Reactive, Preset::Safe}) {
+        for (const Var& var : Wanted(FromPreset(preset, Balanced()), Game::Other)) {
             REQUIRE(BananzaOnly.count(var.name) == 0);
             REQUIRE(var.name != "EDEN_NX2_MKW_DYN");
         }
-        for (const Var& var : Wanted(FromPreset(preset, Recommended()), Game::MarioKartWorld)) {
+        for (const Var& var : Wanted(FromPreset(preset, Balanced()), Game::MarioKartWorld)) {
             REQUIRE(BananzaOnly.count(var.name) == 0);
         }
-        for (const Var& var : Wanted(FromPreset(preset, Recommended()), Game::Bananza)) {
+        for (const Var& var : Wanted(FromPreset(preset, Balanced()), Game::Bananza)) {
             REQUIRE(var.name != "EDEN_NX2_MKW_DYN");
         }
     }
-    const auto other = Wanted(Recommended(), GameOf(OtherGame));
-    REQUIRE(other.size() == RecommendedBananza.size() - BananzaVars.size());
+    const auto other = Wanted(Balanced(), GameOf(OtherGame));
+    REQUIRE(other.size() == BalancedBananza.size() - BananzaVars.size());
     // Bananza's dynamic frame rate off: its frame pacing stays, always.
-    Switches no_dk = Recommended();
+    Switches no_dk = Balanced();
     no_dk.dk_dyn = false;
     const auto pacing = Wanted(no_dk, Game::Bananza);
     REQUIRE(pacing.size() == other.size() + 3);
     REQUIRE(pacing.back() == Var{"EDEN_NX2_PACE_SPIN_US", "1500"});
     // Mario Kart World's switch is its own: Bananza's box does not touch it.
-    REQUIRE(Wanted(no_dk, Game::MarioKartWorld) == Wanted(Recommended(), Game::MarioKartWorld));
+    REQUIRE(Wanted(no_dk, Game::MarioKartWorld) == Wanted(Balanced(), Game::MarioKartWorld));
     auto mkw = other;
     mkw.push_back({"EDEN_NX2_MKW_DYN", "1"});
-    REQUIRE(Wanted(Recommended(), Game::MarioKartWorld) == mkw);
-    Switches no_mkw = Recommended();
+    REQUIRE(Wanted(Balanced(), Game::MarioKartWorld) == mkw);
+    Switches no_mkw = Balanced();
     no_mkw.mkw_dyn = false;
     REQUIRE(Wanted(no_mkw, Game::MarioKartWorld) == other);
-    REQUIRE(Wanted(no_mkw, Game::Bananza) == RecommendedBananza);
+    REQUIRE(Wanted(no_mkw, Game::Bananza) == BalancedBananza);
 }
 
 TEST_CASE("Nx2PerfSettings: a variable set outside the program wins", "[core]") {
-    REQUIRE(Plan(Recommended(), Game::Bananza, NoneOutside) == RecommendedBananza);
+    REQUIRE(Plan(Balanced(), Game::Bananza, NoneOutside) == BalancedBananza);
 
     // A launcher (or the user) set two of them: those are left out, whatever their value.
     const std::set<std::string_view> outside{"EDEN_NX2_JIT_SAME", "EDEN_NX2_MODE_PACE"};
     const auto is_outside = [&](std::string_view name) { return outside.count(name) != 0; };
-    const auto plan = Plan(Recommended(), Game::Bananza, is_outside);
-    REQUIRE(plan.size() == RecommendedBananza.size() - 2);
+    const auto plan = Plan(Balanced(), Game::Bananza, is_outside);
+    REQUIRE(plan.size() == BalancedBananza.size() - 2);
     for (const Var& var : plan) {
         REQUIRE(outside.count(var.name) == 0);
     }
 
     // Set outside and turned off here: still theirs (the plan never clears a variable).
-    Switches off = Recommended();
+    Switches off = Balanced();
     off.jit_same = false;
     REQUIRE(Plan(AfterBoxChange(off), Game::Bananza, is_outside) == plan);
 
@@ -340,16 +342,16 @@ TEST_CASE("Nx2PerfSettings: a variable set outside the program wins", "[core]") 
     REQUIRE(Plan(AllOff(), Game::Bananza, light).size() == SafeOff.size() + BananzaVars.size());
 
     // Everything set outside: nothing to set.
-    REQUIRE(Plan(Recommended(), Game::Bananza, [](std::string_view) { return true; }).empty());
+    REQUIRE(Plan(Balanced(), Game::Bananza, [](std::string_view) { return true; }).empty());
     REQUIRE(Plan(AllOff(), Game::Bananza, [](std::string_view) { return true; }).empty());
 }
 
 TEST_CASE("Nx2PerfSettings: every name is one a preset can set", "[core]") {
     std::set<std::string_view> wanted;
     for (const Preset preset :
-         {Preset::Recommended, Preset::Fast, Preset::Reactive, Preset::Safe}) {
+         {Preset::Balanced, Preset::Performance, Preset::Reactive, Preset::Safe}) {
         for (const Game game : {Game::Bananza, Game::MarioKartWorld}) {
-            for (const Var& var : Wanted(FromPreset(preset, Recommended()), game)) {
+            for (const Var& var : Wanted(FromPreset(preset, Balanced()), game)) {
                 wanted.insert(var.name);
             }
         }
@@ -362,19 +364,19 @@ TEST_CASE("Nx2PerfSettings: every name is one a preset can set", "[core]") {
 
 TEST_CASE("Nx2PerfSettings: a boot that needs other variables differs from the session's", "[core]") {
     // What the session compares (yuzu/nx2perf_session.cpp): the plan of the first boot.
-    const auto first_bananza = Plan(Recommended(), GameOf(Bananza), NoneOutside);
-    REQUIRE(Plan(Recommended(), GameOf(Bananza), NoneOutside) == first_bananza);
-    REQUIRE(Plan(Recommended(), GameOf(OtherGame), NoneOutside) != first_bananza);
-    Switches changed = Recommended();
+    const auto first_bananza = Plan(Balanced(), GameOf(Bananza), NoneOutside);
+    REQUIRE(Plan(Balanced(), GameOf(Bananza), NoneOutside) == first_bananza);
+    REQUIRE(Plan(Balanced(), GameOf(OtherGame), NoneOutside) != first_bananza);
+    Switches changed = Balanced();
     changed.osd = false;
     REQUIRE(Plan(AfterBoxChange(changed), Game::Bananza, NoneOutside) != first_bananza);
     // Bananza's own switches set outside: another game needs nothing else, no restart.
     const auto outside = [](std::string_view name) { return BananzaOnly.count(name) != 0; };
-    REQUIRE(Plan(Recommended(), Game::Bananza, outside) == Plan(Recommended(), Game::Other, outside));
+    REQUIRE(Plan(Balanced(), Game::Bananza, outside) == Plan(Balanced(), Game::Other, outside));
     // Another game's own settings differ from Bananza's, so moving between them restarts.
-    REQUIRE(Plan(Recommended(), Game::MarioKartWorld, NoneOutside) != first_bananza);
-    REQUIRE(Plan(Recommended(), Game::MarioKartWorld, NoneOutside) !=
-            Plan(Recommended(), Game::Other, NoneOutside));
+    REQUIRE(Plan(Balanced(), Game::MarioKartWorld, NoneOutside) != first_bananza);
+    REQUIRE(Plan(Balanced(), Game::MarioKartWorld, NoneOutside) !=
+            Plan(Balanced(), Game::Other, NoneOutside));
 }
 
 TEST_CASE("Nx2PerfSettings: saving settings needs a restart only after a game set them", "[core]") {
@@ -383,21 +385,21 @@ TEST_CASE("Nx2PerfSettings: saving settings needs a restart only after a game se
     };
     // No game started in this process yet: never (they apply to the first game).
     REQUIRE(!NeedsRestart(std::nullopt, plan_now(AllOff())));
-    REQUIRE(!NeedsRestart(std::nullopt, plan_now(Recommended())));
+    REQUIRE(!NeedsRestart(std::nullopt, plan_now(Balanced())));
     // Set for a game: only when the variables would differ.
-    const std::optional<std::vector<Var>> applied = plan_now(Recommended());
-    REQUIRE(!NeedsRestart(applied, plan_now(Recommended())));
-    REQUIRE(!NeedsRestart(applied, plan_now(Custom(Recommended())))); // same boxes, same variables
+    const std::optional<std::vector<Var>> applied = plan_now(Balanced());
+    REQUIRE(!NeedsRestart(applied, plan_now(Balanced())));
+    REQUIRE(!NeedsRestart(applied, plan_now(Custom(Balanced())))); // same boxes, same variables
     REQUIRE(NeedsRestart(applied, plan_now(AllOff())));
-    REQUIRE(NeedsRestart(applied, plan_now(FromPreset(Preset::Fast, Recommended()))));
-    REQUIRE(NeedsRestart(applied, plan_now(FromPreset(Preset::Reactive, Recommended()))));
-    Switches no_osd = Recommended();
+    REQUIRE(NeedsRestart(applied, plan_now(FromPreset(Preset::Performance, Balanced()))));
+    REQUIRE(NeedsRestart(applied, plan_now(FromPreset(Preset::Reactive, Balanced()))));
+    Switches no_osd = Balanced();
     no_osd.osd = false;
     REQUIRE(NeedsRestart(applied, plan_now(AfterBoxChange(no_osd))));
     // A change that only touches variables set outside: nothing of ours differs, no restart.
     const auto osd_outside = [](std::string_view name) { return name == "EDEN_NX2_OSD"; };
     const std::optional<std::vector<Var>> applied_outside =
-        Plan(Recommended(), Game::Bananza, osd_outside);
+        Plan(Balanced(), Game::Bananza, osd_outside);
     REQUIRE(!NeedsRestart(applied_outside, Plan(AfterBoxChange(no_osd), Game::Bananza, osd_outside)));
 }
 
@@ -429,8 +431,8 @@ TEST_CASE("Nx2PerfSettings: the frame generation choice and the Graphics setting
             FrameGen::Off);
     // Presets leave it, Safe turns it off.
     REQUIRE(FrameGenFor(Preset::Safe) == FrameGen::Off);
-    REQUIRE(!FrameGenFor(Preset::Recommended).has_value());
-    REQUIRE(!FrameGenFor(Preset::Fast).has_value());
+    REQUIRE(!FrameGenFor(Preset::Balanced).has_value());
+    REQUIRE(!FrameGenFor(Preset::Performance).has_value());
     REQUIRE(!FrameGenFor(Preset::Reactive).has_value());
     REQUIRE(!FrameGenFor(Preset::Custom).has_value());
 }

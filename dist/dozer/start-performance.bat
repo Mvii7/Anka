@@ -1,9 +1,9 @@
 @echo off
 setlocal DisableDelayedExpansion
-rem Dozer - FAST: the fastest settings, read traps and reactive flushing off. Foliage is not rendered.
+rem Dozer - PERFORMANCE (the default): the fastest settings, read traps and reactive flushing off. Foliage is not rendered.
 rem Dozer launcher for dozer-cli.exe (Dozer's program without menus).
 rem Put this file next to dozer-cli.exe.
-rem Start: put your game (.nsp .xci .nsz .xcz .nup) in the Games folder next to this file and double-click
+rem Start: put your game (.nsp .xci .nsz .xcz .nup .nx) in the Games folder next to this file and double-click
 rem this file; or drag a game file onto it; or write the game's path in GAME below.
 rem First start: when the user folder has no config\sdl2-config.ini yet, it is made as a copy of
 rem config\qt-config.ini (the controller and settings of the menu program, dozer.exe). An existing
@@ -67,7 +67,7 @@ set EDEN_NX2_FG_DIAG=
 set EDEN_NX2_RX_RT_FIT=
 set EDEN_NX2_FLUSH_FIRST_READ=
 set EDEN_NX2_READ_LATCH_AGE=
-rem Read traps are set to 0 below (recommended leaves them unset).
+rem Read traps are set to 0 below (balanced leaves them unset).
 set EDEN_NX2_RX_ONE_SUBMIT=
 set EDEN_NX2_RX_COALESCE=
 set EDEN_NX2_RX_PITCH_FORCED=
@@ -76,7 +76,7 @@ set EDEN_NX2_REACTIVE_STATS=
 set EDEN_NX2_RX_NO_COPYBACK=
 set EDEN_NX2_RX_NO_RT_LATCH=
 set EDEN_NX2_RX_COALESCE_LOOSE=
-rem The recommended switches (README_DOZER.md, "Launchers").
+rem The main switches (README_DOZER.md, "Launchers").
 rem Split GPU thread: the back as stages (cut a), acquire peek, leaner front macro path.
 set EDEN_NX2_BACK_STAGES=1
 set EDEN_NX2_BACK_CUTS=a
@@ -96,7 +96,7 @@ rem does something when frame generation is on in the config, README).
 set EDEN_NX2_FG_TIMED=1
 rem Game FPS, display FPS and speed in RivaTuner Statistics Server's overlay (OSD above).
 set EDEN_NX2_OSD=%OSD%
-rem Read traps off. Recommended leaves them on (the variable unset).
+rem Read traps off. Balanced leaves them on (the variable unset).
 set EDEN_NX2_READ_TRAPS=0
 if defined CONFIG goto withconfig
 "%HERE%dozer-cli.exe" %FULLSCREEN% -g "%GAME%"
@@ -110,7 +110,7 @@ if not "%errorlevel%"=="0" pause
 goto end
 :nogame
 echo.
-echo  No game found. Put your game file (.nsp .xci .nsz .xcz .nup) in the Games folder next to
+echo  No game found. Put your game file (.nsp .xci .nsz .xcz .nup .nx) in the Games folder next to
 echo  this file, or drag it onto this .bat.
 echo.
 pause
@@ -142,7 +142,7 @@ rem ---- the game list: the Games folder next to this file, subfolders too -----
 :findgames
 set "NGAMES=0"
 if not exist "%HERE%Games\" exit /b 0
-for /r "%HERE%Games" %%F in (*.nsp *.xci *.nsz *.xcz *.nup) do (
+for /r "%HERE%Games" %%F in (*.nsp *.xci *.nsz *.xcz *.nup *.nx) do (
   set "F=%%~fF"
   call :addgame
 )
@@ -155,7 +155,7 @@ exit /b 0
 echo.
 echo  Games in the Games folder:
 set "I=0"
-for /r "%HERE%Games" %%F in (*.nsp *.xci *.nsz *.xcz *.nup) do (
+for /r "%HERE%Games" %%F in (*.nsp *.xci *.nsz *.xcz *.nup *.nx) do (
   set "F=%%~nxF"
   call :showgame
 )
@@ -169,7 +169,7 @@ set "PICK="
 for /l %%I in (1,1,%NGAMES%) do if "%SEL%"=="%%I" set "PICK=%%I"
 if not defined PICK goto ask
 set "I=0"
-for /r "%HERE%Games" %%F in (*.nsp *.xci *.nsz *.xcz *.nup) do (
+for /r "%HERE%Games" %%F in (*.nsp *.xci *.nsz *.xcz *.nup *.nx) do (
   set "F=%%~fF"
   call :pickgame
 )

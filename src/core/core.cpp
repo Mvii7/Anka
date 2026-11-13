@@ -58,6 +58,7 @@
 #include "core/hle/service/sm/sm.h"
 #include "core/internal_network/network.h"
 #include "core/loader/loader.h"
+#include "core/loader/nx.h"
 #include "core/memory.h"
 #include "core/memory/cheat_engine.h"
 #include "core/perf_stats.h"
@@ -148,6 +149,16 @@ bool IsSwitch2Program(const FileSys::VirtualFile& file, u64& program_id) {
         const auto exefs = program ? nup.GetExeFSDir(*program) : nullptr;
         const auto npdm = exefs != nullptr ? exefs->GetFile("main.npdm") : nullptr;
         return load_npdm(npdm);
+    }
+    if (Loader::AppLoader_NX::IdentifyType(file) == Loader::FileType::NX) {
+        const auto found = Loader::AppLoader_NX::ReadProgramPlatform(file, program_id);
+        if (!found || found->platform != 2) {
+            return false;
+        }
+        if (program_id == 0) {
+            program_id = found->program_id;
+        }
+        return true;
     }
     const auto dir = file != nullptr ? file->GetContainingDirectory() : nullptr;
     const auto npdm = dir != nullptr ? dir->GetFile("main.npdm") : nullptr;

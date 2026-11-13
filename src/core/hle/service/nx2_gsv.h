@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "common/alignment.h"
+#include "common/display_hdr.h"
 #include "common/div_ceil.h"
 #include "common/settings.h"
 #include "common/thread.h"
@@ -31,6 +32,7 @@
 #include "core/device_memory.h"
 #include "video_core/rasterizer_interface.h"
 #include "video_core/renderer_base.h"
+#include "core/frontend/emu_window.h"
 #include "core/frontend/framebuffer_layout.h"
 #include "core/perf_stats.h"
 #include "video_core/gpu.h"
@@ -848,7 +850,28 @@ struct Nx2NativeObjects {
 // Block-linear layout of an InterModuleUserImagePreference (16 words): word 2 holds
 // (width - 1) | (height - 1) << 16, word 4 the block height (log2 of GOB rows), word 5 the row
 // pitch in 64-byte GOBs. Formula from changes.patch (native_image_layout.h); preferences outside
-// it fall back to 4 bytes per pixel and 128-row blocks.
+// it fall back to the format's bytes per pixel and 128-row blocks.
+
+// Pixel format IDs in InterModuleUserImagePreference word 6.
+enum class Nx2NativeImageFormat : u32 {
+    Rgba8 = 1,
+    Rgb10A2 = 4,
+    Rgba16Float = 5,
+};
+
+// The colour space of a presented native image. FP16 is linear scRGB by its format. RGB10A2 holds
+// PQ BT.2020 only while the game was told the display is HDR.
+inline Tegra::ColorSpace Nx2NativeImageColorSpace(Nx2NativeImageFormat format, bool told_hdr) {
+    switch (format) {
+    case Nx2NativeImageFormat::Rgba16Float:
+        return Tegra::ColorSpace::RGB709_Linear;
+    case Nx2NativeImageFormat::Rgb10A2:
+        return told_hdr ? Tegra::ColorSpace::RGB2020_PQ : Tegra::ColorSpace::RGB709;
+    default:
+        return Tegra::ColorSpace::RGB709;
+    }
+}
+
 struct Nx2ImageLayout {
     u32 width;
     u32 height;
@@ -864,19 +887,21 @@ inline Nx2ImageLayout Nx2CalculateImageLayout(const u32* preference) {
     layout.height = (preference[2] >> 16) + 1;
     const u64 pitch_gobs = preference[5];
     const u32 block_height_log2 = preference[4];
-    if (block_height_log2 <= 8 && pitch_gobs >= (u64{layout.width} * 4 + 63) / 64 &&
+    const u32 bytes_per_pixel =
+        static_cast<Nx2NativeImageFormat>(preference[6]) == Nx2NativeImageFormat::Rgba16Float ? 8 : 4;
+    if (block_height_log2 <= 8 && pitch_gobs >= (u64{layout.width} * bytes_per_pixel + 63) / 64 &&
         pitch_gobs <= 4096) {
         layout.pitch = pitch_gobs * 64;
         layout.block_height_log2 = block_height_log2;
     } else {
-        layout.pitch = Common::AlignUp(u64{layout.width} * 4, 64);
+        layout.pitch = Common::AlignUp(u64{layout.width} * bytes_per_pixel, 64);
         layout.block_height_log2 = 7;
     }
     const u64 block_rows = u64{1} << layout.block_height_log2;
     layout.size = layout.pitch * Common::AlignUp(u64{layout.height}, block_rows);
-    // ponytail: words 6/7 are unconfirmed and must not scale the size: multiplying by them made
+    // ponytail: word 7 is unconfirmed and must not scale the size: multiplying by words 6/7 made
     // Mario Kart World abort at boot (0x3200F3 right after its first draws, bisect a0fae9746a).
-    // Scaling again needs a title that under-allocates without it.
+    // Word 6 only picks the bytes per pixel above.
     layout.alignment = std::max<u64>(64 * block_rows, 0x1000);
     return layout;
 }
@@ -985,12 +1010,10 @@ public:
             {21, &INx2Vi2Session::GetNotifications, "GetNotifications"},
             {31, &INx2Vi2Session::GetVsyncEvent, "GetVsyncEvent (guessed)"},
             {32, &INx2Vi2Session::GetVsyncEvent, "GetDisplayVsyncEvent (guessed)"},
-            // Title 1 calls these ~75 times a second with the display name "default"; the
-            // auto stub's empty success reply works, but logged two lines per call (a 50 MB log
-            // in an 18 minute session). 104 is GetHdrStatus (moceure/eden-nx2-android 01226f4e94:
-            // result, u64 output format, 1 = SDR, u32 0): EDEN_NX2_VI2_REPLY=104:1,0,0 gives it.
-            {104, &INx2Vi2Session::SucceedQuietly, "Unknown104 (display \"default\")"},
-            {105, &INx2Vi2Session::SucceedQuietly, "Unknown105 (display \"default\")"},
+            // Title 1 calls these ~75 times a second with the display name "default".
+            // EDEN_NX2_VI2_REPLY replaces them with its table's words.
+            {104, &INx2Vi2Session::QueryDisplayHdrStatus, "QueryDisplayHdrStatus"},
+            {105, &INx2Vi2Session::QueryDisplayHdrPaperWhite, "QueryDisplayHdrPaperWhite"},
             // Display/client setup (title 2): nothing to track while presents composite directly.
             {51, &INx2Vi2Session::SucceedQuietly, "ConfigureRequestGroups"},
             {101, &INx2Vi2Session::OpenDisplay, "OpenDisplay"},
@@ -1884,11 +1907,13 @@ private:
     // Shows a presented native image: word 5 is the image id, ~word 22 / word 24 the GPU fence
     // (syncpoint, value) to wait for (layout from changes.patch), words 6 and 7 the crop corners
     // and word 8 its flags (bit 1: the crop is set; Nx2PresentCrop). The image is a block-linear
-    // RGBA8 surface in the console's native GOB layout at GPU address == CPU address.
+    // surface in the console's native GOB layout at GPU address == CPU address.
     void Composite(u32 image_id, u32 fence_id, u32 fence_value, u32 crop_origin, u32 crop_end,
                    u32 flags) {
         u64 address{};
         Nx2ImageLayout layout{};
+        Nx2NativeImageFormat image_format{};
+        u32 image_word7{};
         {
             std::scoped_lock lk{m_objects->mutex};
             const auto image = m_objects->images.find(image_id);
@@ -1901,6 +1926,8 @@ private:
             }
             address = memory->second.address;
             layout = Nx2CalculateImageLayout(image->second.preference.data());
+            image_format = static_cast<Nx2NativeImageFormat>(image->second.preference[6]);
+            image_word7 = image->second.preference[7];
         }
         const auto device = Nvidia::Devices::Nx2GpuMemoryRegistry::Get().DeviceAddressOf(address);
         if (!device) {
@@ -1956,12 +1983,21 @@ private:
             .offset = 0,
             .width = layout.width,
             .height = layout.height,
-            .stride = static_cast<u32>(layout.pitch / 4),
-            .pixel_format = android::PixelFormat::Rgba8888,
+            .stride = static_cast<u32>(
+                layout.pitch / (image_format == Nx2NativeImageFormat::Rgba16Float ? 8 : 4)),
+            .pixel_format = image_format == Nx2NativeImageFormat::Rgba16Float
+                                ? android::PixelFormat::RgbaFp16
+                            : image_format == Nx2NativeImageFormat::Rgb10A2
+                                ? android::PixelFormat::Rgba1010102
+                                : android::PixelFormat::Rgba8888,
             .transform_flags = android::BufferTransformFlags::Unset,
             .crop_rect = crop,
             .blending = Tegra::BlendMode::Opaque,
             .native_tiling = true,
+            .color_space = Nx2NativeImageColorSpace(image_format, m_told_hdr.load()),
+            .linear_unit_luminance = image_format == Nx2NativeImageFormat::Rgba16Float
+                                         ? static_cast<u16>((image_word7 >> 8) & 0xFFFF)
+                                         : u16{},
         }};
         std::vector<Nvidia::NvFence> fences;
         if (fence_id < 192) {
@@ -2072,6 +2108,50 @@ private:
     void SucceedQuietly(HLERequestContext& ctx) {
         IPC::ResponseBuilder rb{ctx, 2};
         rb.Push(ResultSuccess);
+    }
+
+    // The HDR output the guest is told about: the HDR settings combined with the state of the
+    // monitor showing the game (on Windows: Windows HDR on, the EDID peak, the SDR content
+    // brightness), and HDR only while the host swapchain really presents HDR. Bananza asks every
+    // frame, so a change needs no notification. m_logged_hdr_output keeps the last answer.
+    Common::HdrOutput HostHdrOutput() {
+        auto& monitor = Common::DisplayHdrMonitor::Instance();
+        monitor.Watch(system.GPU().Renderer().GetRenderWindow().GetWindowInfo().render_surface);
+        const auto display = monitor.Current();
+        const bool vulkan =
+            Settings::values.renderer_backend.GetValue() == Settings::RendererBackend::Vulkan;
+        const auto output = Common::ResolveGuestHdrOutput(
+            display, vulkan ? Settings::values.hdr_mode.GetValue() : Settings::HdrMode::Off,
+            Settings::values.hdr_peak_luminance.GetValue(),
+            Settings::values.hdr_reference_white.GetValue(), monitor.PresentingHdr());
+        const u64 logged = (u64{output.enabled} << 32) | (u64{output.peak_luminance} << 16) |
+                           output.reference_white;
+        if (logged != m_logged_hdr_output) {
+            m_logged_hdr_output = logged;
+            LOG_INFO(Service,
+                     "nx2:vi2 HDR status: {} peak {} nits, reference white {} nits (display: {}, "
+                     "swapchain: {})",
+                     output.enabled ? "HDR" : "SDR", output.peak_luminance, output.reference_white,
+                     display ? fmt::format("hdr={} max {} nits, SDR white {} nits",
+                                           display->hdr_enabled, display->max_luminance,
+                                           display->sdr_white_level)
+                             : std::string{"no host query"},
+                     monitor.PresentingHdr() ? "HDR" : "SDR");
+        }
+        return output;
+    }
+
+    // nn::vi2::QueryDisplayHdrPaperWhite(display name): u16 reference white in nits.
+    void QueryDisplayHdrPaperWhite(HLERequestContext& ctx) {
+        TipcReplyWords(ctx, {HostHdrOutput().reference_white});
+    }
+
+    // nn::vi2::QueryDisplayHdrStatus(display name): u64 output format (1 = SDR, 2 = HDR), u16
+    // peak luminance in nits. The sdk fails the query on any other format.
+    void QueryDisplayHdrStatus(HLERequestContext& ctx) {
+        const auto output = HostHdrOutput();
+        m_told_hdr = output.enabled;
+        TipcReplyWords(ctx, {output.enabled ? 2U : 1U, 0, output.peak_luminance});
     }
 
     // 107 with EDEN_NX2_DK_DYN applied: VRR supported (Nx2DkDynPace::VrrReply). Auto-stubbed (an
@@ -2921,6 +3001,8 @@ private:
     std::shared_ptr<Core::Timing::EventType> m_vsync_timer;
     u64 m_presents{};
     u64 m_shown_layout{}; // image and crop size last logged
+    u64 m_logged_hdr_output{~u64{}}; // HDR status last logged
+    std::atomic<bool> m_told_hdr{};  // the last HDR status answer was HDR
     std::shared_ptr<std::atomic<bool>> m_capture_pending = std::make_shared<std::atomic<bool>>(false);
 };
 
@@ -3807,8 +3889,11 @@ private:
         image.memory = w[19];
         std::copy_n(w + 2, image.preference.size(), image.preference.begin());
         image.size = Nx2CalculateImageLayout(w + 2).size;
-        LOG_INFO(Service, "nx2:gsv 429 CreateNativeImage memory={} count={} size={:#x} -> id {}",
-                 w[19], w[18], image.size, id);
+        LOG_INFO(Service,
+                 "nx2:gsv {} CreateNativeImage memory={} count={} size={:#x} format={} "
+                 "word7={:#x} -> id {}",
+                 ctx.GetCommand(), w[19], w[18], image.size, image.preference[6],
+                 image.preference[7], id);
         TipcReplyWords(ctx, {id});
     }
 

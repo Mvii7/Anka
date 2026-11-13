@@ -104,7 +104,7 @@ jobs:
           -DYUZU_ROOM_STANDALONE=OFF
           -DYUZU_USE_BUNDLED_QT=OFF
           -DYUZU_USE_BUNDLED_SDL3=ON
-          -DENABLE_UPDATE_CHECKER=OFF
+          -DENABLE_UPDATE_CHECKER=ON
           -DUSE_DISCORD_PRESENCE=OFF
 
       - name: Build
@@ -200,7 +200,7 @@ jobs:
           -DYUZU_USE_BUNDLED_SDL3=ON
           -DVulkanHeaders_FORCE_BUNDLED=ON
           -DVulkanUtilityLibraries_FORCE_BUNDLED=ON
-          -DENABLE_UPDATE_CHECKER=OFF
+          -DENABLE_UPDATE_CHECKER=ON
           -DUSE_DISCORD_PRESENCE=OFF
 
       - name: Build
@@ -326,7 +326,7 @@ jobs:
           -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
           -DVulkanHeaders_FORCE_BUNDLED=ON
           -DVulkanUtilityLibraries_FORCE_BUNDLED=ON
-          -DENABLE_UPDATE_CHECKER=OFF
+          -DENABLE_UPDATE_CHECKER=ON
           -DUSE_DISCORD_PRESENCE=OFF
 
       - name: Build
