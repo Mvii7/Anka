@@ -343,7 +343,7 @@
       <item>
        <widget class="QLabel" name="dk_dyn_text">
         <property name="text">
-         <string>The game may run at any rate from 40 to 60 fps instead of dropping to 30; patched in memory, no file is changed (DK_DYN). Off, the game's own 60/30/20 fps choice is followed at the right speed.</string>
+         <string>The game picks its own rate from 40 to 60 fps instead of dropping to 30, and keeps its speed right down to 24 fps; patched in memory, no file is changed (DK_DYN). Off, the game's own 60/30/20 fps choice is followed at the right speed.</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>

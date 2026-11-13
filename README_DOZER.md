@@ -297,7 +297,7 @@ It is off by default in dozer-cli; `start-recommended.bat`, `start-fast.bat` and
 `start-reactive-experimental.bat` turn it on (`DK_DYN=1` at the top), and so does the menu
 program's Tuning tab (Donkey Kong Bananza dynamic frame rate, under Specific Games, on until
 unticked, no preset changes it). With it the game's frame time varies by design (any rate between 40 and 60, in
-steps of 2); below 40 fps the game still drops to its 30 fps rule. While it is applied,
+steps of 2); below 40 fps its target is 30 fps, and its speed stays right down to 24 fps. While it is applied,
 `PRESENT_INTERVAL_WORD` and `MODE_PACE` are set aside and presents are paced to every vblank.
 
 ## Mario Kart World dynamic frame rate (MKW-DYN)
