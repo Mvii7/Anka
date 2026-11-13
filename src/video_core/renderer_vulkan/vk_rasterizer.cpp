@@ -1936,22 +1936,29 @@ void RasterizerVulkan::DispatchCompute() {
 
     const auto& qmd{kepler_compute->launch_description};
     auto indirect_address = kepler_compute->GetIndirectComputeAddress();
-    // Earlier writes must be visible to the dispatch, its indirect arguments included, and what it
-    // writes to the next render pass.
-    const auto record_read_barrier = [this] {
+    // Earlier writes must be visible to the dispatch. On AMD that includes its indirect arguments,
+    // and what it writes must reach the next render pass.
+    const VkDriverId dispatch_driver_id = device.GetDriverID();
+    const bool is_amd_dispatch = dispatch_driver_id == VK_DRIVER_ID_AMD_PROPRIETARY ||
+                                 dispatch_driver_id == VK_DRIVER_ID_AMD_OPEN_SOURCE ||
+                                 dispatch_driver_id == VK_DRIVER_ID_MESA_RADV;
+    const auto record_read_barrier = [this, is_amd_dispatch] {
         static constexpr VkMemoryBarrier READ_BARRIER{
             .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
             .pNext = nullptr,
             .srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT,
             .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT,
         };
-        scheduler.Record([](vk::CommandBuffer cmdbuf) {
-            cmdbuf.PipelineBarrier(vk::PIPELINE_STAGE_GRAPHICS_COMPUTE_TRANSFER,
-                                   VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
-                                       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                                   0, READ_BARRIER);
+        const VkPipelineStageFlags dst_stages =
+            is_amd_dispatch ? VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+                            : VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+        scheduler.Record([dst_stages](vk::CommandBuffer cmdbuf) {
+            cmdbuf.PipelineBarrier(vk::PIPELINE_STAGE_GRAPHICS_COMPUTE_TRANSFER, dst_stages, 0,
+                                   READ_BARRIER);
         });
-        scheduler.NoteComputeWrites();
+        if (is_amd_dispatch) {
+            scheduler.NoteComputeWrites();
+        }
     };
     if (indirect_address) {
         // DispatchIndirect

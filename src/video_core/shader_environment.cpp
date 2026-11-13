@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <atomic>
 #include <cstdlib>
 #include <thread>
 #include <filesystem>
@@ -321,9 +322,12 @@ Tegra::Texture::TICEntry GenericEnvironment::ReadTextureInfo(GPUVAddr tic_addr, 
     if (handle.first > tic_limit) {
         // Past the pool the bytes are not a descriptor and gave the shader a random texture type
         // and format (crashes and device losses on AMD). Compile for a plain 2D RGBA8 texture.
-        LOG_WARNING(HW_GPU, "Texture handle {:#x} indexes past the descriptor pool (index {} > "
-                            "limit {}); using a null 2D texture",
-                    raw, handle.first, tic_limit);
+        static std::atomic<u32> warnings{};
+        if (warnings.fetch_add(1, std::memory_order_relaxed) < 16) {
+            LOG_WARNING(HW_GPU, "Texture handle {:#x} indexes past the descriptor pool (index {} > "
+                                "limit {}); using a null 2D texture",
+                        raw, handle.first, tic_limit);
+        }
         entry.raw.fill(0);
         entry.format.Assign(Tegra::Texture::TextureFormat::A8B8G8R8);
         entry.r_type.Assign(Tegra::Texture::ComponentType::UNORM);
