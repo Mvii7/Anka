@@ -28,16 +28,22 @@ TEST_CASE("Frequency-aware rumble sends each band to the motor matching its freq
     REQUIRE(thud.low == Approx(0.8f));
     REQUIRE(thud.high == Approx(0.0f));
 
-    const auto buzz = MapRumbleByFrequency(Bands(0.6f, 600.0f, 0.0f, 320.0f), 1.0f);
-    REQUIRE(buzz.low == Approx(0.0f));
-    REQUIRE(buzz.high == Approx(0.6f));
-
-    const auto middle = MapRumbleByFrequency(Bands(0.5f, 240.0f, 0.0f, 320.0f), 1.0f);
-    REQUIRE(middle.low == Approx(0.25f));
-    REQUIRE(middle.high == Approx(0.25f));
+    const auto buzz = MapRumbleByFrequency(Bands(0.0f, 160.0f, 0.6f, 452.0f), 1.0f);
+    REQUIRE(buzz.low == Approx(0.0f).margin(0.001));
+    REQUIRE(buzz.high == Approx(0.6f * (1.0f - 252.0f / 700.0f)));
 
     const auto loud = MapRumbleByFrequency(Bands(1.0f, 100.0f, 1.0f, 100.0f), 1.0f);
     REQUIRE(loud.low == Approx(1.0f));
+}
+
+TEST_CASE("Frequency-aware rumble keeps the total and does not favor a motor", "[input_common]") {
+    using Catch::Approx;
+
+    const auto vibration = Bands(0.5f, 160.0f, 0.5f, 320.0f);
+    const auto band = InputCommon::MapRumbleByBand(vibration, 1.0f);
+    const auto strengths = InputCommon::MapRumbleByFrequency(vibration, 1.0f);
+    REQUIRE(strengths.low + strengths.high == Approx(band.low + band.high));
+    REQUIRE(strengths.low == Approx(strengths.high).margin(0.05));
 }
 
 TEST_CASE("Rumble by band keeps the band to motor mapping", "[input_common]") {
