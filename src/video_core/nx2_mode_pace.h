@@ -20,6 +20,7 @@
 #include "common/cpu_features.h"
 #include "common/logging.h"
 #include "common/settings.h"
+#include "video_core/nx2.h"
 #include "video_core/nx2_busy_clock.h"
 #include "video_core/nx2_mode_pace21_logic.h"
 #include "video_core/nx2_mode_pace_logic.h"
@@ -53,7 +54,7 @@ inline bool On(const char* text) {
 }
 
 inline bool Enabled() {
-    static const bool enabled = [] {
+    static const bool env_enabled = [] {
         if (!On(std::getenv("EDEN_NX2_MODE_PACE"))) {
             return false;
         }
@@ -96,7 +97,7 @@ inline bool Enabled() {
         }
         return true;
     }();
-    return enabled;
+    return env_enabled && Tegra::Nx2IsBananza();
 }
 
 /// EDEN_NX2_PACE_SPIN_US: 0-3000, default 0.

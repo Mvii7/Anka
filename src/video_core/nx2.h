@@ -36,6 +36,12 @@ inline bool Nx2MembarEnabled() {
 // The running title, for the few places that must behave differently per game.
 inline std::atomic<u64> g_nx2_program_id{0};
 
+// Donkey Kong Bananza (the id Loader::Nx2DkDynamicFps patches), whose frame pacing
+// EDEN_NX2_MODE_PACE and EDEN_NX2_PRESENT_INTERVAL_WORD are for.
+inline bool Nx2IsBananza() {
+    return g_nx2_program_id.load(std::memory_order_relaxed) == 0x040074A01BF12000ULL;
+}
+
 // Titles whose guest side reads GPU-written buffer data through a path the buffer cache does not
 // see, so their buffers must be copied back to guest memory at every fence
 // (BufferCache::AsyncBufferDownloads, EDEN_NX2_BUFFER_DOWNLOADS). 0400A3A01EE4C000 is Pokemon

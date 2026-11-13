@@ -23,7 +23,9 @@
 // PACE_SPIN_US, DK_DYN, OSD, READ_TRAPS); JIT_SAME, FRONT_MACRO_LEAN and FG_TIMED are read again
 // at each boot.
 // So the variables are set once, at the first boot, and a later boot that would need others (a
-// changed setting, or Bananza after another game and back) restarts the program for that game.
+// changed setting, or a game's own variables missing) restarts the program for that game. A game's
+// own variables left on act only on that game (MODE_PACE, PRESENT_INTERVAL_WORD and the patches
+// check its title), so an unrelated game after it does not restart.
 namespace Core::Nx2PerfSettings {
 
 /// The launchers' setups, and Custom: a box changed by hand. The stored numbers stay as they
