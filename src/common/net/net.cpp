@@ -23,73 +23,56 @@
 namespace Common::Net {
 
 std::vector<Asset> Release::GetPlatformAssets() const {
-    // TODO(crueter): Need better handling for this as a whole.
-#ifdef NIGHTLY_BUILD
-    std::vector<std::string> result;
-    boost::algorithm::split(result, tag, boost::is_any_of("."));
-    if (result.size() != 2)
-        return {};
-    const auto ref = result.at(1);
-#else
-    const auto ref = tag;
-#endif
-
     std::vector<Asset> found_assets;
 
-    // FIXME: This is mildly inefficient.
-    // Finds assets based on a hierarchy of regex search strings.
-    const auto find_asset = [&found_assets, ref, this](const std::string& name,
-                                                       const std::vector<std::string>& suffixes) {
+    // Finds the first asset ending in one of the suffixes.
+    const auto find_asset = [&found_assets, this](const std::string& name,
+                                                  const std::vector<std::string>& suffixes) {
         for (const std::string& asset : assets) {
             for (const auto& suffix : suffixes) {
-                if (asset.ends_with(suffix)) {
-                    const std::string_view asset_sv = asset;
-                    const size_t pos = asset_sv.find_last_of('/');
-                    const std::string_view filename =
-                        (pos != std::string_view::npos) ? asset_sv.substr(pos + 1) : asset_sv;
-
-                    found_assets.emplace_back(Asset{
-                        .name = name,
-                        .url = host,
-                        .path = asset,
-                        .filename = std::string{filename},
-                    });
-                    return;
+                if (!asset.ends_with(suffix)) {
+                    continue;
                 }
+                const std::string_view asset_sv = asset;
+                const size_t pos = asset_sv.find_last_of('/');
+                const std::string_view filename =
+                    (pos != std::string_view::npos) ? asset_sv.substr(pos + 1) : asset_sv;
+
+                // Assets listed as full URLs are fetched from their own host.
+                std::string url = host;
+                std::string path = asset;
+                if (asset.starts_with("https://")) {
+                    const size_t path_start = asset.find('/', 8);
+                    url = asset.substr(0, path_start);
+                    path = asset.substr(path_start);
+                }
+
+                const auto digest = digests.find(asset);
+                found_assets.emplace_back(Asset{
+                    .name = name,
+                    .url = std::move(url),
+                    .path = std::move(path),
+                    .filename = std::string{filename},
+                    .sha256 = digest != digests.end() ? digest->second : std::string{},
+                });
+                return;
             }
         }
     };
 
 #ifdef _WIN32
 #ifdef ARCHITECTURE_x86_64
-#ifdef _MSC_VER
-    find_asset("Standard", {"amd64-msvc-standard.exe", "amd64-msvc-standard.zip"});
-#else // _MSC_VER
-    find_asset("Standard", {BUILD_ID "-gcc-standard.exe", BUILD_ID "-gcc-standard.zip"});
-    find_asset("PGO", {BUILD_ID "-clang-pgo.exe", BUILD_ID "-clang-pgo.zip"});
-#endif // _MSC_VER
-#elif defined(ARCHITECTURE_arm64)
-    find_asset("Standard", {"arm64-clang-standard.exe", "arm64-clang-standard.zip"});
-    find_asset("PGO", {"arm64-clang-pgo.exe", "arm64-clang-pgo.zip"});
-#endif // ARCHITECTURE_arm64
+    find_asset("Standard", {"windows-x86_64.zip"});
+#endif
 #elif defined(__APPLE__)
 #ifdef ARCHITECTURE_arm64
-    find_asset("Standard", {"standard.dmg", "standard.tar.gz", ".dmg", ".tar.gz"});
-    find_asset("PGO", {"pgo.dmg", "pgo.tar.gz"});
-#endif // ARCHITECTURE_arm64
-#elif defined(__ANDROID__)
+    find_asset("Standard", {"macos-arm64-experimental.zip"});
+#endif
+#elif defined(__linux__)
 #ifdef ARCHITECTURE_x86_64
-    find_asset("Standard", {"chromeos.apk"});
-#elif defined(ARCHITECTURE_arm64)
-#ifdef YUZU_LEGACY
-    find_asset("Standard", {"legacy.apk"});
-#elif defined(GENSHIN_SPOOF)
-    find_asset("Standard", {"optimized.apk"});
-#else
-    find_asset("Standard", {"standard.apk"});
-#endif // GENSHIN_SPOOF
-#endif // ARCHITECTURE_arm64
-#endif // __APPLE__
+    find_asset("Standard", {"linux-x86_64.AppImage"});
+#endif
+#endif
     return found_assets;
 }
 
@@ -156,10 +139,17 @@ std::optional<Release> Release::FromJson(const nlohmann::json& json, const std::
 
         // assets are a bit more complex here. :(
         std::vector<std::string> assets;
-        const nlohmann::json& arr = json["assets"];
-        for (const auto &obj : arr) {
-            const auto url = obj.value("browser_download_url", std::string{});
-            assets.emplace_back(url);
+        if (json.contains("assets") && json["assets"].is_array()) {
+            for (const auto& obj : json["assets"]) {
+                const auto url = obj.value("browser_download_url", std::string{});
+                assets.emplace_back(url);
+
+                constexpr std::string_view prefix = "sha256:";
+                const auto digest = obj.value("digest", std::string{});
+                if (digest.starts_with(prefix)) {
+                    rel.digests[url] = digest.substr(prefix.size());
+                }
+            }
         }
 
         rel.assets = assets;
@@ -226,6 +216,8 @@ std::optional<std::string> MakeRequest(const std::string& url, const std::string
             .method = "GET",
             .path = path,
         };
+        request.headers.emplace("Accept", "application/vnd.github+json");
+        request.headers.emplace("User-Agent", "Dozer");
 
         client->set_follow_location(true);
         httplib::Result result = client->send(request);
@@ -266,8 +258,29 @@ std::vector<Release> GetReleases() {
     return Release::ListFromJson(body_str, url, Common::g_build_auto_update_stable_repo);
 }
 
+std::optional<std::string> GetCompareStatus(const std::string& base, const std::string& head) {
+    const auto url = fmt::format("https://{}", Common::g_build_auto_update_api);
+    const auto path =
+        fmt::format("/repos/{}/compare/{}...{}", Common::g_build_auto_update_repo, base, head);
+
+    const auto body = MakeRequest(url, path);
+    if (!body) {
+        return std::nullopt;
+    }
+
+    try {
+        const auto json = nlohmann::json::parse(*body);
+        if (json.is_object() && json.contains("status") && json["status"].is_string()) {
+            return json["status"].get<std::string>();
+        }
+    } catch (std::exception& e) {
+        LOG_WARNING(Common, "Failed to parse JSON: {}", e.what());
+    }
+    return std::nullopt;
+}
+
 std::optional<Release> GetLatestRelease() {
-    const auto releases_path =  Common::g_build_auto_update_api_path;
+    const auto releases_path = Common::g_build_auto_update_api_path;
     const auto url = fmt::format("https://{}", Common::g_build_auto_update_api);
 
     const auto body = MakeRequest(url, releases_path);
@@ -276,8 +289,13 @@ std::optional<Release> GetLatestRelease() {
         return std::nullopt;
     }
 
-    const std::string_view body_str = body.value();
-    return Release::FromJson(body_str, url, Common::g_build_auto_update_repo);
+    // The newest release comes first, pre-releases included.
+    auto releases = Release::ListFromJson(std::string_view{*body}, url,
+                                          Common::g_build_auto_update_repo);
+    if (releases.empty()) {
+        return std::nullopt;
+    }
+    return std::move(releases.front());
 }
 
 std::optional<std::string> GetReleasesBody() {
