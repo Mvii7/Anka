@@ -8,6 +8,10 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- Tuning: the **Recommended** preset is renamed **Balanced** and **Fast** is renamed
+  **Performance**; the launchers are now `start-balanced.bat` and `start-performance.bat`.
+  Performance is the first start's preset. A `qt-config.ini` that never left the old default
+  moves to Performance; a preset chosen by hand is kept.
 - Reads **`.nx`** files (NX archives, the nxformat project of fab918): File > Load File, the game
   list and `dozer-cli.exe`. An archive holds a game with its updates and DLC, either as extracted
   trees (made from a NUP or a dump folder) or as decrypted NCAs (made from an NSP or XCI). The

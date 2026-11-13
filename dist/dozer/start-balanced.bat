@@ -1,6 +1,6 @@
 @echo off
 setlocal DisableDelayedExpansion
-rem Dozer - FAST: the fastest settings, read traps and reactive flushing off. Foliage is not rendered.
+rem Dozer - BALANCED: the balanced settings. Foliage is rendered at a performance cost.
 rem Dozer launcher for dozer-cli.exe (Dozer's program without menus).
 rem Put this file next to dozer-cli.exe.
 rem Start: put your game (.nsp .xci .nsz .xcz .nup .nx) in the Games folder next to this file and double-click
@@ -65,7 +65,8 @@ set EDEN_NX2_FG_DIAG=
 set EDEN_NX2_RX_RT_FIT=
 set EDEN_NX2_FLUSH_FIRST_READ=
 set EDEN_NX2_READ_LATCH_AGE=
-rem Read traps are set to 0 below (recommended leaves them unset).
+rem Read traps stay on when this is unset. start-performance.bat sets it to 0.
+set EDEN_NX2_READ_TRAPS=
 set EDEN_NX2_RX_ONE_SUBMIT=
 set EDEN_NX2_RX_COALESCE=
 set EDEN_NX2_RX_PITCH_FORCED=
@@ -74,7 +75,7 @@ set EDEN_NX2_REACTIVE_STATS=
 set EDEN_NX2_RX_NO_COPYBACK=
 set EDEN_NX2_RX_NO_RT_LATCH=
 set EDEN_NX2_RX_COALESCE_LOOSE=
-rem The recommended switches (README_DOZER.md, "Launchers").
+rem The main switches (README_DOZER.md, "Launchers").
 rem Split GPU thread: the back as stages (cut a), acquire peek, leaner front macro path.
 set EDEN_NX2_BACK_STAGES=1
 set EDEN_NX2_BACK_CUTS=a
@@ -92,8 +93,6 @@ rem does something when frame generation is on in the config, README).
 set EDEN_NX2_FG_TIMED=1
 rem Game FPS, display FPS and speed in RivaTuner Statistics Server's overlay (OSD above).
 set EDEN_NX2_OSD=%OSD%
-rem Read traps off. Recommended leaves them on (the variable unset).
-set EDEN_NX2_READ_TRAPS=0
 if defined CONFIG goto withconfig
 "%HERE%dozer-cli.exe" %FULLSCREEN% -g "%GAME%"
 goto ran
