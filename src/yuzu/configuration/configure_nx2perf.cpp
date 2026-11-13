@@ -39,6 +39,8 @@ ConfigureNx2Perf::ConfigureNx2Perf(QWidget* parent)
     SetConfiguration();
     MarkSetOutside();
 
+    ui->preset->setMinimumWidth(ui->preset->sizeHint().width() * 11 / 10);
+
     // The combo's order is Perf::PresetOrder (configure_nx2perf.ui), not the stored numbers.
     connect(ui->preset, &QComboBox::activated, this, [this](int index) {
         if (index < 0 || static_cast<std::size_t>(index) >= Perf::PresetOrder.size()) {
