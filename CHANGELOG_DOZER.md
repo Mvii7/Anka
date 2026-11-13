@@ -50,9 +50,6 @@ and `=0` brings back the 2.0.0 code path.
   when the update has none, the en-us name is preferred, and a file without a name shows its
   file name; a damaged `.zs` texture (no zstd header) is replaced by a neighbouring one with a
   warning in the log. Still read only.
-- Consecutive NVN indexed indirect draws merge into one host multi-draw again (`INDIRECT_BATCH`,
-  on). The terrain damage that had it off by default was not this merge. `=0` is one host draw
-  per call.
 - Rumble: HID command 214 (the Switch 2 titles' vibration, sent every frame) is forwarded to the
   controller through the existing vibration path; it was accepted and dropped. From the Selevet
   fork (`49e2ed7`); not tried with a controller yet.
