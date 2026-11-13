@@ -262,11 +262,20 @@ jobs:
           test -s "$LDAI_OUTPUT"
           ls -la "$LDAI_OUTPUT"
 
+      - name: Add the user folder
+        shell: bash
+        run: |
+          # upload-artifact drops empty folders, so the portable user folder carries a placeholder.
+          mkdir -p user
+          touch user/.keep
+
       - name: Upload Linux binary
         uses: actions/upload-artifact@v4
         with:
           name: dozer-linux-x86_64-${{ github.sha }}
-          path: dozer-${{ github.sha }}-linux-x86_64.AppImage
+          path: |
+            dozer-${{ github.sha }}-linux-x86_64.AppImage
+            user/.keep
           if-no-files-found: error
           compression-level: 0
           retention-days: 7
@@ -358,6 +367,10 @@ jobs:
           echo "bundle: $app"
           macdeployqt "$app" -codesign=-
           ditto -c -k --sequesterRsrc --keepParent "$app" "dozer-${GITHUB_SHA}-macos-arm64.zip"
+          # Portable user folder beside the app, with a placeholder so the zip keeps it.
+          mkdir -p user
+          touch user/.keep
+          zip -qr "dozer-${GITHUB_SHA}-macos-arm64.zip" user
           ls -la "dozer-${GITHUB_SHA}-macos-arm64.zip"
 
       - name: Upload macOS binary
