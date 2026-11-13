@@ -141,7 +141,7 @@ artifact. That folder holds the two programs and the Qt 6.8.3 DLLs and plugins; 
 the extras a full install wants. A complete package would add an empty `user/` folder (so the
 programs start in portable mode), the launchers from `dist/dozer/` (`start-performance.bat`,
 `start-balanced.bat`, `start-reactive-experimental.bat`, `start-safe.bat`) with `dozer-config.ps1`, an empty `Games`
-folder with its note (`dist/dozer/Games/PUT-YOUR-GAMES-HERE.txt`), `README_DOZER.md`,
+folder with its note (`dist/dozer/Games/PUT-YOUR-GAMES-HERE.txt`), `README.md`,
 `CHANGELOG_DOZER.md`, `BUILDING_DOZER.md`, `LICENSE.txt`, `LICENSES/` and a reference copy of
 `dist/nx2_switches.txt`. For now that is done by hand.
 

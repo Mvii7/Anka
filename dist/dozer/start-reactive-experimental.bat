@@ -82,7 +82,7 @@ set EDEN_NX2_REACTIVE_STATS=
 set EDEN_NX2_RX_NO_COPYBACK=
 set EDEN_NX2_RX_NO_RT_LATCH=
 set EDEN_NX2_RX_COALESCE_LOOSE=
-rem The main switches (README_DOZER.md, "Launchers").
+rem The main switches (README.md, "Launchers").
 rem Split GPU thread: the back as stages (cut a), acquire peek, leaner front macro path.
 set EDEN_NX2_BACK_STAGES=1
 set EDEN_NX2_BACK_CUTS=a
@@ -144,7 +144,7 @@ pause
 exit /b 1
 :noexe
 echo.
-echo  dozer-cli.exe is not next to this .bat. Put both in the Dozer folder (README_DOZER.md).
+echo  dozer-cli.exe is not next to this .bat. Put both in the Dozer folder (README.md).
 echo.
 pause
 exit /b 1

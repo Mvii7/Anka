@@ -8,6 +8,11 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- One readme: `README.md` is now the full manual (it was `README_DOZER.md`), replacing the upstream
+  `README.md` and the shorter `.github/README.md` that GitHub showed as the front page. It names
+  Mario Kart World as the second tuned game. The release zip, the launchers and the load-error
+  message point to `README.md`.
+
 - ASTC recompression now defaults to BC3 instead of Uncompressed. In Mario Kart World on a 16 GB
   card, uncompressed ASTC kept device memory at the collector's critical line (12.6-13.7 GiB),
   evicting and decoding textures again every few seconds; with BC3 it stays flat at about

@@ -441,7 +441,7 @@ jobs:
           cp -r dl/dozer-windows-x86_64-*/. "$win/"
           cp dist/dozer/*.bat dist/dozer/dozer-config.ps1 "$win/"
           cp -r dist/dozer/Games "$win/Games"
-          cp README_DOZER.md LICENSE.txt "$win/"
+          cp README.md LICENSE.txt "$win/"
           cp -r LICENSES "$win/LICENSES"
           mkdir -p "$win/user"
           test -f "$win/dozer.exe" && test -f "$win/dozer-cli.exe"
@@ -463,9 +463,9 @@ jobs:
             if [ -n "$NOTES" ]; then printf '%s\n\n' "$NOTES"; fi
             echo "Built from commit \`$SHA\` (run $BUILD_RUN_ID)."
             echo
-            echo "Dozer is a preview fork of Anka tuned for Donkey Kong Bananza. Support is very limited,"
-            echo "and more games may be added later."
-            echo "Not affiliated with Nintendo or the Eglantine project. See README_DOZER.md in the zip."
+            echo "Dozer is a preview fork of Anka tuned for Donkey Kong Bananza and Mario Kart World."
+            echo "Support is limited, and more games may be added later."
+            echo "Not affiliated with Nintendo or the Eglantine project. See README.md in the zip."
             echo "The macOS build is experimental and has never been run."
           } > notes.md
           flags=(--draft --target "$SHA" --title "Dozer $VERSION" --notes-file notes.md)

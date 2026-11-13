@@ -181,7 +181,7 @@ pause
 exit /b 1
 :noexe
 echo.
-echo  dozer-cli.exe is not next to this .bat. Put both in the Dozer folder (README_DOZER.md).
+echo  dozer-cli.exe is not next to this .bat. Put both in the Dozer folder (README.md).
 echo.
 pause
 exit /b 1
