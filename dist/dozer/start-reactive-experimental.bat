@@ -13,7 +13,7 @@ rem The second choice next to start-balanced.bat. Reactive flushing copies GPU-w
 rem back to the game. On our PC (5 Nov, DK_DYN on, frame generation off) it traded the opening
 rem for open areas: with RX_RT_FIT=3, -7 percent FPS at the game's opening and +15 percent in
 rem the open area against the same build with it off. Not checked yet: together with frame
-rem generation, and the image with RX_RT_FIT=3 (README, "Reactive flushing"). If you see wrong
+rem generation, and the image with RX_RT_FIT=3. If you see wrong
 rem images, set RX_RT_FIT=1 below or use start-balanced.bat. Reactive flushing is a config
 rem setting, not a switch: with CONFIG empty this launcher uses config\sdl2-config-reactive.ini,
 rem made once as a copy of sdl2-config.ini with use_reactive_flushing=true and
@@ -82,7 +82,7 @@ set EDEN_NX2_REACTIVE_STATS=
 set EDEN_NX2_RX_NO_COPYBACK=
 set EDEN_NX2_RX_NO_RT_LATCH=
 set EDEN_NX2_RX_COALESCE_LOOSE=
-rem The main switches (README_DOZER.md, "Launchers").
+rem The main switches (README.md, "Launchers").
 rem Split GPU thread: the back as stages (cut a), acquire peek, leaner front macro path.
 set EDEN_NX2_BACK_STAGES=1
 set EDEN_NX2_BACK_CUTS=a
@@ -144,7 +144,7 @@ pause
 exit /b 1
 :noexe
 echo.
-echo  dozer-cli.exe is not next to this .bat. Put both in the Dozer folder (README_DOZER.md).
+echo  dozer-cli.exe is not next to this .bat. Put both in the Dozer folder (README.md).
 echo.
 pause
 exit /b 1

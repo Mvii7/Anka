@@ -1,105 +1,413 @@
-<!--
-# SPDX-FileCopyrightText: Copyright 2025 Eden Emulator Project
-# SPDX-License-Identifier: GPL-3.0-or-later
+<p align="center"><img src="dist/qt_themes/default/icons/256x256/dozer.png" width="128" alt="Dozer"></p>
 
-# SPDX-FileCopyrightText: 2018 yuzu Emulator Project
-# SPDX-License-Identifier: GPL-2.0-or-later
--->
-<!-- lang: en-GB -->
+# Dozer
 
-> **This is Dozer**, a Nintendo Switch 2 emulator for Windows, a fork of
-> [Anka](https://github.com/EddizEge/Anka) by EddizEge; it is not affiliated with Anka, Eden,
-> Eglantine or Franseven. Read [README_DOZER.md](README_DOZER.md) and report problems here. The rest
-> of this page is the upstream README, unchanged.
+**Dozer — a Nintendo Switch 2 emulator for Windows, tuned for Donkey Kong Bananza and Mario Kart
+World (more games may follow).**
 
-<h1 align="center">
-  <br>
-  <a href="https://git.eden-emu.dev/eden-emu/eden"><img src="https://github.com/user-attachments/assets/35031845-4bfa-4916-8bf5-bc3bce67d5e2" alt="Eglantine" width="200"></a>
-  <br>
-  <b>Eglantine</b>
-  <br>
-</h1>
+Not affiliated with Nintendo or the Eglantine project; please report problems in this
+repository's Issues, not to them. https://github.com/Mvii7/Dozer/issues
 
-<h4 align="center"><b>Eglantine</b> is a free and opensource (FOSS) Switch 2 emulator, derived from Eden, Yuzu and Sudachi - started by developer Camille LaVey.
-It's written in C++ with portability in mind, with builds for Windows, Linux, macOS, Android, FreeBSD and more.
-</h4>
+**Support is limited.** Dozer is tuned for two games, Donkey Kong Bananza and Mario Kart World.
+Other games may work but are not supported yet. More may be added later, and any game Dozer is
+tuned for will be listed here.
 
-<p align="center">
-    </a>
-    <a href="https://discord.gg/HstXbPch7X">
-        <img src="https://img.shields.io/discord/1367654015269339267?color=5865F2&label=Eden&logo=discord&logoColor=white"
-            alt="Discord">
-    </a>
-    <a href="https://stt.gg/qKgFEAbH">
-        <img src="https://img.shields.io/revolt/invite/qKgFEAbH?color=d61f3a&label=Stoat"
-            alt="Stoat">
-    </a>
-</p>
+## At a glance
 
-<p align="center">
-    <a href="https://www.paypal.com/donate/?hosted_button_id=R3XXSG8WC3T98">
-        <img src="https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white"
-            alt="Donate with PayPal">
-    </a>
-</p>
+Dozer runs on its own: unzip it into a new, empty folder (see "Install"). It ships two programs:
 
-<p align="center">
-  <a href="#compatibility">Compatibility</a> |
-  <a href="#development">Development</a> |
-  <a href="#building">Building</a> |
-  <a href="#download">Download</a> |
-  <a href="#support">Support</a> |
-  <a href="#license">License</a>
-</p>
+- **`dozer.exe`**, the menu program: a Qt front end (game list, menus, settings) with Dozer's
+  settings built in and a **Tuning** tab in its settings. This is the easy way.
+- **`dozer-cli.exe`**, the program without menus (SDL), with launchers (`start-*.bat`) that start
+  it with the same settings.
 
-## Compatibility
+- This is a preview release (0.1.0). The program does not show the version number: the commit is
+  in the window title and the log.
+- Source: https://github.com/Mvii7/Dozer (GPLv3, see "License").
+- Changes: `CHANGELOG_DOZER.md`. Every switch: `dist/nx2_switches.txt`. Building from source:
+  `BUILDING_DOZER.md`.
 
-The emulator is capable of running most commercial games at full speed, provided you meet the necessary hardware requirements.
+## What you need
 
-A list of supported games will be available in future. Please be patient.
+- Windows 10 or 11, 64-bit.
+- Your own **keys, firmware and game dumps**. Dozer provides none of these and never will; only
+  use what you legally own.
+- Nothing else to install: the zip carries the Qt 6.8.3 DLLs and plugins `dozer.exe` needs and
+  the Microsoft Visual C++ runtime DLLs. (Should Windows still report a missing
+  `VCRUNTIME140.dll` or `MSVCP140.dll`, install the Microsoft Visual C++ 2015-2022 x64 runtime.)
+- A GPU with a current **Vulkan** driver. Only NVIDIA GPUs were tried (an RTX 4060 Ti and an
+  RTX 5070 Ti).
+- An x86-64 CPU. The build asks for no AVX2 (the only AVX2 code is in the Opus audio codec,
+  which checks the CPU at run time), but only a Ryzen 7 5700X was tried. Many changes speed up
+  the GPU thread on a fast desktop CPU; on a slow CPU expect less.
+- Multicore CPU emulation on (the default). The frame pacing switches need it.
+- Optional: RivaTuner Statistics Server (RTSS) for the on-screen FPS / speed display.
 
-Check out our [website](https://eden-emu.dev) for the latest news on exciting features, monthly progress reports, and more!
+## Download and check
 
-## Development
+Download the latest release for your system from the Releases page
+(https://github.com/Mvii7/Dozer/releases). The program is not signed: Windows SmartScreen may warn
+the first time.
 
-Most of the development happens on our Git server. It is also where [our central repository](https://git.eden-emu.dev/eden-emu/eden) is hosted. For development discussions, please join us on [Discord](https://discord.gg/HstXbPch7X) or [Stoat](https://stt.gg/qKgFEAbH).
-You can also follow us on [X (Twitter)](https://nitter.poast.org/edenemuofficial) for updates and announcements.
+## Install
 
-If you would like to contribute, we are open to new developers and pull requests. Please ensure that your work is of a high standard and properly documented. You can also contact any of the developers on Discord or Stoat to learn more about the current state of the emulator.
+This is an experimental build with no warranty (see "License").
 
-See the [sign-up instructions](docs/SIGNUP.md) for information on registration.
+1. Unzip the release into a new, empty folder. If it has no `user` folder, make an empty one next
+   to `dozer.exe` (portable mode: settings, keys, firmware and saves stay in it).
+2. Run **`dozer.exe`** (its window title is "Dozer").
+3. Install your own keys and firmware as with other Eden-based emulators (Dozer provides none;
+   only use what you legally own).
 
-Alternatively, if you wish to add translations, go to the [Eden project on Transifex](https://app.transifex.com/edenemu/eden-emulator) and review [the translations README](./dist/languages).
+Then add your game folder to the game list ("Add New Game Directory") and start a game. The file
+types Dozer opens are listed under "Game files".
 
-## Documentation
+The zip holds `dozer.exe`, `dozer-cli.exe`, the Qt DLLs and plugins `dozer.exe` needs, the Visual
+C++ runtime DLLs, the launchers and an empty `user\` folder. Because of that `user\` folder Dozer
+starts in portable mode: it keeps its settings (`user\config\qt-config.ini`), keys, firmware,
+saves (`user\nand`), shader caches and log (`user\log\eden_log.txt`) in it, and does not use
+`%APPDATA%\eden` or another emulator's folder (the one exception: `dozer.exe` also reads a
+`nx2_switches.txt` in `%APPDATA%\eden`, if you made one; see "Switches set outside the
+program" under "The Tuning tab").
 
-We have a user manual! See our [User Handbook](./docs/user/README.md).
+Settings: **Emulation > Configure... > Tuning**. On the first start the preset is
+**Performance**, and Dozer also turns *Enable Reactive Flushing* off in
+its `qt-config.ini` (Graphics > Advanced).
 
-## Building
+GPU Mode (GPU accuracy) starts at **Fast** (Low), as in newer Eden versions (2.0.0 started at
+Accurate, High, on desktop). If a game shows image errors, set
+Graphics > Advanced > GPU Mode to Accurate for that game (its Properties) or globally.
 
-See the [General Build Guide](docs/Build.md)
+**To uninstall,** delete the Dozer folder. **Move out what you want to keep first:** your game
+files in `Games`, and the `user` folder (your keys, firmware and saves).
 
-For information on provided development tooling, see the [Tools directory](./tools)
+## Recommendations
 
-## Download
+- **Use `.nx` instead of `.nup`.** It usually stutters less. Right-click a game in the list and
+  choose **Convert to NX...** (see "Game files"). Dozer also offers to convert a `.nup` the first
+  time you start it.
+- **Performance is the default preset.** It gives the most speed, but foliage is not drawn. To
+  get foliage back, open **Emulation > Configure... > Tuning** and pick **Balanced**, which costs
+  some performance.
+- **If your system is struggling, try handheld mode.** It trades resolution for performance. It
+  made little difference on the maintainer's machine, so it mainly helps weaker systems.
+- **Keep asynchronous presentation and asynchronous shader compilation on** (Graphics > Extras).
+  Both are on by default. Translating pipelines on worker threads keeps the game thread from
+  stalling on shader builds.
+- **Keep ASTC Recompression Method on BC3** (the default; Graphics > Advanced) and **VRAM Usage
+  Mode on Conservative** (the default). These games stream a lot of ASTC texture data, and stored
+  uncompressed it fills VRAM even on a 16 GB card, so the texture cache keeps evicting and
+  decoding textures again, which shows as stutter every few seconds. BC3 stores them about four
+  times smaller (opaque ones as BC1, about eight times) at a small loss in texture quality. If you
+  have plenty of VRAM and want the best quality, set it to Uncompressed. With BC3, Mario Kart
+  World stays under 7 GB of VRAM in total on the maintainer's machine. If you are still short of
+  VRAM and stutter, try BC1: it makes every texture BC1, including the ones with transparency, so
+  foliage and effects may lose their alpha. Not tested yet.
 
-You can download the latest releases from [here](https://git.eden-emu.dev/eden-emu/eden/releases).
+## Game files
 
-Save us some bandwidth! We have [mirrors available](./docs/user/ThirdParty.md#mirrors) as well.
+Dozer opens `.nsp`, `.xci`, `.nsz`, `.xcz`, `.nup` and `.nx` files: from a game folder in the game
+list, with **File > Load File**, from the `Games` folder for the launchers, or as a path for
+`dozer-cli.exe`. Only use files made from your own dumps.
 
-## Support
+**NX (`.nx`)** is the format to use. NX archives are from the nxformat project: one file that
+holds a game with its updates and DLC. To make one, right-click a game in the game list and choose
+**Convert to NX...**: it takes an NSP or XCI (with the updates and DLC of the same game found in
+its folder, if you tick them), a `.nup` or a dump folder. An NSP or XCI is decrypted with your keys
+while it is read, so the `.nx` needs no keys afterwards. **Manage NX Archive** on an `.nx` adds or
+removes an update or DLC and edits the title, publisher and icon shown in the list.
+`dozer-cli.exe` opens an `.nx` path but does not convert.
 
-If you enjoy the project and would like to support us financially, please check out our developers' [donation pages](https://eden-emu.dev/donations)!
+**NUP (`.nup`)** is the "Unencrypted (Archival) Package" of the Eglantine nx2 project: one file
+that holds a game's program, its update and its metadata (name, icon, version). Dozer only reads
+NUP: it does not make, edit or extract one. A Donkey Kong Bananza `.nup` gets Dozer's settings for
+that game like any other format. Compressed parts are decompressed as far as the game reads them;
+a cache of 512 MiB keeps them (`EDEN_NUP_CACHE_MIB=<n>`, 64 or more, sets another size), and a part
+larger than half of it is decompressed into `user\cache\nup` (removed when the game closes: it
+needs that much free disk space).
 
-Any donations received will go towards things such as:
-* Switch consoles to explore and reverse-engineer the hardware
-* Switch games for testing, reverse-engineering, and implementing new features
-* Web hosting and infrastructure setup
-* Additional hardware (e.g. GPUs as needed to improve rendering support, other peripherals to add support for, etc.)
-* CI Infrastructure
+## The Tuning tab
 
-If you would prefer to support us in a different way, please join our [Discord](https://discord.gg/HstXbPch7X) and talk to Camille or any of our other developers.
+At the top of the tab is a **Preset** box; a one-line description of the chosen preset is shown
+under it.
+
+| Preset | What it sets | Same as |
+|---|---|---|
+| **Performance** (the first start's choice) | the fastest settings with read traps and Reactive Flushing off (`EDEN_NX2_READ_TRAPS=0`). Foliage is not rendered for a performance gain. Dozer's first start also turns Reactive Flushing off in `qt-config.ini` by itself; choosing Performance or Balanced later turns it off too | `start-performance.bat` |
+| **Balanced** | all nine settings below on, *Enable Reactive Flushing* off (Graphics > Advanced). Foliage is rendered at a performance cost | `start-balanced.bat` |
+| **Experimental** | the balanced settings with Reactive Flushing instead of read traps: barrier feedback loops on (Graphics > Advanced; Reactive Flushing needs it) and `EDEN_NX2_RX_RT_FIT=3` | `start-reactive-experimental.bat` |
+| **Safe** | all nine off, Frame generation off, and the GPU shortcuts Dozer keeps on by default off too (`EDEN_NX2_LIGHT_DRAW=0` and the rest of `start-safe.bat`'s list), in every game. Other graphics settings such as Reactive Flushing stay as they are; Dozer's fixes and its changes without a switch stay in | `start-safe.bat` |
+| **Custom** | chosen by itself when you change a box by hand | - |
+
+**Frame generation.** The tab also has a **Frame generation** box with three choices:
+
+| Choice | What it does |
+|---|---|
+| **Off** (the default) | frame generation off |
+| **2x** | FSR3, one generated frame per real frame (fixed). On a 60 Hz screen it holds the game at 30 fps |
+| **Dynamic** | FSR3 with a 120 fps target, capped at the screen's refresh rate when it is known. It steps between 1x and 4x only while the screen can show the extra frames and the game's own frame rate holds: a step that lowers the game's frame rate by more than 8% is undone |
+| *Other (Graphics tab)* | not a choice: shown when the Graphics tab holds another frame generation setup (LSFG, or another multiplier or target frame rate), which the Tuning tab leaves as it is |
+
+Generated frames need a screen faster than the game's frame rate; on a 60 Hz screen they only
+help below 30 fps. The presets do not change this box, except Safe, which sets it to Off. The
+box writes the Graphics tab's frame generation settings (*Enable Frame Generation*, the type
+FSR3, and the multiplier or the target frame rate), so you see the same choice there.
+
+Below the preset are the nine settings, in two groups:
+
+| Setting | Switches it sets (`EDEN_NX2_...`) | Group |
+|---|---|---|
+| Read traps | Off by default (the first start's Performance preset leaves it unticked): `READ_TRAPS=0`. With Reactive Flushing off as well, foliage is not rendered. On: left unset; foliage is rendered at a performance cost. Does nothing while Reactive Flushing is on. Balanced ticks it; Performance and Experimental leave it unticked. Unticking it while Balanced is selected changes the preset to Custom | All games |
+| Split GPU thread | `BACK_STAGES=1`, `BACK_CUTS=a` | All games |
+| Acquire peek | `ACQUIRE_PEEK=1` | All games |
+| Same-value filter in the macro JIT | `JIT_SAME=1` | All games |
+| Lean front macro path | `FRONT_MACRO_LEAN=1` | All games |
+| Timed frame generation | `FG_TIMED=1` (only does something with frame generation on) | All games |
+| FPS overlay in RivaTuner | `OSD=1` (RTSS, if it runs) | All games |
+| Donkey Kong Bananza dynamic frame rate | `DK_DYN=1` | Specific Games: Bananza only, no preset changes it |
+| Mario Kart World dynamic frame rate | `MKW_DYN=1` | Specific Games: Mario Kart World only, no preset changes it |
+
+These are the switches `start-balanced.bat` sets ("Launchers", "Main switches"). The program
+sets them in its own environment just before a game starts. The Specific Games settings are set
+only for their game, by title id: Bananza's 040074A01BF12000 and Mario Kart World's
+0400C3F00006E000 (the ones the patches check); for any other game they stay off. They are no part
+of the presets (not even Safe changes them) and both are on until unticked. For Bananza the
+program always sets its frame pacing too (`PRESENT_INTERVAL_WORD=12:16:4`, `MODE_PACE=2`,
+`PACE_SPIN_US=1500`, no box): the dynamic frame rate patch sets it aside while it applies, and
+it steers the game when the patch is unticked or finds nothing to patch. The log says which were set ("Dozer settings for <title id>
+...").
+
+**When a change takes effect.** The switches are read once per session. The settings take effect
+at the first game you start, so before the first game there is no question: they simply apply to
+it. If you change them with **OK** or **Apply** after a game was already started in this
+session, Dozer asks "Restart Dozer now to apply?": **Restart Now** closes Dozer and opens it again,
+with the running game if one is running (unsaved game progress is lost), otherwise with the same
+command line; **Later** keeps the session's switches. When you start a game that needs other
+switches than the session's first game (a game with Specific Games settings after another game,
+or the other way round),
+Dozer asks: **Restart** (opens again with that game), **Start Anyway** (keeps the session's
+switches) or **Cancel**.
+
+**Graphics settings while a game runs.** Reactive Flushing (changed through a preset) and Frame
+generation are graphics settings, and those cannot change in a running game. If you change them
+while a game runs, Dozer keeps the change and applies it when you press **Restart Now**, or when
+the game stops if you chose **Later**; the tab says so.
+
+**Switches set outside the program.** A switch set outside the program (in your environment, in a `.bat`
+of your own that starts `dozer.exe`, or in a `nx2_switches.txt` next to `dozer.exe` or in
+`%APPDATA%\eden`) is never changed by Dozer. A box whose switches are all set outside is greyed
+out; when only some are (one of the three frame pacing ones, say), the box sets the rest. The
+tooltip names the variables set outside, with their values.
+
+The tab's settings are kept in the `[Dozer]` group of `user\config\qt-config.ini`.
+
+## The second way: dozer-cli and the launchers
+
+1. Put your game file (`.nsp`, `.xci`, `.nsz`, `.xcz`, `.nup` or `.nx`) in the `Games` folder (subfolders
+   are fine), or drag it onto the launcher instead.
+2. Double-click `start-performance.bat`.
+
+**On the first start** the launcher prepares the settings. dozer-cli uses the same `user\` folder
+as `dozer.exe` (the one next to the programs): the same keys, firmware and saves. It keeps its
+settings in `user\config\sdl2-config.ini`, apart from the menu program's `qt-config.ini`. When
+`sdl2-config.ini` does not exist yet, the launcher makes it as a copy of `qt-config.ini`, so the
+controller and settings you set up in `dozer.exe` come along, and turns reactive flushing off in
+the copy (the recommended setup). It never changes an existing
+`sdl2-config.ini`, nor `qt-config.ini`. The editing is done by `dozer-config.ps1` next to the
+launchers, a small, readable PowerShell script; without it the launchers skip this step and
+start the game. If neither file exists, the launcher stops with a message: start `dozer.exe`
+once and set up your controller there, then start the launcher again. With more than one game
+in `Games`, the launcher lists them and asks for a number. The launchers' messages start with
+`[Dozer]`. (Without a `user\` folder next to them, the launchers and dozer-cli would use
+`%APPDATA%\eden` instead; keep the folder.)
+
+The game starts in full screen; dozer-cli has no menu. **Quit with Alt+F4.**
+
+## Launchers
+
+| Launcher | When to use it |
+|---|---|
+| `start-performance.bat` | **Performance (the default).** The fastest settings with read traps and reactive flushing off. Foliage is not rendered for a performance gain. |
+| `start-balanced.bat` | **Balanced.** The performance settings with read traps on. Foliage is rendered at a performance cost. |
+| `start-reactive-experimental.bat` | **Experimental.** The balanced settings with Reactive Flushing instead of read traps. |
+| `start-safe.bat` | The GPU shortcuts Dozer keeps on by default off, read traps off, the opt-in switches that change play cleared; Dozer's fixes and its changes without a switch stay in: for troubleshooting and for games other than Bananza. |
+
+A launcher starts, in this order: a game file dragged onto it, the `GAME=` line, or the game in
+the `Games` folder next to it (with several, it asks which one). To change a line, open the
+`.bat` in a text editor (right click, Edit). The top of each launcher has the lines meant to be
+changed:
+
+| Line | Meaning |
+|---|---|
+| `GAME=` | the game to start (a dragged file wins; this line wins over `Games`) |
+| `CONFIG=` | another `sdl2-config` .ini for this launcher; empty = automatic (above; the reactive launcher uses `sdl2-config-reactive.ini`) |
+| `FULLSCREEN=-f` | full screen; empty = window |
+| `DK_DYN=1` | Bananza dynamic frame rate patch (below); `0` = off |
+| `MKW_DYN=1` | Mario Kart World dynamic frame rate patch (below); `0` = off |
+| `OSD=1` | FPS / speed display through RTSS; `0` = off |
+
+(`DK_DYN=` and `OSD=` are in the balanced, performance and reactive launchers only.) If the path of your
+game contains `&`, `^`, `,`, `;` or `=` but no space, Windows passes a dragged file badly: put
+the game in `Games` or write it in the `GAME=` line instead.
+A launcher stops with a message when its `CONFIG=` file does not exist (dozer-cli would quietly
+make a new one with default settings), and keeps its window open when the emulator exits with an
+error. Take the launchers from the release zip: they need Windows line endings (CRLF).
+
+- **`start-balanced.bat`** - the balanced settings. Foliage is rendered at a performance cost:
+  the GPU thread's back as stages (`BACK_STAGES=1`, `BACK_CUTS=a`), `ACQUIRE_PEEK=1`,
+  `JIT_SAME=1`, `FRONT_MACRO_LEAN=1`; Bananza's own 60/30/20 fps choice followed at the right
+  speed (`PRESENT_INTERVAL_WORD=12:16:4`, `MODE_PACE=2`, `PACE_SPIN_US=1500`); the dynamic
+  frame rate patch (`DK_DYN=1`; while it is applied, the two pacing lines above are set aside:
+  they act with `DK_DYN=0` or when the patch does not apply); timed FSR3 generated frames
+  (`FG_TIMED=1`, only does something with frame generation on); the RTSS display (`OSD=1`). The
+  Bananza-specific lines are marked; for other games use the safe launcher, or remove them. It
+  is meant for reactive flushing **off**: it turns it off in an `sdl2-config.ini` it makes,
+  and only prints a note when an existing one has it on. Read traps stay
+  on: the launcher clears `EDEN_NX2_READ_TRAPS`, and unset means on.
+- **`start-performance.bat`** - the default: the fastest settings, with read traps and reactive flushing off
+  (`EDEN_NX2_READ_TRAPS=0`). Foliage is not rendered for a performance gain. The same other
+  switches as `start-balanced.bat`, including Bananza's dynamic frame rate and frame
+  pacing, and the same handling of reactive flushing (off in an `sdl2-config.ini` it makes, a
+  note when an existing one has it on).
+- **`start-safe.bat`** - for troubleshooting and for games other than Bananza: Dozer's shortcut
+  switches that are on by default set to `0`, the opt-in ones that change play cleared (a few
+  diagnostic ones, such as `AUTO_INPUT_FILE` or `VI2_REPLY`, are not cleared: do not set them in
+  your system environment). Use it to see whether a problem comes from these switches. Dozer's
+  fixes and its changes without a switch (the accuracy fixes and upstream picks in the
+  changelog) stay in. Read traps are off (`EDEN_NX2_READ_TRAPS=0`).
+- **`start-reactive-experimental.bat`** - EXPERIMENTAL: the balanced settings with Reactive
+  Flushing instead of read traps (`EDEN_NX2_READ_TRAPS=0`, reactive flushing on), plus `RX_RT_FIT=3` (one
+  image for Bananza's opening render target instead of a copy per draw). In earlier
+  tests it trades the opening for open areas: slower at the game's opening, faster in open areas,
+  against the same build with reactive flushing off. Not checked yet: together with frame generation, and the
+  image with `RX_RT_FIT=3`. Reactive flushing is a config setting, not a switch: with `CONFIG=`
+  empty this launcher uses `config\sdl2-config-reactive.ini`, which it makes once as a copy of
+  `sdl2-config.ini` with reactive flushing and `barrier_feedback_loops` on. With a `CONFIG=` file that has reactive flushing off, `RX_RT_FIT=3` still acts, a
+  combination that was not tested.
+
+dozer-cli reads the switches only from its environment (the launchers); it does not read the
+Tuning tab. `nx2_switches_DOZER.txt` lists every switch with its default and what it does. Under
+that name no program reads it: `dozer.exe` (not dozer-cli) reads a `nx2_switches.txt` next to it
+and one in `%APPDATA%\eden`, so copy the lines you want into a `nx2_switches.txt` of your own.
+
+## Main switches
+
+All are environment variables named `EDEN_NX2_<NAME>`. The full list (about 230 new names, most
+of them diagnostics or tuning knobs) is in `nx2_switches_DOZER.txt`. "Default" is dozer-cli
+without a launcher; the menu program sets the recommended ones from its Tuning tab.
+
+| Switch | Default | What it does |
+|---|---|---|
+| `READ_TRAPS=0` | **off** (`0`, from the Performance preset and `start-performance.bat`; unset means on) | read traps: a buffer page the GPU writes stays protected until the game's first read. Foliage is rendered at a performance cost. `=0` turns them off; with reactive flushing off as well, foliage is not rendered. With reactive flushing on they do nothing. Balanced leaves this unset; Performance, Experimental and Safe set `0` |
+| `BACK_STAGES=1`, `BACK_CUTS=a` | off | the split GPU thread's back runs as a pipeline of stages |
+| `ACQUIRE_PEEK=1` | off | a GPU semaphore wait already met goes on without draining the back |
+| `JIT_SAME=1`, `FRONT_MACRO_LEAN=1` | off | the front's macro JIT drops writes that change nothing |
+| `PRESENT_INTERVAL_WORD=12:16:4` | off | presents follow the game's own frame interval (Bananza) |
+| `MODE_PACE=2`, `PACE_SPIN_US=1500` | off | steers Bananza's 60/30/20 fps mode by frame timing |
+| `DK_DYN=1` | off | Bananza dynamic frame rate patch, in memory (below) |
+| `DK_DYN_MIN_FPS=<n>` | 40 | the patch's lower limit |
+| `FG_TIMED=1` | off | FSR3 generated frames blended for the time they are shown |
+| `OSD=1` | off | game FPS, display FPS (with frame generation's multiplier) and speed in RTSS |
+| `LIGHT_DRAW`, `LIGHT_UNIFORM`, `UBO_*`, `SYNC_*`, `VERTEX_*`, `RESET_*`, ... (about 60) | **on** | per-draw shortcuts on the GPU thread; `=0` is the 2.0.0 code path, many accept `=2` to check themselves and log |
+| `HLE_INDIRECT`, `INDIRECT_BATCH`, `PBFLUSH_WINDOW_KIB` | **on** | Bananza's terrain: indirect draws on the host GPU, merged; GPU-written parameters flushed in 256 KiB windows |
+| `RX_RT_FIT=3` | off | meant for reactive flushing (it acts without it too, not measured that way): Bananza's opening renders into one image instead of copying it per draw, ordered by a barrier inside the render pass (experimental; `=1` ends the render pass instead, slower; both need `barrier_feedback_loops=true`) |
+| `FLUSH_FIRST_READ`, `READ_LATCH_AGE`, `RX_ONE_SUBMIT`, `RX_COALESCE`, `RX_PITCH_FORCED` | off | reactive flushing experiments; no gain measured, not recommended |
+| `RX_MASKED_TARGETS` | off | **known defect, do not turn on** |
+| `RX_COALESCE_LOOSE` | off | diagnostic only (it weakens the ordering reactive flushing gives): not for play |
+
+## Donkey Kong Bananza dynamic frame rate (DK-DYN)
+
+`EDEN_NX2_DK_DYN=1` applies a game-specific patch: when Bananza's main module is loaded, a few
+instructions of the game's frame rate controller are rewritten **in memory** so that the game
+may run at any rate from 40 to 60 fps instead of dropping to 30, with its clock stepped by the
+real frame time (the game's speed stays right down to 24 fps). It is a port of the
+`dk_dynamic_fps` patch of the ZendNevs fork (v2.0.5). Nothing is written to disk, no game file is
+changed, and with the switch unset no module is touched. It only applies to Bananza (title
+040074A01BF12000) and only if the expected instructions are found. `DK_DYN_MIN_FPS=<1-60>`
+moves the 40 fps limit.
+
+It is off by default in dozer-cli; `start-balanced.bat`, `start-performance.bat` and
+`start-reactive-experimental.bat` turn it on (`DK_DYN=1` at the top), and so does the menu
+program's Tuning tab (Donkey Kong Bananza dynamic frame rate, under Specific Games, on until
+unticked, no preset changes it). With it the game's frame time varies by design (any rate between 40 and 60, in
+steps of 2); below 40 fps its target is 30 fps, and its speed stays right down to 24 fps. While it is applied,
+`PRESENT_INTERVAL_WORD` and `MODE_PACE` are set aside and presents are paced to every vblank.
+
+## Mario Kart World dynamic frame rate (MKW-DYN)
+
+`EDEN_NX2_MKW_DYN=1` (`MKW_DYN=1` in `start-balanced.bat`, `start-performance.bat` and
+`start-reactive-experimental.bat`, and the menu program's Tuning tab, Specific Games) applies a game-specific patch: when Mario Kart World's main
+module is loaded, three instructions of its frame mode choice are rewritten **in memory** so that
+the game picks 1 or 2 vblanks a frame from its real frame time instead of staying at 30 fps, and
+presents are paced to every vblank (`PACE_ONE=0` keeps the interval). It follows the Lichii
+fork's patch (zortos293/Lichii#1332, including its fix for the game's own wait for the second
+vblank, which kept the game at 30 fps). Nothing is written to disk, no game file is changed, and
+with the switch unset no module is touched. It only applies to Mario Kart World (title
+0400C3F00006E000) and only if each of the three instruction sequences is found exactly once;
+otherwise the log says which one was not. It is off by default in dozer-cli, on in the launchers
+and the Tuning tab (until unticked; no preset changes it). It was not measured on Dozer: the game may still not reach 60 fps where the CPU is the limit.
+
+## Frame generation (optional)
+
+PokeDinner-Eglantine 2.0.0 already has frame generation; Dozer adds `FG_TIMED`, shows the
+multiplier on the OSD and has a **Frame generation** box in its Tuning tab ("The Tuning tab").
+Two kinds exist:
+
+- **FSR3** (built in, the default kind). This is the recommended kind.
+- **LSFG** (Lossless Scaling frame generation). It needs `Lossless.dll` from the paid
+  *Lossless Scaling* app. **Dozer does not include it**; put your own copy in the user folder's
+  `lossless\` folder if you want this kind.
+
+In the menu program, choose 2x or Dynamic in the Tuning tab's Frame generation box (it writes the
+Graphics tab's frame generation settings, which you can also set there). To turn FSR3
+frame generation on for dozer-cli, close the program and add these lines under `[Renderer]` in
+`config\sdl2-config.ini` (the `\default=false` lines make dozer-cli read the value):
+
+```ini
+frame_gen\default=false
+frame_gen=true
+frame_gen_target_rate\default=false
+frame_gen_target_rate=120
+```
+
+`frame_gen_target_rate` is the frame rate frame generation aims for (we use 120 on a 120 Hz+
+display; `0` uses `frame_gen_multiplier`, 2-4). `frame_gen_type=0` would pick LSFG.
+
+## AI disclosure
+
+Much of this fork's code, its commit messages and these documents were written with AI coding
+assistants (Claude, by Anthropic) working under the direction of the human maintainer, who decided
+what to try, played and tested the builds, and is responsible for them. Commits made with an
+assistant say so in their trailers, as the Eden project's AI policy asks (`docs/policies/AI.md`).
+This fork is published on its own and is not submitted upstream. The upstream commits picked into this fork are listed with their authors in the changelog.
+
+## Credits
+
+**Built on.** Dozer is a fork of Anka (EddizEge) and builds on Eden, Eglantine (the PokeDinner fork by Franseven), yuzu and
+Sudachi; their copyrights and credits are kept. It is not an official release of those
+projects. Anka's base is PokeDinner-a-Eglantine-Fork 2.0.0, commit `70ecb39ef0`
+(https://git.eden-emu.dev/Franseven/PokeDinner-a-Eglantine-Fork). The DK-DYN patch is a port of
+`dk_dynamic_fps` from the ZendNevs fork, and the upstream commits picked into Dozer are listed
+with their authors in the changelog.
 
 ## License
 
-Eden is licensed under the GPLv3 (or any later version). Refer to the [LICENSE.txt](https://git.eden-emu.dev/eden-emu/eden/src/branch/master/LICENSE.txt) file.
+Like Anka, Eden and PokeDinner-Eglantine, Dozer is licensed under the **GNU General Public License
+v3.0 or later** (`LICENSE.txt`). It is a modified version of Anka (EddizEge), which is a modified
+version of PokeDinner-Eglantine 2.0.0; what was changed is in `CHANGELOG_DOZER.md` and in git. The
+source of every build is this repository at the build's commit: https://github.com/Mvii7/Dozer. The
+Dozer logo (`dist/dozer.ico`, the program icon, and
+`dist/qt_themes/default/icons/256x256/dozer.png`, used for the window and the About box: a D whose
+flat edge is a bulldozer blade) is drawn by `dist/dozer/dozer_logo.py` and is licensed like the
+code under GPL-3.0-or-later. Third-party components keep their own licenses; their texts are in
+`LICENSES\`. The menu program links Qt 6.8.3 dynamically (Qt Base and Qt SVG under LGPL-3.0, Qt
+Charts under GPL-3.0): the Qt DLLs and plugins in a build are the official, unmodified Qt 6.8.3
+binaries, and you may replace them with your own build of Qt 6.8.3. QuaZip (LGPL-2.1 with a static
+linking exception) is compiled into it. FFmpeg, OpenSSL, SDL3 and sirit are linked from prebuilt
+packages; FFmpeg (LGPL-2.1-or-later, patched) is linked statically: to use a modified FFmpeg, build
+it as described in `BUILDING_DOZER.md` and link the program against it. The OpenSSL package also
+compiles in Mozilla's CA certificate list (MPL-2.0), and sirit's repository carries GPL-3.0 and
+AGPL-3.0 license files next to its BSD-3-Clause file headers.
+
+Nintendo Switch and Donkey Kong Bananza are trademarks of Nintendo. This project has no
+affiliation with Nintendo. Use it only with games you own.
