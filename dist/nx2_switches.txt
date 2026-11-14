@@ -254,7 +254,8 @@
 #EDEN_NX2_MKW_DYN=1
 
 # --- read traps (core/memory/read_traps.h; ported from the ZendNevs fork) ---
-# On by default with use_reactive_flushing=false (Switch 2 titles, fastmem, not NCE): a buffer
+# Off by default: Performance, the default preset, sets 0. Unset means on (Switch 2 titles,
+# use_reactive_flushing=false, fastmem, not NCE): a buffer
 # page the GPU writes is read-protected until the guest CPU's first read, which flushes it and
 # notes it, so later GPU writes there are copied back at fences. Bananza's foliage comes from such
 # GPU-written data: rendered at a performance cost with this on, and not rendered when this and

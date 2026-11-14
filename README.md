@@ -157,7 +157,7 @@ Below the preset are the nine settings, in two groups:
 
 | Setting | Switches it sets (`EDEN_NX2_...`) | Group |
 |---|---|---|
-| Read traps | on: left unset. Foliage is rendered at a performance cost. Off (the default, because the first start's Performance preset unticks it): `READ_TRAPS=0`. With Reactive Flushing off as well, foliage is not rendered. Does nothing while Reactive Flushing is on. Balanced ticks it; Performance and Experimental leave it unticked. Unticking it while Balanced is selected changes the preset to Custom | All games |
+| Read traps | Off by default (the first start's Performance preset leaves it unticked): `READ_TRAPS=0`. With Reactive Flushing off as well, foliage is not rendered. On: left unset; foliage is rendered at a performance cost. Does nothing while Reactive Flushing is on. Balanced ticks it; Performance and Experimental leave it unticked. Unticking it while Balanced is selected changes the preset to Custom | All games |
 | Split GPU thread | `BACK_STAGES=1`, `BACK_CUTS=a` | All games |
 | Acquire peek | `ACQUIRE_PEEK=1` | All games |
 | Same-value filter in the macro JIT | `JIT_SAME=1` | All games |
@@ -298,7 +298,7 @@ without a launcher; the menu program sets the recommended ones from its Tuning t
 
 | Switch | Default | What it does |
 |---|---|---|
-| `READ_TRAPS=0` | **on** (unset) | read traps: a buffer page the GPU writes stays protected until the game's first read. Foliage is rendered at a performance cost. `=0` turns them off; with reactive flushing off as well, foliage is not rendered. With reactive flushing on they do nothing. Balanced leaves this unset; Performance, Experimental and Safe set `0` |
+| `READ_TRAPS=0` | **off** (`0`, from the Performance preset and `start-performance.bat`; unset means on) | read traps: a buffer page the GPU writes stays protected until the game's first read. Foliage is rendered at a performance cost. `=0` turns them off; with reactive flushing off as well, foliage is not rendered. With reactive flushing on they do nothing. Balanced leaves this unset; Performance, Experimental and Safe set `0` |
 | `BACK_STAGES=1`, `BACK_CUTS=a` | off | the split GPU thread's back runs as a pipeline of stages |
 | `ACQUIRE_PEEK=1` | off | a GPU semaphore wait already met goes on without draining the back |
 | `JIT_SAME=1`, `FRONT_MACRO_LEAN=1` | off | the front's macro JIT drops writes that change nothing |
