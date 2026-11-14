@@ -8,7 +8,6 @@
 
 #include <algorithm>
 #include <numeric>
-#include <chrono>
 #include <cstdlib>
 #include <limits>
 #include <map>
@@ -251,17 +250,6 @@ void TextureCache<P>::RunGarbageCollector() {
     bool aggressive_mode = false;
     u64 ticks_to_destroy = 0;
     size_t num_iterations = 0;
-    // Costly (ASTC) images are normally kept until the critical line, so a course's textures pile
-    // up and are cleared in one burst when the next course loads. Past the expected line the ones
-    // unused for EDEN_NX2_TC_STALE_COSTLY frames (default 600, 0 = off) go a few per frame.
-    static const u64 stale_costly_ticks = [] {
-        const char* value = std::getenv("EDEN_NX2_TC_STALE_COSTLY");
-        return value != nullptr ? std::strtoull(value, nullptr, 10) : 600ULL;
-    }();
-    bool allow_costly = false;
-    // Evicting a GPU-modified image downloads it and waits for the GPU: a few per frame at most.
-    size_t downloads_left = 2;
-    const auto start_time = std::chrono::steady_clock::now();
     const auto Configure = [&](bool allow_aggressive) {
         high_priority_mode = total_used_memory >= expected_memory;
         aggressive_mode = allow_aggressive && total_used_memory >= critical_memory;
@@ -274,8 +262,7 @@ void TextureCache<P>::RunGarbageCollector() {
         ticks_to_destroy = (std::max)(ticks_to_destroy, min_age);
         num_iterations = aggressive_mode ? 40 : (high_priority_mode ? 20 : 10);
     };
-    const auto Cleanup = [this, &num_iterations, &high_priority_mode, &aggressive_mode,
-                          &allow_costly, &downloads_left](ImageId image_id) {
+    const auto Cleanup = [this, &num_iterations, &high_priority_mode, &aggressive_mode](ImageId image_id) {
         if (num_iterations == 0) {
             return true;
         }
@@ -285,12 +272,10 @@ void TextureCache<P>::RunGarbageCollector() {
             return false;
         }
         const bool must_download = IsDownloadable(image) && False(image.flags & ImageFlagBits::BadOverlap);
-        if ((!aggressive_mode && !allow_costly && True(image.flags & ImageFlagBits::CostlyLoad)) ||
-            (!aggressive_mode && must_download) || (must_download && downloads_left == 0)) {
+        if ((!aggressive_mode && True(image.flags & ImageFlagBits::CostlyLoad)) || (!high_priority_mode && must_download)) {
             return false;
         }
         if (must_download) {
-            --downloads_left;
             auto map = runtime.DownloadStagingBuffer(image.unswizzled_size_bytes);
             const auto copies = FullDownloadCopies(image.info);
             image.DownloadMemory(map, copies);
@@ -318,19 +303,6 @@ void TextureCache<P>::RunGarbageCollector() {
     if (total_used_memory >= critical_memory) {
         Configure(true);
         lru_cache.ForEachItemBelow(frame_tick - ticks_to_destroy, Cleanup);
-    } else if (stale_costly_ticks != 0 && total_used_memory >= expected_memory &&
-               frame_tick > stale_costly_ticks) {
-        Configure(false);
-        allow_costly = true;
-        num_iterations = 10;
-        lru_cache.ForEachItemBelow(frame_tick - stale_costly_ticks, Cleanup);
-    }
-    const auto elapsed = std::chrono::steady_clock::now() - start_time;
-    if (elapsed > std::chrono::milliseconds{2}) {
-        LOG_INFO(HW_GPU, "Texture cache collector took {:.1f} ms ({} deleted so far in this window, "
-                         "{} downloaded)",
-                 std::chrono::duration<double, std::milli>(elapsed).count(), images_deleted,
-                 gc_download_deletes);
     }
 }
 
