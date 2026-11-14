@@ -8,6 +8,12 @@ and `=0` brings back the 2.0.0 code path.
 
 ## Unreleased (Dozer)
 
+- Texture cache collector, to cut the hitches when a course changes (Mario Kart World): a
+  GPU-modified image is only evicted at the critical line and at most two are downloaded (a full
+  GPU wait each) per frame; past the expected line, costly (ASTC) images unused for 600 frames
+  (`EDEN_NX2_TC_STALE_COSTLY=<frames>`, 0 = off) go a few per frame instead of all at once at the
+  critical line. A pass that takes over 2 ms is logged. Not built or played yet.
+
 ## Dozer 0.1.0 (`v0.1.0`)
 
 - Mario Kart World dynamic frame rate (`MKW_DYN=1` / `EDEN_NX2_MKW_DYN=1`): its frame mode
