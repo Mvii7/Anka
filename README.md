@@ -9,8 +9,8 @@ Not affiliated with Nintendo or the Eglantine project; please report problems in
 repository's Issues, not to them. https://github.com/Mvii7/Dozer/issues
 
 **Support is limited.** Dozer is tuned for two games, Donkey Kong Bananza and Mario Kart World.
-Other games may work but are not supported yet. More may be added later, and any game Dozer is tuned for will
-be listed here.
+Other games may work but are not supported yet. More may be added later, and any game Dozer is
+tuned for will be listed here.
 
 ## At a glance
 
@@ -35,7 +35,8 @@ Dozer runs on its own: unzip it into a new, empty folder (see "Install"). It shi
 - Nothing else to install: the zip carries the Qt 6.8.3 DLLs and plugins `dozer.exe` needs and
   the Microsoft Visual C++ runtime DLLs. (Should Windows still report a missing
   `VCRUNTIME140.dll` or `MSVCP140.dll`, install the Microsoft Visual C++ 2015-2022 x64 runtime.)
-- A GPU with a current **Vulkan** driver. Only NVIDIA GPUs were tried (an RTX 4060 Ti and an RTX 5070 Ti).
+- A GPU with a current **Vulkan** driver. Only NVIDIA GPUs were tried (an RTX 4060 Ti and an
+  RTX 5070 Ti).
 - An x86-64 CPU. The build asks for no AVX2 (the only AVX2 code is in the Opus audio codec,
   which checks the CPU at run time), but only a Ryzen 7 5700X was tried. Many changes speed up
   the GPU thread on a fast desktop CPU; on a slow CPU expect less.
@@ -58,15 +59,32 @@ This is an experimental build with no warranty (see "License").
 3. Install your own keys and firmware as with other Eden-based emulators (Dozer provides none;
    only use what you legally own).
 
-Then add your game folder to the game list ("Add New Game Directory") and start a game.
+Then add your game folder to the game list ("Add New Game Directory") and start a game. The file
+types Dozer opens are listed under "Game files".
 
-Game files: `.nsp`, `.xci`, `.nsz`, `.xcz`, **`.nup`** (see "NUP files") and **`.nx`** (see "NX
-files").
+The zip holds `dozer.exe`, `dozer-cli.exe`, the Qt DLLs and plugins `dozer.exe` needs, the Visual
+C++ runtime DLLs, the launchers and an empty `user\` folder. Because of that `user\` folder Dozer
+starts in portable mode: it keeps its settings (`user\config\qt-config.ini`), keys, firmware,
+saves (`user\nand`), shader caches and log (`user\log\eden_log.txt`) in it, and does not use
+`%APPDATA%\eden` or another emulator's folder (the one exception: `dozer.exe` also reads a
+`nx2_switches.txt` in `%APPDATA%\eden`, if you made one; see "Switches set outside the
+program" under "The Tuning tab").
+
+Settings: **Emulation > Configure... > Tuning**. On the first start the preset is
+**Performance**, and Dozer also turns *Enable Reactive Flushing* off in
+its `qt-config.ini` (Graphics > Advanced).
+
+GPU Mode (GPU accuracy) starts at **Fast** (Low), as in newer Eden versions (2.0.0 started at
+Accurate, High, on desktop). If a game shows image errors, set
+Graphics > Advanced > GPU Mode to Accurate for that game (its Properties) or globally.
+
+**To uninstall,** delete the Dozer folder. **Move out what you want to keep first:** your game
+files in `Games`, and the `user` folder (your keys, firmware and saves).
 
 ## Recommendations
 
 - **Use `.nx` instead of `.nup`.** It usually stutters less. Right-click a game in the list and
-  choose **Convert to NX...** (see "NX files"). Dozer also offers to convert a `.nup` the first
+  choose **Convert to NX...** (see "Game files"). Dozer also offers to convert a `.nup` the first
   time you start it.
 - **Performance is the default preset.** It gives the most speed, but foliage is not drawn. To
   get foliage back, open **Emulation > Configure... > Tuning** and pick **Balanced**, which costs
@@ -86,46 +104,27 @@ files").
   VRAM and stutter, try BC1: it makes every texture BC1, including the ones with transparency, so
   foliage and effects may lose their alpha. Not tested yet.
 
-## NUP files
+## Game files
 
-Dozer reads `.nup` files: NUP, the "Unencrypted (Archival) Package" of the Eglantine nx2
-project, one file that holds a game's program, its update and its metadata (name, icon,
-version). Open one with **File > Load File**, or keep it in a game folder of the game list (it
-shows its name, icon and version), or put it in the `Games` folder for the launchers;
-`dozer-cli.exe` opens a `.nup` path too. A Donkey Kong Bananza `.nup` gets Dozer's settings for
-that game like any other format. Dozer only reads NUP: it does not make, edit or extract one.
-Only use NUP files made from your own dumps.
+Dozer opens `.nsp`, `.xci`, `.nsz`, `.xcz`, `.nup` and `.nx` files: from a game folder in the game
+list, with **File > Load File**, from the `Games` folder for the launchers, or as a path for
+`dozer-cli.exe`. Only use files made from your own dumps.
 
-Compressed parts are decompressed as far as the game reads them; a cache of 512 MiB keeps them
-(`EDEN_NUP_CACHE_MIB=<n>`, 64 or more, sets another size), and a part larger than half of it is
-decompressed into `user\cache\nup` (removed when the game closes: it needs that much free
-disk space).
+**NX (`.nx`)** is the format to use. NX archives are from the nxformat project: one file that
+holds a game with its updates and DLC. To make one, right-click a game in the game list and choose
+**Convert to NX...**: it takes an NSP or XCI (with the updates and DLC of the same game found in
+its folder, if you tick them), a `.nup` or a dump folder. An NSP or XCI is decrypted with your keys
+while it is read, so the `.nx` needs no keys afterwards. **Manage NX Archive** on an `.nx` adds or
+removes an update or DLC and edits the title, publisher and icon shown in the list.
+`dozer-cli.exe` opens an `.nx` path but does not convert.
 
-## NX files
-
-Dozer reads and makes `.nx` files: NX archives of the nxformat project, one file that holds a
-game with its updates and DLC. Open one like any other game file. To make one, right-click a
-game in the game list and choose **Convert to NX...**: it takes an NSP or XCI (with the updates
-and DLC of the same game found in its folder, if you tick them), a `.nup` or a dump folder. An
-NSP or XCI is decrypted with your keys while it is read, so the `.nx` needs no keys afterwards.
-**Manage NX Archive** on an `.nx` adds or removes an update or DLC and edits the title,
-publisher and icon shown in the list. `dozer-cli.exe` opens an `.nx` path but does not convert.
-Only convert your own dumps.
-
-The zip holds `dozer.exe`, `dozer-cli.exe`, the Qt DLLs and plugins `dozer.exe` needs, the Visual
-C++ runtime DLLs, the launchers and an empty `user\` folder. Because of that `user\` folder Dozer
-starts in portable mode: it keeps its settings (`user\config\qt-config.ini`), keys, firmware,
-saves (`user\nand`), shader caches and log (`user\log\eden_log.txt`) in it, and does not use
-`%APPDATA%\eden` or another emulator's folder (the one exception: `dozer.exe` also reads a
-`nx2_switches.txt` in `%APPDATA%\eden`, if you made one; see "Switches set outside win").
-
-Settings: **Emulation > Configure... > Tuning**. On the first start the preset is
-**Performance**, and Dozer also turns *Enable Reactive Flushing* off in
-its `qt-config.ini` (Graphics > Advanced).
-
-GPU Mode (GPU accuracy) starts at **Fast** (Low), as in newer Eden versions (2.0.0 started at
-Accurate, High, on desktop). If a game shows image errors, set
-Graphics > Advanced > GPU Mode to Accurate for that game (its Properties) or globally.
+**NUP (`.nup`)** is the "Unencrypted (Archival) Package" of the Eglantine nx2 project: one file
+that holds a game's program, its update and its metadata (name, icon, version). Dozer only reads
+NUP: it does not make, edit or extract one. A Donkey Kong Bananza `.nup` gets Dozer's settings for
+that game like any other format. Compressed parts are decompressed as far as the game reads them;
+a cache of 512 MiB keeps them (`EDEN_NUP_CACHE_MIB=<n>`, 64 or more, sets another size), and a part
+larger than half of it is decompressed into `user\cache\nup` (removed when the game closes: it
+needs that much free disk space).
 
 ## The Tuning tab
 
@@ -194,16 +193,13 @@ generation are graphics settings, and those cannot change in a running game. If 
 while a game runs, Dozer keeps the change and applies it when you press **Restart Now**, or when
 the game stops if you chose **Later**; the tab says so.
 
-**Switches set outside win.** A switch set outside the program (in your environment, in a `.bat`
+**Switches set outside the program.** A switch set outside the program (in your environment, in a `.bat`
 of your own that starts `dozer.exe`, or in a `nx2_switches.txt` next to `dozer.exe` or in
 `%APPDATA%\eden`) is never changed by Dozer. A box whose switches are all set outside is greyed
 out; when only some are (one of the three frame pacing ones, say), the box sets the rest. The
 tooltip names the variables set outside, with their values.
 
 The tab's settings are kept in the `[Dozer]` group of `user\config\qt-config.ini`.
-
-**To uninstall,** delete the Dozer folder. **Move out what you want to keep first:** your game
-files in `Games`, and the `user` folder (your keys, firmware and saves).
 
 ## The second way: dozer-cli and the launchers
 
