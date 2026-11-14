@@ -262,6 +262,7 @@ void TextureCache<P>::RunGarbageCollector() {
     // Evicting a GPU-modified image downloads it and waits for the GPU: a few per frame at most.
     size_t downloads_left = 2;
     const auto start_time = std::chrono::steady_clock::now();
+    defer_view_removal = true;
     const auto Configure = [&](bool allow_aggressive) {
         high_priority_mode = total_used_memory >= expected_memory;
         aggressive_mode = allow_aggressive && total_used_memory >= critical_memory;
@@ -325,6 +326,8 @@ void TextureCache<P>::RunGarbageCollector() {
         num_iterations = 10;
         lru_cache.ForEachItemBelow(frame_tick - stale_costly_ticks, Cleanup);
     }
+    defer_view_removal = false;
+    FlushDeferredViewRemovals();
     const auto elapsed = std::chrono::steady_clock::now() - start_time;
     if (elapsed > std::chrono::milliseconds{2}) {
         LOG_INFO(HW_GPU, "Texture cache collector took {:.1f} ms ({} deleted so far in this window, "
@@ -3549,8 +3552,13 @@ void TextureCache<P>::DeleteImage(ImageId image_id, bool immediate_delete) {
             render_targets.depth_buffer_id = ImageViewId{};
         }
     }
-    RemoveImageViewReferences(image_view_ids);
-    RemoveFramebuffers(image_view_ids);
+    if (defer_view_removal) {
+        deferred_removed_views.insert(deferred_removed_views.end(), image_view_ids.begin(),
+                                      image_view_ids.end());
+    } else {
+        RemoveImageViewReferences(image_view_ids);
+        RemoveFramebuffers(image_view_ids);
+    }
 
     for (const AliasedImage& alias : image.aliased_images) {
         ImageBase& other_image = slot_images[alias.id];
@@ -3625,6 +3633,42 @@ void TextureCache<P>::RemoveFramebuffers(std::span<const ImageViewId> removed_vi
     while (it != framebuffers.end()) {
         if (it->first.Contains(removed_views)) {
             auto framebuffer_id = it->second;
+            ASSERT(framebuffer_id);
+            if (framebuffer_id == last_framebuffer_id) {
+                last_framebuffer_id = {};
+                last_framebuffer_serial = 0;
+            }
+            sentenced_framebuffers.Push(std::move(slot_framebuffers[framebuffer_id]));
+            it = framebuffers.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+template <class P>
+void TextureCache<P>::FlushDeferredViewRemovals() {
+    if (deferred_removed_views.empty()) {
+        return;
+    }
+    std::vector<ImageViewId> removed = std::move(deferred_removed_views);
+    deferred_removed_views.clear();
+    std::ranges::sort(removed);
+    removed.erase(std::unique(removed.begin(), removed.end()), removed.end());
+    const auto is_removed = [&removed](ImageViewId id) {
+        return std::ranges::binary_search(removed, id);
+    };
+    for (size_t c : active_channel_ids) {
+        std::erase_if(channel_storage[c].image_views,
+                      [&](const auto& entry) { return is_removed(entry.second); });
+    }
+    runtime.FlushDeferredClear();
+    auto it = framebuffers.begin();
+    while (it != framebuffers.end()) {
+        const RenderTargets& key = it->first;
+        if (std::ranges::any_of(key.color_buffer_ids, is_removed) ||
+            is_removed(key.depth_buffer_id)) {
+            const auto framebuffer_id = it->second;
             ASSERT(framebuffer_id);
             if (framebuffer_id == last_framebuffer_id) {
                 last_framebuffer_id = {};
