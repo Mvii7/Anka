@@ -1844,12 +1844,38 @@ inline LoweredProgram LowerToMaxwell(std::span<const Instruction> code) {
             }
             break;
         }
-        case 0x923: // ISBERD map read: geometry vertex index to attribute handle. ALD takes the index
-                    // itself (Maxwell ISBERD in this mode is a copy), so this is a move.
-            if (insn.Bits(32, 32) || insn.words[2] || insn.Bits(24, 8) == 255)
+        case 0x923: { // ISBERD
+            // Map read: geometry vertex index to attribute handle. ALD takes the index itself
+            // (Maxwell ISBERD in this mode is a copy), so this is a move.
+            if (!insn.Bits(32, 32) && !insn.words[2] && insn.Bits(24, 8) != 255) {
+                emit(base(0x5c98000000000000ULL) | (u64{15} << 39) | (u64{insn.Bits(24, 8)} << 20));
+                break;
+            }
+            // Any other mode (patches, primitives, indexed attributes, skewed global reads) has a
+            // Maxwell counterpart the Maxwell frontend implements in full. Ampere fields: offset
+            // 24-31, imm 40-55, mem_type 74-75, access 76-77, skew 78, output 79.
+            const u32 offset_reg = insn.Bits(24, 8);
+            const u32 imm_offset = insn.Bits(40, 16);
+            const u32 mem_type = insn.Bits(74, 2);
+            const u32 access = insn.Bits(76, 2);
+            const u32 skew = insn.Bits(78, 1);
+            const u32 output = insn.Bits(79, 1);
+            if (imm_offset > 0xff || mem_type > 2 || (offset_reg != 255 && offset_reg >= 246))
                 return fail(index, "native stage buffer read mode");
-            emit(base(0x5c98000000000000ULL) | (u64{15} << 39) | (u64{insn.Bits(24, 8)} << 20));
+            // Maxwell ISBERD: dst 0-7, src 8-15, imm 24-31, skew 31, o 32, mode 33-34, sz 36-39.
+            emit(0xefd0000000000000ULL | predicate | dest | (u64{offset_reg} << 8) |
+                 (u64{imm_offset} << 24) | (u64{skew} << 31) | (u64{output} << 32) |
+                 (u64{access} << 33) | (u64{mem_type} << 36));
             break;
+        }
+        case 0x927: { // ISBEWR: Maxwell has no equivalent. The write is dropped (it only leaves one
+                      // stage output stale) instead of rejecting the whole program.
+            const u32 offset_reg = insn.Bits(24, 8);
+            const u32 data_reg = insn.Bits(32, 8);
+            if ((offset_reg != 255 && offset_reg >= 246) || (data_reg != 255 && data_reg >= 246))
+                return fail(index, "native stage buffer entry write registers");
+            break;
+        }
         case 0x34e: { // LEPC: 64-bit address of the next instruction
             // Only seen in geometry shader prologues, where the address is consumed by opcode 0x357
             // and the registers are overwritten right after. Native code addresses mean nothing in
